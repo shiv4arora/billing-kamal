@@ -88,4 +88,21 @@ router.post('/import', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── RESET INVENTORY (one-time use) ───────────────────────────────────────────
+router.post('/reset-inventory', async (_req, res, next) => {
+  try {
+    await prisma.$transaction([
+      prisma.stockLedger.deleteMany(),
+      prisma.ledgerEntry.deleteMany(),
+      prisma.saleInvoice.deleteMany(),
+      prisma.purchaseInvoice.deleteMany(),
+      prisma.product.deleteMany(),
+      prisma.counter.update({ where: { key: 'sku' },             data: { value: 1001 } }),
+      prisma.counter.update({ where: { key: 'saleInvoice' },     data: { value: 1 } }),
+      prisma.counter.update({ where: { key: 'purchaseInvoice' }, data: { value: 1 } }),
+    ]);
+    res.json({ ok: true, message: 'All products, invoices and ledger entries deleted. Counters reset.' });
+  } catch (err) { next(err); }
+});
+
 export default router;
