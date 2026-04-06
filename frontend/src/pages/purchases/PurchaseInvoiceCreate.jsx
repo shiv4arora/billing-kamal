@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { api } from '../../hooks/useApi';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useInvoices } from '../../context/InvoiceContext';
 import { useProducts } from '../../context/ProductContext';
@@ -35,7 +36,7 @@ const BLANK_ITEM = {
 };
 
 /* ─── Inline item card ───────────────────────────────────────────────── */
-function ItemCard({ item, idx, supplier, products, onUpdate, onRemove }) {
+function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }) {
   const [search, setSearch] = useState(item.productName || '');
   const [showDrop, setShowDrop] = useState(false);
   const dropRef = useRef(null);
@@ -104,13 +105,16 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove }) {
               placeholder="e.g. Basmati Rice 5kg"
               className="col-span-2"
             />
-            {/* SKU ID — always auto-assigned, read-only */}
+            {/* SKU ID — read-only preview of what will be assigned on save */}
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">SKU ID</label>
-              <div className="flex items-center gap-2 w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2">
-                <span className="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">AUTO</span>
-                <span className="text-sm font-mono text-gray-400">Assigned on save</span>
+              <div className="flex items-center gap-2 w-full border border-blue-200 bg-blue-50 rounded-lg px-3 py-2">
+                <span className="text-xs bg-blue-600 text-white font-semibold px-2 py-0.5 rounded-full">AUTO</span>
+                <span className="text-base font-mono font-bold text-blue-800 tracking-widest">
+                  {nextSku !== null ? String(nextSku) : '…'}
+                </span>
               </div>
+              <p className="text-xs text-gray-400 mt-0.5">This SKU ID will be permanently assigned when you save.</p>
             </div>
             <Input label="Category" value={item.category} onChange={e => onUpdate('category', e.target.value)} placeholder="e.g. Grains" />
             <Select label="Unit" value={item.unit} onChange={e => onUpdate('unit', e.target.value)}>
@@ -230,7 +234,11 @@ export default function PurchaseInvoiceCreate() {
   const { settings } = useSettings();
   const isEdit = !!id;
 
-
+  // Fetch next SKU from backend so user can see what will be assigned
+  const [nextSku, setNextSku] = useState(null);
+  useEffect(() => {
+    api('/counters').then(d => setNextSku(d.sku ?? 1001)).catch(() => setNextSku(null));
+  }, []);
 
   const fileInputRef = useRef(null);
 
@@ -498,6 +506,7 @@ export default function PurchaseInvoiceCreate() {
               idx={idx}
               supplier={supplier}
               products={products}
+              nextSku={nextSku !== null ? nextSku + idx : null}
               onUpdate={(field, value) => updateItem(idx, field, value)}
               onRemove={() => removeItem(idx)}
             />
