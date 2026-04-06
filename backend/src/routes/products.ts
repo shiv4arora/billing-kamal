@@ -3,6 +3,23 @@ import { prisma } from '../lib/prisma';
 
 const router = Router();
 
+// Parse pricing JSON string → object before sending to frontend
+function parseProduct(p: any) {
+  return {
+    ...p,
+    pricing: (() => { try { return typeof p.pricing === 'string' ? JSON.parse(p.pricing) : (p.pricing || {}); } catch { return {}; } })(),
+  };
+}
+
+// Serialize pricing object → JSON string before storing in SQLite
+function serializePricing(body: any) {
+  const pricing = body.pricing;
+  if (pricing && typeof pricing === 'object') {
+    return { ...body, pricing: JSON.stringify(pricing) };
+  }
+  return body;
+}
+
 router.get('/', async (_req, res, next) => {
   try {
     const products = await prisma.product.findMany({
@@ -10,30 +27,30 @@ router.get('/', async (_req, res, next) => {
       include: { supplier: { select: { id: true, name: true, place: true } } },
       orderBy: { name: 'asc' },
     });
-    res.json(products);
+    res.json(products.map(parseProduct));
   } catch (err) { next(err); }
 });
 
 router.get('/:id', async (req, res, next) => {
   try {
     const p = await prisma.product.findUniqueOrThrow({ where: { id: req.params.id } });
-    res.json(p);
+    res.json(parseProduct(p));
   } catch (err) { next(err); }
 });
 
 router.post('/', async (req, res, next) => {
   try {
     // SKU is never assigned on direct product creation — only assigned when a purchase is completed
-    const { sku: _ignored, ...rest } = req.body;
+    const { sku: _ignored, ...rest } = serializePricing(req.body);
     const p = await prisma.product.create({ data: { ...rest, sku: null } });
-    res.status(201).json(p);
+    res.status(201).json(parseProduct(p));
   } catch (err) { next(err); }
 });
 
 router.put('/:id', async (req, res, next) => {
   try {
-    const p = await prisma.product.update({ where: { id: req.params.id }, data: req.body });
-    res.json(p);
+    const p = await prisma.product.update({ where: { id: req.params.id }, data: serializePricing(req.body) });
+    res.json(parseProduct(p));
   } catch (err) { next(err); }
 });
 
@@ -61,7 +78,7 @@ router.patch('/:id/stock', async (req, res, next) => {
         },
       }),
     ]);
-    res.json({ product, entry });
+    res.json({ product: parseProduct(product), entry });
   } catch (err) { next(err); }
 });
 
