@@ -104,9 +104,9 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove }) {
               placeholder="e.g. Basmati Rice 5kg"
               className="col-span-2"
             />
-            {/* SKU — always auto-assigned, read-only */}
+            {/* SKU ID — always auto-assigned, read-only */}
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Item Code</label>
+              <label className="text-sm font-medium text-gray-700 block mb-1">SKU ID</label>
               <div className="flex items-center gap-2 w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2">
                 <span className="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">AUTO</span>
                 <span className="text-sm font-mono text-gray-400">Assigned on save</span>
@@ -125,7 +125,7 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove }) {
               value={search}
               onChange={e => { setSearch(e.target.value); setShowDrop(true); }}
               onFocus={() => setShowDrop(true)}
-              placeholder="Search by name or item code…"
+              placeholder="Search by name or SKU ID…"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             {item.productId && (

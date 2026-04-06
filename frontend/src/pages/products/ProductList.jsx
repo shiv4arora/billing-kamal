@@ -62,7 +62,7 @@ export default function ProductList() {
       </div>
       <Card padding={false}>
         <div className="p-4 border-b border-gray-100">
-          <SearchInput value={search} onChange={setSearch} placeholder="Search by name, item code, category…" />
+          <SearchInput value={search} onChange={setSearch} placeholder="Search by name, SKU ID, category…" />
         </div>
         <Table columns={columns} data={filtered} onRowClick={p => navigate(`/products/${p.id}/edit`)} emptyMsg="No products found. Add your first product!" />
       </Card>
