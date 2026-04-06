@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { api } from '../../hooks/useApi';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useInvoices } from '../../context/InvoiceContext';
 import { useProducts } from '../../context/ProductContext';
@@ -36,7 +35,7 @@ const BLANK_ITEM = {
 };
 
 /* ─── Inline item card ───────────────────────────────────────────────── */
-function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, allocateSku }) {
+function ItemCard({ item, idx, supplier, products, onUpdate, onRemove }) {
   const [search, setSearch] = useState(item.productName || '');
   const [showDrop, setShowDrop] = useState(false);
   const dropRef = useRef(null);
@@ -68,9 +67,8 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, allocateS
   const toggleNew = () => {
     const next = !item.isNew;
     const pricing = calcSellingPrices(item.unitPrice, supplier?.margin, supplier?.discount);
-    // Allocate a preview SKU when switching to new-product mode
-    const previewSku = next ? allocateSku() : '';
-    onUpdate('_bulk', { ...item, isNew: next, productId: next ? '' : item.productId, pricing, sku: previewSku });
+    // SKU is always auto-assigned by backend — clear it when toggling
+    onUpdate('_bulk', { ...item, isNew: next, productId: next ? '' : item.productId, pricing, sku: '' });
     if (next) { setSearch(''); }
   };
 
@@ -106,19 +104,13 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, allocateS
               placeholder="e.g. Basmati Rice 5kg"
               className="col-span-2"
             />
-            {/* SKU — pre-filled with sequential preview */}
+            {/* SKU — always auto-assigned, read-only */}
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">
-                Item Code
-                <span className="ml-1 text-xs font-normal text-blue-500">Sequential</span>
-              </label>
-              <input
-                value={item.sku}
-                onChange={e => onUpdate('sku', e.target.value)}
-                placeholder="Auto-assigned on save"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-400 mt-0.5">Leave blank to auto-assign · or type a custom code</p>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Item Code</label>
+              <div className="flex items-center gap-2 w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2">
+                <span className="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">AUTO</span>
+                <span className="text-sm font-mono text-gray-400">Assigned on save</span>
+              </div>
             </div>
             <Input label="Category" value={item.category} onChange={e => onUpdate('category', e.target.value)} placeholder="e.g. Grains" />
             <Select label="Unit" value={item.unit} onChange={e => onUpdate('unit', e.target.value)}>
@@ -238,20 +230,7 @@ export default function PurchaseInvoiceCreate() {
   const { settings } = useSettings();
   const isEdit = !!id;
 
-  // Local sequential counter for preview SKUs — seeded from backend counter on mount
-  const localSkuCounter = useRef(null);
-  useEffect(() => {
-    api('/counters').then(data => {
-      if (localSkuCounter.current === null)
-        localSkuCounter.current = data.sku ?? 1001;
-    }).catch(() => {
-      if (localSkuCounter.current === null) localSkuCounter.current = 1001;
-    });
-  }, []);
-  const allocateSku = useCallback(() => {
-    if (localSkuCounter.current === null) localSkuCounter.current = 1001;
-    return String(localSkuCounter.current++);
-  }, []);
+
 
   const fileInputRef = useRef(null);
 
@@ -521,7 +500,6 @@ export default function PurchaseInvoiceCreate() {
               products={products}
               onUpdate={(field, value) => updateItem(idx, field, value)}
               onRemove={() => removeItem(idx)}
-              allocateSku={allocateSku}
             />
           ))}
         </div>
