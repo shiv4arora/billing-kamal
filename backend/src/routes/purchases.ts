@@ -91,7 +91,7 @@ async function issuePurchase(invoiceId: string) {
           data: {
             sku, name: item.productName, unit: item.unit || 'Pcs',
             gstRate: item.gstRate || 0, hsnCode: item.hsnCode || '',
-            pricing: JSON.stringify({ wholesale: item.wPrice || 0, shop: item.sPrice || 0, retail: item.rPrice || item.unitPrice || 0 }),
+            pricing: JSON.stringify({ wholesale: item.pricing?.wholesale || 0, shop: item.pricing?.shop || 0, retail: item.pricing?.retail || item.unitPrice || 0 }),
             costPrice: item.unitPrice || 0,
             supplierId: existing.supplierId || null,
             currentStock: 0,
@@ -103,8 +103,8 @@ async function issuePurchase(invoiceId: string) {
       // Update cost price + pricing if product already exists
       if (!item.isNew && productId) {
         const updateData: any = { costPrice: item.unitPrice };
-        if (item.wPrice || item.sPrice || item.rPrice) {
-          updateData.pricing = JSON.stringify({ wholesale: item.wPrice || 0, shop: item.sPrice || 0, retail: item.rPrice || 0 });
+        if (item.pricing?.wholesale || item.pricing?.shop || item.pricing?.retail) {
+          updateData.pricing = JSON.stringify({ wholesale: item.pricing?.wholesale || 0, shop: item.pricing?.shop || 0, retail: item.pricing?.retail || 0 });
         }
         await tx.product.update({ where: { id: productId }, data: updateData });
       }
