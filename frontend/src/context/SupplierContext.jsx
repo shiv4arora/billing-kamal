@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { api, isApiAvailable } from '../hooks/useApi';
+import { api, isApiAvailable, checkApiAvailable } from '../hooks/useApi';
 import { useAuth } from './AuthContext';
 
 const Ctx = createContext();
@@ -13,8 +13,10 @@ export function SupplierProvider({ children }) {
 
   useEffect(() => {
     if (!currentUser) return;
-    if (!isApiAvailable()) { setSuppliers(lsGet()); return; }
-    api('/suppliers').then(setSuppliers).catch(console.error);
+    checkApiAvailable().then(available => {
+      if (!available) { setSuppliers(lsGet()); return; }
+      api('/suppliers').then(setSuppliers).catch(console.error);
+    });
   }, [currentUser]);
 
   const add = async (data) => {

@@ -20,36 +20,39 @@ model User {
 }
 
 model Customer {
-  id        String        @id @default(cuid())
-  name      String
-  place     String        @default("")
-  type      String        @default("retail")
-  phone     String        @default("")
-  email     String        @default("")
-  address   String        @default("")
-  gstin     String        @default("")
-  balance   Float         @default(0)
-  isActive  Boolean       @default(true)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  place       String   @default("")
+  type        String   @default("retail")
+  phone       String   @default("")
+  email       String   @default("")
+  address     String   @default("")
+  gstin       String   @default("")
+  creditLimit Float    @default(0)
+  balance     Float    @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   saleInvoices  SaleInvoice[]
-  ledgerEntries LedgerEntry[]
 }
 
 model Supplier {
-  id        String           @id @default(cuid())
-  name      String
-  place     String           @default("")
-  type      String           @default("")
-  phone     String           @default("")
-  email     String           @default("")
-  address   String           @default("")
-  gstin     String           @default("")
-  balance   Float            @default(0)
-  isActive  Boolean          @default(true)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  id            String   @id @default(cuid())
+  name          String
+  place         String   @default("")
+  type          String   @default("")
+  phone         String   @default("")
+  email         String   @default("")
+  address       String   @default("")
+  gstin         String   @default("")
+  contactPerson String   @default("")
+  discount      Float    @default(0)
+  margin        String   @default("{}")  // JSON: {wholesale, shop, retail}
+  balance       Float    @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   products         Product[]
   purchaseInvoices PurchaseInvoice[]
@@ -79,7 +82,7 @@ model Product {
 
 model SaleInvoice {
   id            String   @id @default(cuid())
-  invoiceNumber String   @unique @default("")
+  invoiceNumber String?  @unique          // null for drafts, set on issue
   date          String
   dueDate       String   @default("")
   customerId    String?
@@ -114,7 +117,7 @@ model SaleInvoice {
 
 model PurchaseInvoice {
   id                    String   @id @default(cuid())
-  invoiceNumber         String   @unique @default("")
+  invoiceNumber         String?  @unique          // null for drafts, set on issue
   supplierInvoiceNumber String   @default("")
   date                  String
   dueDate               String   @default("")
@@ -157,8 +160,6 @@ model LedgerEntry {
   referenceNo   String   @default("")
   narration     String   @default("")
   createdAt     DateTime @default(now())
-
-  customer Customer? @relation(fields: [partyId], references: [id])
 
   @@index([partyType, partyId])
   @@index([date])

@@ -6,6 +6,31 @@ import { postPurchaseInvoice, postPaymentOut, postPurchaseReturn } from '../serv
 
 const router = Router();
 
+// Pick only schema fields — ignores unknown frontend fields (e.g. totalTaxable)
+function pickPurchaseData(b: any) {
+  return {
+    ...(b.date                  !== undefined && { date:                  b.date }),
+    ...(b.dueDate               !== undefined && { dueDate:               b.dueDate }),
+    ...(b.supplierId            !== undefined && { supplierId:            b.supplierId            || null }),
+    ...(b.supplierName          !== undefined && { supplierName:          b.supplierName }),
+    ...(b.supplierInvoiceNumber !== undefined && { supplierInvoiceNumber: b.supplierInvoiceNumber }),
+    ...(b.items                 !== undefined && { items:                 b.items }),
+    ...(b.subtotal              !== undefined && { subtotal:              b.subtotal }),
+    ...(b.totalDiscount         !== undefined && { totalDiscount:         b.totalDiscount }),
+    ...(b.totalCGST             !== undefined && { totalCGST:             b.totalCGST }),
+    ...(b.totalSGST             !== undefined && { totalSGST:             b.totalSGST }),
+    ...(b.totalIGST             !== undefined && { totalIGST:             b.totalIGST }),
+    ...(b.totalGST              !== undefined && { totalGST:              b.totalGST }),
+    ...(b.grandTotal            !== undefined && { grandTotal:            b.grandTotal }),
+    ...(b.roundOff              !== undefined && { roundOff:              b.roundOff }),
+    ...(b.amountPaid            !== undefined && { amountPaid:            b.amountPaid }),
+    ...(b.paymentMethod         !== undefined && { paymentMethod:         b.paymentMethod }),
+    ...(b.paymentStatus         !== undefined && { paymentStatus:         b.paymentStatus }),
+    ...(b.notes                 !== undefined && { notes:                 b.notes }),
+    ...(b.status                !== undefined && { status:                b.status }),
+  };
+}
+
 router.get('/', async (req, res, next) => {
   try {
     const { status, supplierId, from, to } = req.query as any;
@@ -25,116 +50,123 @@ router.get('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Shared logic: issue a purchase invoice (assign number, update stock, post ledger)
+async function issuePurchase(invoiceId: string) {
+  const existing = await prisma.purchaseInvoice.findUniqueOrThrow({ where: { id: invoiceId } });
+
+  const settings = await prisma.settings.findUnique({ where: { id: 'singleton' } });
+  const s: any = settings?.data || {};
+  const isInterState = s.tax?.intraState === false;
+  const prefix = s.invoice?.purchasePrefix || 'PI';
+
+  const rawItems = existing.items as any[];
+  const totals = buildInvoiceTotals(rawItems, isInterState);
+  const paid = Number(existing.amountPaid);
+  const payStatus = paid >= totals.grandTotal - 0.01 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
+
+  return prisma.$transaction(async (tx) => {
+    const invNo = await nextPurchaseInvoiceNumber(prefix, tx);
+
+    const inv = await tx.purchaseInvoice.update({
+      where: { id: existing.id },
+      data: {
+        invoiceNumber: invNo, items: totals.items,
+        subtotal: totals.subtotal, totalDiscount: totals.totalDiscount,
+        totalCGST: totals.totalCGST, totalSGST: totals.totalSGST,
+        totalIGST: totals.totalIGST, totalGST: totals.totalGST,
+        grandTotal: totals.grandTotal, roundOff: totals.roundOff,
+        paymentStatus: payStatus, status: 'issued',
+      },
+    });
+
+    for (const item of rawItems) {
+      if (!item.productId && !item.isNew) continue;
+
+      let productId = item.productId;
+
+      // Create new product if flagged
+      if (item.isNew || !productId) {
+        const sku = item.sku || String(await allocateSkuNumbers(1, tx));
+        const newProd = await tx.product.create({
+          data: {
+            sku, name: item.productName, unit: item.unit || 'Pcs',
+            gstRate: item.gstRate || 0, hsnCode: item.hsnCode || '',
+            pricing: { wholesale: item.wPrice || 0, shop: item.sPrice || 0, retail: item.rPrice || item.unitPrice || 0 },
+            costPrice: item.unitPrice || 0,
+            supplierId: existing.supplierId || null,
+            currentStock: 0,
+          },
+        });
+        productId = newProd.id;
+      }
+
+      // Update cost price + pricing if product already exists
+      if (!item.isNew && productId) {
+        const updateData: any = { costPrice: item.unitPrice };
+        if (item.wPrice || item.sPrice || item.rPrice) {
+          updateData.pricing = { wholesale: item.wPrice || 0, shop: item.sPrice || 0, retail: item.rPrice || 0 };
+        }
+        await tx.product.update({ where: { id: productId }, data: updateData });
+      }
+
+      // Stock movement
+      await tx.stockLedger.create({
+        data: {
+          productId, date: existing.date, movementType: 'purchase',
+          quantity: Number(item.quantity), referenceId: existing.id, referenceNo: invNo,
+        },
+      });
+      await tx.product.update({
+        where: { id: productId },
+        data: { currentStock: { increment: Number(item.quantity) } },
+      });
+    }
+
+    // Supplier ledger
+    if (existing.supplierId) {
+      await postPurchaseInvoice(tx, {
+        supplierId: existing.supplierId, supplierName: existing.supplierName,
+        date: existing.date, invoiceId: existing.id, invoiceNo: invNo, amount: totals.grandTotal,
+      });
+      if (paid > 0) {
+        await postPaymentOut(tx, {
+          supplierId: existing.supplierId, supplierName: existing.supplierName,
+          date: existing.date, amount: paid, method: existing.paymentMethod,
+          referenceId: existing.id, referenceNo: invNo,
+        });
+      }
+      await tx.supplier.update({
+        where: { id: existing.supplierId },
+        data: { balance: { increment: totals.grandTotal - paid } },
+      });
+    }
+
+    return inv;
+  }, { timeout: 30000 });
+}
+
 router.post('/', async (req, res, next) => {
   try {
-    const inv = await prisma.purchaseInvoice.create({ data: req.body });
-    res.status(201).json(inv);
+    // Create then immediately issue — stock is added right away
+    const draft = await prisma.purchaseInvoice.create({ data: pickPurchaseData(req.body) });
+    const issued = await issuePurchase(draft.id);
+    res.status(201).json(issued);
   } catch (err) { next(err); }
 });
 
 router.put('/:id', async (req, res, next) => {
   try {
-    const inv = await prisma.purchaseInvoice.update({ where: { id: req.params.id }, data: req.body });
+    const inv = await prisma.purchaseInvoice.update({ where: { id: req.params.id }, data: pickPurchaseData(req.body) });
     res.json(inv);
   } catch (err) { next(err); }
 });
 
-// ── ISSUE ────────────────────────────────────────────────────────────────────
+// ── ISSUE (kept for manual use / backward compatibility) ─────────────────────
 router.post('/:id/issue', async (req, res, next) => {
   try {
     const existing = await prisma.purchaseInvoice.findUniqueOrThrow({ where: { id: req.params.id } });
     if (existing.status !== 'draft') return res.status(400).json({ error: 'Only draft invoices can be issued' });
-
-    const settings = await prisma.settings.findUnique({ where: { id: 'singleton' } });
-    const s: any = settings?.data || {};
-    const isInterState = s.tax?.intraState === false;
-    const prefix = s.invoice?.purchasePrefix || 'PI';
-
-    const rawItems = existing.items as any[];
-    const totals = buildInvoiceTotals(rawItems, isInterState);
-    const paid = Number(existing.amountPaid);
-    const payStatus = paid >= totals.grandTotal - 0.01 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
-
-    const issued = await prisma.$transaction(async (tx) => {
-      const invNo = await nextPurchaseInvoiceNumber(prefix);
-
-      const inv = await tx.purchaseInvoice.update({
-        where: { id: existing.id },
-        data: {
-          invoiceNumber: invNo, items: totals.items,
-          subtotal: totals.subtotal, totalDiscount: totals.totalDiscount,
-          totalCGST: totals.totalCGST, totalSGST: totals.totalSGST,
-          totalIGST: totals.totalIGST, totalGST: totals.totalGST,
-          grandTotal: totals.grandTotal, roundOff: totals.roundOff,
-          paymentStatus: payStatus, status: 'issued',
-        },
-      });
-
-      for (const item of rawItems) {
-        if (!item.productId && !item.isNew) continue;
-
-        let productId = item.productId;
-
-        // Create new product if flagged
-        if (item.isNew || !productId) {
-          const sku = item.sku || String(await allocateSkuNumbers(1));
-          const newProd = await tx.product.create({
-            data: {
-              sku, name: item.productName, unit: item.unit || 'Pcs',
-              gstRate: item.gstRate || 0, hsnCode: item.hsnCode || '',
-              pricing: { wholesale: item.wPrice || 0, shop: item.sPrice || 0, retail: item.rPrice || item.unitPrice || 0 },
-              costPrice: item.unitPrice || 0,
-              supplierId: existing.supplierId || null,
-              currentStock: 0,
-            },
-          });
-          productId = newProd.id;
-        }
-
-        // Update cost price + pricing if product already exists
-        if (!item.isNew && productId) {
-          const updateData: any = { costPrice: item.unitPrice };
-          if (item.wPrice || item.sPrice || item.rPrice) {
-            updateData.pricing = { wholesale: item.wPrice || 0, shop: item.sPrice || 0, retail: item.rPrice || 0 };
-          }
-          await tx.product.update({ where: { id: productId }, data: updateData });
-        }
-
-        // Stock movement
-        await tx.stockLedger.create({
-          data: {
-            productId, date: existing.date, movementType: 'purchase',
-            quantity: Number(item.quantity), referenceId: existing.id, referenceNo: invNo,
-          },
-        });
-        await tx.product.update({
-          where: { id: productId },
-          data: { currentStock: { increment: Number(item.quantity) } },
-        });
-      }
-
-      // Ledger
-      if (existing.supplierId) {
-        await postPurchaseInvoice(tx, {
-          supplierId: existing.supplierId, supplierName: existing.supplierName,
-          date: existing.date, invoiceId: existing.id, invoiceNo: invNo, amount: totals.grandTotal,
-        });
-        if (paid > 0) {
-          await postPaymentOut(tx, {
-            supplierId: existing.supplierId, supplierName: existing.supplierName,
-            date: existing.date, amount: paid, method: existing.paymentMethod,
-            referenceId: existing.id, referenceNo: invNo,
-          });
-        }
-        await tx.supplier.update({
-          where: { id: existing.supplierId },
-          data: { balance: { increment: totals.grandTotal - paid } },
-        });
-      }
-
-      return inv;
-    });
-
+    const issued = await issuePurchase(existing.id);
     res.json(issued);
   } catch (err) { next(err); }
 });

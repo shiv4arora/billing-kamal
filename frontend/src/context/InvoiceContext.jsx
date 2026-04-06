@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { api, isApiAvailable } from '../hooks/useApi';
+import { api, isApiAvailable, checkApiAvailable } from '../hooks/useApi';
 import { useAuth } from './AuthContext';
 import { buildInvoiceTotals, nextInvoiceNumber } from '../utils/helpers';
 
@@ -19,14 +19,16 @@ export function InvoiceProvider({ children }) {
 
   useEffect(() => {
     if (!currentUser) return;
-    if (!isApiAvailable()) {
-      setSaleInvoices(lsGet(LS_SALES));
-      setPurchaseInvoices(lsGet(LS_PURCH));
-      setStockLedger(lsGet(LS_STOCK));
-      return;
-    }
-    api('/sales').then(setSaleInvoices).catch(console.error);
-    api('/purchases').then(setPurchaseInvoices).catch(console.error);
+    checkApiAvailable().then(available => {
+      if (!available) {
+        setSaleInvoices(lsGet(LS_SALES));
+        setPurchaseInvoices(lsGet(LS_PURCH));
+        setStockLedger(lsGet(LS_STOCK));
+        return;
+      }
+      api('/sales').then(setSaleInvoices).catch(console.error);
+      api('/purchases').then(setPurchaseInvoices).catch(console.error);
+    });
   }, [currentUser]);
 
   // ── SALE INVOICES ──────────────────────────────────────────────────────────

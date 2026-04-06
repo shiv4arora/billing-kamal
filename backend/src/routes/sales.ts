@@ -6,6 +6,33 @@ import { postSaleInvoice, postPaymentIn, postSaleReturn } from '../services/ledg
 
 const router = Router();
 
+// Pick only the schema fields from the request body — ignores unknown frontend fields (e.g. totalTaxable)
+function pickSaleData(b: any) {
+  return {
+    ...(b.date          !== undefined && { date:          b.date }),
+    ...(b.dueDate       !== undefined && { dueDate:       b.dueDate }),
+    ...(b.customerId    !== undefined && { customerId:    b.customerId    || null }),
+    ...(b.customerName  !== undefined && { customerName:  b.customerName }),
+    ...(b.customerPlace !== undefined && { customerPlace: b.customerPlace }),
+    ...(b.customerType  !== undefined && { customerType:  b.customerType }),
+    ...(b.items         !== undefined && { items:         b.items }),
+    ...(b.subtotal      !== undefined && { subtotal:      b.subtotal }),
+    ...(b.totalDiscount !== undefined && { totalDiscount: b.totalDiscount }),
+    ...(b.totalCGST     !== undefined && { totalCGST:     b.totalCGST }),
+    ...(b.totalSGST     !== undefined && { totalSGST:     b.totalSGST }),
+    ...(b.totalIGST     !== undefined && { totalIGST:     b.totalIGST }),
+    ...(b.totalGST      !== undefined && { totalGST:      b.totalGST }),
+    ...(b.grandTotal    !== undefined && { grandTotal:    b.grandTotal }),
+    ...(b.roundOff      !== undefined && { roundOff:      b.roundOff }),
+    ...(b.amountPaid    !== undefined && { amountPaid:    b.amountPaid }),
+    ...(b.paymentMethod !== undefined && { paymentMethod: b.paymentMethod }),
+    ...(b.paymentStatus !== undefined && { paymentStatus: b.paymentStatus }),
+    ...(b.paymentDate   !== undefined && { paymentDate:   b.paymentDate   || null }),
+    ...(b.notes         !== undefined && { notes:         b.notes }),
+    ...(b.status        !== undefined && { status:        b.status }),
+  };
+}
+
 router.get('/', async (req, res, next) => {
   try {
     const { status, customerId, from, to } = req.query as any;
@@ -31,14 +58,14 @@ router.get('/:id', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    const inv = await prisma.saleInvoice.create({ data: req.body });
+    const inv = await prisma.saleInvoice.create({ data: pickSaleData(req.body) });
     res.status(201).json(inv);
   } catch (err) { next(err); }
 });
 
 router.put('/:id', async (req, res, next) => {
   try {
-    const inv = await prisma.saleInvoice.update({ where: { id: req.params.id }, data: req.body });
+    const inv = await prisma.saleInvoice.update({ where: { id: req.params.id }, data: pickSaleData(req.body) });
     res.json(inv);
   } catch (err) { next(err); }
 });
@@ -60,7 +87,7 @@ router.post('/:id/issue', async (req, res, next) => {
     const payStatus = paid >= totals.grandTotal - 0.01 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
 
     const issued = await prisma.$transaction(async (tx) => {
-      const invNo = await nextSaleInvoiceNumber(prefix);
+      const invNo = await nextSaleInvoiceNumber(prefix, tx);
 
       const inv = await tx.saleInvoice.update({
         where: { id: existing.id },
@@ -112,7 +139,7 @@ router.post('/:id/issue', async (req, res, next) => {
       }
 
       return inv;
-    });
+    }, { timeout: 30000 });
 
     res.json(issued);
   } catch (err) { next(err); }

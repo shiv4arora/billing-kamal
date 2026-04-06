@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { api, isApiAvailable } from '../hooks/useApi';
+import { api, isApiAvailable, checkApiAvailable } from '../hooks/useApi';
 import { useAuth } from './AuthContext';
 
 const Ctx = createContext();
@@ -18,11 +18,13 @@ export function SettingsProvider({ children }) {
 
   useEffect(() => {
     if (!currentUser) return;
-    if (!isApiAvailable()) {
-      try { const s = JSON.parse(localStorage.getItem('bms_settings') || 'null'); if (s) setSettings(prev => ({ ...prev, ...s })); } catch {}
-      return;
-    }
-    api('/settings').then(data => setSettings(s => ({ ...s, ...data }))).catch(console.error);
+    checkApiAvailable().then(available => {
+      if (!available) {
+        try { const s = JSON.parse(localStorage.getItem('bms_settings') || 'null'); if (s) setSettings(prev => ({ ...prev, ...s })); } catch {}
+        return;
+      }
+      api('/settings').then(data => setSettings(s => ({ ...s, ...data }))).catch(console.error);
+    });
   }, [currentUser]);
 
   const update = async (path, value) => {

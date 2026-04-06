@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 const JSON_FIELDS: Record<string, string[]> = {
   User: ['permissions'],
   Product: ['pricing'],
+  Supplier: ['margin'],
   SaleInvoice: ['items'],
   PurchaseInvoice: ['items'],
   Settings: ['data'],
