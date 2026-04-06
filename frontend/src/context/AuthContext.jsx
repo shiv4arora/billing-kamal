@@ -20,6 +20,12 @@ function lsLogin(username, password) {
 
 const AuthCtx = createContext();
 
+// permissions are stored as JSON string in SQLite — always parse to array
+function parsePerms(perms) {
+  if (Array.isArray(perms)) return perms;
+  try { return JSON.parse(perms || '[]'); } catch { return []; }
+}
+
 export const ALL_PERMISSIONS = [
   { key: 'dashboard',        label: 'Dashboard',              group: 'Overview'  },
   { key: 'sales_view',       label: 'View Sale Invoices',     group: 'Sales'     },
@@ -50,24 +56,24 @@ export function AuthProvider({ children }) {
   const [users, setUsers] = useState([]);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // Restore session on page refresh
+  // Restore session on page load (localStorage persists across tabs/windows)
   useEffect(() => {
     const init = async () => {
       const available = await checkApiAvailable();
       if (available) {
-        const stored = sessionStorage.getItem('bms_jwt');
+        const stored = localStorage.getItem('bms_jwt');
         if (stored) {
           setToken(stored);
           api('/auth/me')
-            .then(user => setCurrentUser(user))
-            .catch(() => { sessionStorage.removeItem('bms_jwt'); clearToken(); })
+            .then(user => setCurrentUser({ ...user, permissions: parsePerms(user.permissions) }))
+            .catch(() => { localStorage.removeItem('bms_jwt'); clearToken(); })
             .finally(() => setAuthLoading(false));
         } else {
           setAuthLoading(false);
         }
       } else {
-        // Offline / dev mode: restore from sessionStorage
-        const stored = sessionStorage.getItem('bms_local_user');
+        // Offline / dev mode: restore from localStorage
+        const stored = localStorage.getItem('bms_local_user');
         if (stored) { try { setCurrentUser(JSON.parse(stored)); } catch {} }
         setAuthLoading(false);
       }
@@ -81,8 +87,8 @@ export function AuthProvider({ children }) {
       try {
         const { token, user } = await api('/auth/login', { method: 'POST', body: { username, password } });
         setToken(token);
-        sessionStorage.setItem('bms_jwt', token);
-        setCurrentUser(user);
+        localStorage.setItem('bms_jwt', token);
+        setCurrentUser({ ...user, permissions: parsePerms(user.permissions) });
         return { ok: true };
       } catch (err) {
         return { ok: false, error: err.message };
@@ -92,7 +98,7 @@ export function AuthProvider({ children }) {
       const result = lsLogin(username, password);
       if (result.ok) {
         setCurrentUser(result.user);
-        sessionStorage.setItem('bms_local_user', JSON.stringify(result.user));
+        localStorage.setItem('bms_local_user', JSON.stringify(result.user));
       }
       return result;
     }
@@ -101,8 +107,8 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     if (isApiAvailable()) await api('/auth/logout', { method: 'POST' }).catch(() => {});
     clearToken();
-    sessionStorage.removeItem('bms_jwt');
-    sessionStorage.removeItem('bms_local_user');
+    localStorage.removeItem('bms_jwt');
+    localStorage.removeItem('bms_local_user');
     setCurrentUser(null);
     setUsers([]);
   };
@@ -167,7 +173,10 @@ export function AuthProvider({ children }) {
   const can = (feature) => {
     if (!currentUser) return false;
     if (currentUser.role === 'admin') return true;
-    return (currentUser.permissions || USER_PERMS).includes(feature);
+    const perms = parsePerms(currentUser.permissions);
+    // If user has no explicit permissions set, fall back to default user perms
+    const effective = perms.length > 0 ? perms : USER_PERMS;
+    return effective.includes(feature);
   };
 
   return (

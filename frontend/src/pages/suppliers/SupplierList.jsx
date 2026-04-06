@@ -14,6 +14,7 @@ export default function SupplierList() {
 
   const filtered = active.filter(s =>
     s.name?.toLowerCase().includes(search.toLowerCase()) ||
+    s.code?.toLowerCase().includes(search.toLowerCase()) ||
     s.place?.toLowerCase().includes(search.toLowerCase()) ||
     s.phone?.includes(search) ||
     s.contactPerson?.toLowerCase().includes(search.toLowerCase())
@@ -24,7 +25,10 @@ export default function SupplierList() {
       header: 'Name',
       render: s => (
         <div>
-          <p className="font-semibold text-gray-900">{s.name}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-semibold text-gray-900">{s.name}</p>
+            {s.code && <span className="text-xs bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded font-mono">{s.code}</span>}
+          </div>
           {s.contactPerson && <p className="text-xs text-gray-400">{s.contactPerson}</p>}
         </div>
       ),

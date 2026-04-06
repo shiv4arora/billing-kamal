@@ -228,4 +228,47 @@ router.post('/:id/return', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── Invoice locking ───────────────────────────────────────────────────────────
+const LOCK_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+async function getUserDisplayName(userId: string): Promise<string> {
+  try {
+    const u = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, username: true } });
+    return u?.name || u?.username || userId;
+  } catch { return userId; }
+}
+
+router.post('/:id/lock', async (req, res, next) => {
+  try {
+    const inv = await prisma.saleInvoice.findUniqueOrThrow({ where: { id: req.params.id } });
+    const myId = req.user!.id;
+    const myName = await getUserDisplayName(myId);
+    // Check if already locked by someone else (and not expired)
+    if (inv.lockedBy && inv.lockedBy !== myId && inv.lockedAt) {
+      const age = Date.now() - new Date(inv.lockedAt).getTime();
+      if (age < LOCK_TTL_MS) {
+        const lockerName = await getUserDisplayName(inv.lockedBy);
+        return res.status(423).json({ error: `Being edited by ${lockerName}`, lockedBy: lockerName });
+      }
+    }
+    await prisma.saleInvoice.update({
+      where: { id: req.params.id },
+      data: { lockedBy: myId, lockedAt: new Date().toISOString() },
+    });
+    res.json({ ok: true, lockedBy: myName });
+  } catch (err) { next(err); }
+});
+
+router.delete('/:id/lock', async (req, res, next) => {
+  try {
+    const myId = req.user!.id;
+    const inv = await prisma.saleInvoice.findUnique({ where: { id: req.params.id } });
+    // Only release if you own the lock
+    if (inv?.lockedBy === myId) {
+      await prisma.saleInvoice.update({ where: { id: req.params.id }, data: { lockedBy: null, lockedAt: null } });
+    }
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
 export default router;

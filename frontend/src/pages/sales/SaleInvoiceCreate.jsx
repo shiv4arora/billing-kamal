@@ -8,6 +8,7 @@ import { useLedger } from '../../context/LedgerContext';
 import { Button, Input, Select, Textarea, Card, useToast, Toast } from '../../components/ui';
 import { buildInvoiceTotals, formatCurrency, getPrice, nextInvoiceNumber, today, formatCustomerDisplay } from '../../utils/helpers';
 import { GST_RATES } from '../../constants';
+import { useInvoiceLock } from '../../hooks/useInvoiceLock';
 
 const BLANK_ITEM = { productId: '', productName: '', sku: '', hsnCode: '', unit: 'Pcs', quantity: 1, unitPrice: 0, discountPct: 0, gstRate: 0 };
 
@@ -21,6 +22,7 @@ export default function SaleInvoiceCreate() {
   const { settings, bumpSaleNo } = useSettings();
   const { addSaleEntry, addPaymentIn } = useLedger();
   const isEdit = !!id;
+  const lock = useInvoiceLock('sales', isEdit ? id : null);
 
   const [customerId, setCustomerId] = useState('');
   const [customerType, setCustomerType] = useState('retail');
@@ -139,6 +141,26 @@ export default function SaleInvoiceCreate() {
     setSkuQuickAdd('');
     toast.success(`Added: ${prod.name} (${prod.sku})`);
   };
+
+  // If locked by someone else, show read-only warning banner
+  if (lock.blocked) {
+    return (
+      <div className="max-w-5xl">
+        <div className="flex items-center gap-3 mb-5">
+          <button onClick={() => navigate('/sales')} className="text-gray-400 hover:text-gray-600">←</button>
+          <h1 className="text-2xl font-bold text-gray-900">Sale Invoice (View Only)</h1>
+        </div>
+        <div className="bg-amber-50 border border-amber-300 rounded-xl p-5 flex items-start gap-4">
+          <span className="text-3xl">🔒</span>
+          <div>
+            <p className="font-semibold text-amber-800 text-lg">Invoice is being edited by {lock.lockedBy}</p>
+            <p className="text-amber-700 text-sm mt-1">This invoice is currently open for editing on another device. You can view it below but cannot make changes until they are done.</p>
+            <button onClick={() => navigate(`/sales/${id}`)} className="mt-3 px-4 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 font-medium">View Invoice →</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

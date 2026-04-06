@@ -4,11 +4,18 @@ import { useSuppliers } from '../../context/SupplierContext';
 import { Button, Input, Textarea, Card } from '../../components/ui';
 
 const BLANK = {
-  name: '', place: '', phone: '', contactPerson: '', email: '',
+  name: '', code: '', place: '', phone: '', contactPerson: '', email: '',
   address: '', gstin: '', isActive: true,
   discount: 0,                                    // % discount supplier gives us on their invoice
   margin: { wholesale: 0, shop: 0, retail: 0 },  // % markup over cost → selling price
 };
+
+// Auto-generate a short code from supplier name (first 3-4 uppercase letters)
+function autoCode(name) {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return (words[0][0] + words[1][0] + (words[2]?.[0] || words[1][1] || '')).toUpperCase().slice(0, 4);
+  return name.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 4);
+}
 
 export default function SupplierForm() {
   const { id } = useParams();
@@ -66,7 +73,28 @@ export default function SupplierForm() {
         <Card>
           <h3 className="font-semibold text-gray-800 mb-4">Basic Details</h3>
           <div className="space-y-4">
-            <Input label="Supplier / Company Name *" value={form.name} onChange={e => set('name', e.target.value)} error={errors.name} placeholder="e.g. AgriCo Distributors" />
+            <Input
+              label="Supplier / Company Name *"
+              value={form.name}
+              onChange={e => {
+                const name = e.target.value;
+                set('name', name);
+                // Auto-fill code only if user hasn't manually set it
+                if (!form.code || form.code === autoCode(form.name)) {
+                  setForm(p => ({ ...p, name, code: autoCode(name) }));
+                }
+              }}
+              error={errors.name}
+              placeholder="e.g. AgriCo Distributors"
+            />
+            <Input
+              label="Short Code"
+              value={form.code}
+              onChange={e => set('code', e.target.value.toUpperCase().slice(0, 6))}
+              placeholder="e.g. AGR, TCS"
+              maxLength={6}
+            />
+            <p className="text-xs text-gray-400 -mt-2">Auto-generated from name. You can change it. Used as a quick reference code.</p>
             <Input label="Place *" value={form.place} onChange={e => set('place', e.target.value)} error={errors.place} placeholder="e.g. Nasik, Chennai" />
             <Input label="Contact Number *" type="tel" value={form.phone} onChange={e => set('phone', e.target.value)} error={errors.phone} placeholder="e.g. 9123456789" />
           </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../../hooks/useApi';
+import { useInvoiceLock } from '../../hooks/useInvoiceLock';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useInvoices } from '../../context/InvoiceContext';
 import { useProducts } from '../../context/ProductContext';
@@ -233,6 +234,7 @@ export default function PurchaseInvoiceCreate() {
   const { active: suppliers } = useSuppliers();
   const { settings } = useSettings();
   const isEdit = !!id;
+  const lock = useInvoiceLock('purchases', isEdit ? id : null);
 
   // Fetch next SKU from backend so user can see what will be assigned
   const [nextSku, setNextSku] = useState(null);
@@ -404,6 +406,25 @@ export default function PurchaseInvoiceCreate() {
     }
   };
 
+  if (lock.blocked) {
+    return (
+      <div className="max-w-4xl">
+        <div className="flex items-center gap-3 mb-5">
+          <button onClick={() => navigate('/purchases')} className="text-gray-400 hover:text-gray-600">←</button>
+          <h1 className="text-2xl font-bold text-gray-900">Purchase Invoice (View Only)</h1>
+        </div>
+        <div className="bg-amber-50 border border-amber-300 rounded-xl p-5 flex items-start gap-4">
+          <span className="text-3xl">🔒</span>
+          <div>
+            <p className="font-semibold text-amber-800 text-lg">Invoice is being edited by {lock.lockedBy}</p>
+            <p className="text-amber-700 text-sm mt-1">This invoice is currently open for editing on another device. You can view it below but cannot make changes until they are done.</p>
+            <button onClick={() => navigate(`/purchases/${id}`)} className="mt-3 px-4 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 font-medium">View Invoice →</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <Toast toasts={toast.toasts} remove={toast.remove} />
@@ -419,7 +440,7 @@ export default function PurchaseInvoiceCreate() {
             <h3 className="font-semibold text-gray-800 mb-3">Supplier</h3>
             <Select label="Select Supplier *" value={supplierId} onChange={e => handleSupplierChange(e.target.value)}>
               <option value="">— Select —</option>
-              {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}{s.place ? ` (${s.place})` : ''}</option>)}
+              {suppliers.map(s => <option key={s.id} value={s.id}>{s.code ? `[${s.code}] ` : ''}{s.name}{s.place ? ` (${s.place})` : ''}</option>)}
             </Select>
             {supplier && (
               <div className="mt-3 p-3 bg-green-50 rounded-xl text-sm space-y-1">

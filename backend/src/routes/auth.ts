@@ -30,10 +30,11 @@ router.post('/login', async (req, res, next) => {
     }
     if (!valid) return res.status(401).json({ error: 'Invalid username or password' });
 
+    const parsedPerms = (() => { try { return JSON.parse(user.permissions || '[]'); } catch { return []; } })();
     const token = signToken({ id: user.id, role: user.role, permissions: user.permissions });
     res.json({
       token,
-      user: { id: user.id, username: user.username, name: user.name, role: user.role, permissions: user.permissions },
+      user: { id: user.id, username: user.username, name: user.name, role: user.role, permissions: parsedPerms },
     });
   } catch (err) { next(err); }
 });
@@ -42,7 +43,8 @@ router.get('/me', verifyJWT, async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
     if (!user || !user.isActive) return res.status(401).json({ error: 'User not found' });
-    res.json({ id: user.id, username: user.username, name: user.name, role: user.role, permissions: user.permissions });
+    const perms = (() => { try { return JSON.parse(user.permissions || '[]'); } catch { return []; } })();
+    res.json({ id: user.id, username: user.username, name: user.name, role: user.role, permissions: perms });
   } catch (err) { next(err); }
 });
 

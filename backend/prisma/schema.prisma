@@ -40,6 +40,7 @@ model Customer {
 model Supplier {
   id            String   @id @default(cuid())
   name          String
+  code          String   @default("")   // short form code e.g. "TCS", "REL"
   place         String   @default("")
   type          String   @default("")
   phone         String   @default("")
@@ -104,6 +105,8 @@ model SaleInvoice {
   paymentDate   String?
   notes         String   @default("")
   status        String   @default("draft")
+  lockedBy      String?           // username of who is editing
+  lockedAt      String?           // ISO timestamp of lock
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -137,6 +140,8 @@ model PurchaseInvoice {
   paymentStatus         String   @default("unpaid")
   notes                 String   @default("")
   status                String   @default("draft")
+  lockedBy              String?           // username of who is editing
+  lockedAt              String?           // ISO timestamp of lock
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
