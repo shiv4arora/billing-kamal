@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
-import { allocateSkuNumbers } from '../services/counters';
 
 const router = Router();
 
@@ -24,20 +23,10 @@ router.get('/:id', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    const { sku, ...rest } = req.body;
-    // If no custom SKU provided, allocate sequential one
-    const assignedSku = sku || String(await allocateSkuNumbers(1));
-    const p = await prisma.product.create({ data: { ...rest, sku: assignedSku } });
+    // SKU is never assigned on direct product creation — only assigned when a purchase is completed
+    const { sku: _ignored, ...rest } = req.body;
+    const p = await prisma.product.create({ data: { ...rest, sku: null } });
     res.status(201).json(p);
-  } catch (err) { next(err); }
-});
-
-// Bulk allocate SKU numbers (called from ProductForm preview)
-router.post('/allocate-skus', async (req, res, next) => {
-  try {
-    const count = Number(req.body.count) || 1;
-    const start = await allocateSkuNumbers(count);
-    res.json({ start });
   } catch (err) { next(err); }
 });
 

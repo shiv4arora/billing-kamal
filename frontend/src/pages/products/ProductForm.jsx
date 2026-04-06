@@ -4,7 +4,6 @@ import { useProducts } from '../../context/ProductContext';
 import { useSuppliers } from '../../context/SupplierContext';
 import { Button, Input, Select, Card } from '../../components/ui';
 import { GST_RATES, UNITS } from '../../constants';
-import { api } from '../../hooks/useApi';
 
 const BLANK = {
   name: '', category: '', unit: 'Pcs', description: '',
@@ -33,17 +32,7 @@ export default function ProductForm() {
   const { active: suppliers } = useSuppliers();
   const [form, setForm] = useState(BLANK);
   const [errors, setErrors] = useState({});
-  const [previewSku, setPreviewSku] = useState(null);
   const isEdit = !!id;
-
-  // Fetch the next SKU number from the backend so user can see it before saving
-  useEffect(() => {
-    if (!isEdit) {
-      api('/counters')
-        .then(d => setPreviewSku(d.sku ?? 1001))
-        .catch(() => setPreviewSku(1001));
-    }
-  }, [isEdit]);
 
   useEffect(() => {
     if (isEdit) {
@@ -128,17 +117,17 @@ export default function ProductForm() {
           <div className="grid grid-cols-2 gap-4">
             <Input label="Product Name *" value={form.name} onChange={e => set('name', e.target.value)} error={errors.name} className="col-span-2" />
 
-            {/* SKU ID — always auto-assigned, shown as preview before saving */}
+            {/* SKU ID — assigned automatically when first purchase is completed */}
             <div className="col-span-2">
               <label className="text-sm font-medium text-gray-700 block mb-1">SKU ID</label>
-              <div className="flex items-center gap-2 w-full border border-blue-200 bg-blue-50 rounded-lg px-3 py-2">
-                <span className="text-xs bg-blue-600 text-white font-semibold px-2 py-0.5 rounded-full">AUTO</span>
-                <span className="text-base font-mono font-bold text-blue-800 tracking-widest">
-                  {isEdit ? form.sku : (previewSku !== null ? String(previewSku) : '…')}
+              <div className="flex items-center gap-2 w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2">
+                <span className="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">AUTO</span>
+                <span className="text-sm font-mono font-bold text-gray-700">
+                  {isEdit && form.sku ? form.sku : isEdit ? '— not yet assigned —' : 'Assigned on first purchase'}
                 </span>
               </div>
               <p className="text-xs text-gray-400 mt-1">
-                {isEdit ? 'SKU ID cannot be changed after creation.' : 'This SKU ID will be permanently assigned when you save.'}
+                {isEdit ? 'SKU ID is assigned automatically when a purchase invoice is completed.' : 'SKU ID will be auto-assigned when the first purchase invoice for this product is completed.'}
               </p>
             </div>
 
