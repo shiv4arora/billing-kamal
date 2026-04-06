@@ -6,6 +6,16 @@ import { postSaleInvoice, postPaymentIn, postSaleReturn } from '../services/ledg
 
 const router = Router();
 
+// Parse JSON string fields from SQLite back to objects/arrays
+function parseItems(raw: any): any[] {
+  if (Array.isArray(raw)) return raw;
+  try { return JSON.parse(raw || '[]'); } catch { return []; }
+}
+function parseSettings(raw: any): any {
+  if (raw && typeof raw === 'object') return raw;
+  try { return JSON.parse(raw || '{}'); } catch { return {}; }
+}
+
 // Pick only the schema fields from the request body — ignores unknown frontend fields (e.g. totalTaxable)
 function pickSaleData(b: any) {
   return {
@@ -15,7 +25,7 @@ function pickSaleData(b: any) {
     ...(b.customerName  !== undefined && { customerName:  b.customerName }),
     ...(b.customerPlace !== undefined && { customerPlace: b.customerPlace }),
     ...(b.customerType  !== undefined && { customerType:  b.customerType }),
-    ...(b.items         !== undefined && { items:         b.items }),
+    ...(b.items         !== undefined && { items:         Array.isArray(b.items) ? JSON.stringify(b.items) : b.items }),
     ...(b.subtotal      !== undefined && { subtotal:      b.subtotal }),
     ...(b.totalDiscount !== undefined && { totalDiscount: b.totalDiscount }),
     ...(b.totalCGST     !== undefined && { totalCGST:     b.totalCGST }),
@@ -77,11 +87,11 @@ router.post('/:id/issue', async (req, res, next) => {
     if (existing.status !== 'draft') return res.status(400).json({ error: 'Only draft invoices can be issued' });
 
     const settings = await prisma.settings.findUnique({ where: { id: 'singleton' } });
-    const s: any = settings?.data || {};
+    const s = parseSettings(settings?.data);
     const isInterState = s.tax?.intraState === false;
     const prefix = s.invoice?.salePrefix || 'SI';
 
-    const rawItems = existing.items as any[];
+    const rawItems = parseItems(existing.items);
     const totals = buildInvoiceTotals(rawItems, isInterState);
     const paid = Number(existing.amountPaid);
     const payStatus = paid >= totals.grandTotal - 0.01 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
@@ -93,7 +103,7 @@ router.post('/:id/issue', async (req, res, next) => {
         where: { id: existing.id },
         data: {
           invoiceNumber: invNo,
-          items: totals.items,
+          items: JSON.stringify(totals.items),
           subtotal: totals.subtotal, totalDiscount: totals.totalDiscount,
           totalCGST: totals.totalCGST, totalSGST: totals.totalSGST,
           totalIGST: totals.totalIGST, totalGST: totals.totalGST,

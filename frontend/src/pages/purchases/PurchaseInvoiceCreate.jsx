@@ -30,7 +30,7 @@ const BLANK_ITEM = {
   category: '',
   unit: 'Pcs',
   hsnCode: '',
-  gstRate: 5,
+  gstRate: 0,
   quantity: 1,
   unitPrice: 0,         // purchase cost
   pricing: { wholesale: 0, shop: 0, retail: 0 },

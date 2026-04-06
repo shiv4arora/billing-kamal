@@ -12,16 +12,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.username.trim() || !form.password) { setError('Enter username and password'); return; }
     setLoading(true);
     setError('');
-    setTimeout(() => {
-      const result = login(form.username.trim(), form.password);
-      if (!result.ok) { setError(result.error); setLoading(false); }
-      else { navigate('/', { replace: true }); }
-    }, 300);
+    const result = await login(form.username.trim(), form.password);
+    if (!result.ok) { setError(result.error || 'Login failed'); setLoading(false); }
+    else { navigate('/', { replace: true }); }
   };
 
   return (
@@ -92,9 +90,6 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <p className="text-center text-gray-600 text-xs mt-4">
-          Default: <span className="font-mono bg-gray-800 text-gray-300 px-2 py-0.5 rounded">admin / admin123</span>
-        </p>
       </div>
     </div>
   );

@@ -24,7 +24,7 @@ router.get('/', async (_req, res, next) => {
   try {
     const products = await prisma.product.findMany({
       where: { isActive: true },
-      include: { supplier: { select: { id: true, name: true, place: true } } },
+      include: { supplier: { select: { id: true, name: true, place: true, code: true } } },
       orderBy: { name: 'asc' },
     });
     res.json(products.map(parseProduct));

@@ -254,7 +254,10 @@ export default function SaleInvoiceCreate() {
                               <div key={p.id} className="px-3 py-2.5 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0" onMouseDown={() => handleProductSelect(idx, p)}>
                                 <div className="flex items-center justify-between gap-2">
                                   <p className="font-medium text-gray-800 text-sm truncate">{p.name}</p>
-                                  <span className="shrink-0 text-xs font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded font-mono">#{p.sku}</span>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    {p.supplier && <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{p.supplier.code || p.supplier.name}</span>}
+                                    {p.sku && <span className="text-xs font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded font-mono">#{p.sku}</span>}
+                                  </div>
                                 </div>
                                 <p className="text-xs text-gray-400 mt-0.5">W:{formatCurrency(p.pricing?.wholesale||0)} · S:{formatCurrency(p.pricing?.shop||0)} · R:{formatCurrency(p.pricing?.retail||0)} · Stock:{p.currentStock||0}</p>
                               </div>

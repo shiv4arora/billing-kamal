@@ -6,6 +6,16 @@ import { postPurchaseInvoice, postPaymentOut, postPurchaseReturn } from '../serv
 
 const router = Router();
 
+// Parse JSON string fields from SQLite back to objects/arrays
+function parseItems(raw: any): any[] {
+  if (Array.isArray(raw)) return raw;
+  try { return JSON.parse(raw || '[]'); } catch { return []; }
+}
+function parseSettings(raw: any): any {
+  if (raw && typeof raw === 'object') return raw;
+  try { return JSON.parse(raw || '{}'); } catch { return {}; }
+}
+
 // Pick only schema fields — ignores unknown frontend fields (e.g. totalTaxable)
 function pickPurchaseData(b: any) {
   return {
@@ -14,7 +24,7 @@ function pickPurchaseData(b: any) {
     ...(b.supplierId            !== undefined && { supplierId:            b.supplierId            || null }),
     ...(b.supplierName          !== undefined && { supplierName:          b.supplierName }),
     ...(b.supplierInvoiceNumber !== undefined && { supplierInvoiceNumber: b.supplierInvoiceNumber }),
-    ...(b.items                 !== undefined && { items:                 b.items }),
+    ...(b.items                 !== undefined && { items:                 Array.isArray(b.items) ? JSON.stringify(b.items) : b.items }),
     ...(b.subtotal              !== undefined && { subtotal:              b.subtotal }),
     ...(b.totalDiscount         !== undefined && { totalDiscount:         b.totalDiscount }),
     ...(b.totalCGST             !== undefined && { totalCGST:             b.totalCGST }),
@@ -55,11 +65,11 @@ async function issuePurchase(invoiceId: string) {
   const existing = await prisma.purchaseInvoice.findUniqueOrThrow({ where: { id: invoiceId } });
 
   const settings = await prisma.settings.findUnique({ where: { id: 'singleton' } });
-  const s: any = settings?.data || {};
+  const s = parseSettings(settings?.data);
   const isInterState = s.tax?.intraState === false;
   const prefix = s.invoice?.purchasePrefix || 'PI';
 
-  const rawItems = existing.items as any[];
+  const rawItems = parseItems(existing.items);
   const totals = buildInvoiceTotals(rawItems, isInterState);
   const paid = Number(existing.amountPaid);
   const payStatus = paid >= totals.grandTotal - 0.01 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
@@ -70,7 +80,7 @@ async function issuePurchase(invoiceId: string) {
     const inv = await tx.purchaseInvoice.update({
       where: { id: existing.id },
       data: {
-        invoiceNumber: invNo, items: totals.items,
+        invoiceNumber: invNo, items: JSON.stringify(totals.items),
         subtotal: totals.subtotal, totalDiscount: totals.totalDiscount,
         totalCGST: totals.totalCGST, totalSGST: totals.totalSGST,
         totalIGST: totals.totalIGST, totalGST: totals.totalGST,
