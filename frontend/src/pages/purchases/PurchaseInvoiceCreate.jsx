@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { api } from '../../hooks/useApi';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useInvoices } from '../../context/InvoiceContext';
 import { useProducts } from '../../context/ProductContext';
@@ -231,22 +232,26 @@ export default function PurchaseInvoiceCreate() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const { addPurchaseInvoice, updatePurchaseInvoice, getPurchaseInvoice, issuePurchaseInvoice } = useInvoices();
+  const { addPurchaseInvoice, updatePurchaseInvoice, getPurchaseInvoice } = useInvoices();
   const { active: products } = useProducts();
   const { active: suppliers } = useSuppliers();
   const { settings } = useSettings();
   const isEdit = !!id;
 
-  // Local sequential counter for preview SKUs (starts at global nextSkuNo on mount)
+  // Local sequential counter for preview SKUs — seeded from backend counter on mount
   const localSkuCounter = useRef(null);
-  const getLocalSkuStart = () => {
-    if (localSkuCounter.current === null) localSkuCounter.current = settings.nextSkuNo || 1001;
-    return localSkuCounter.current;
-  };
+  useEffect(() => {
+    api('/counters').then(data => {
+      if (localSkuCounter.current === null)
+        localSkuCounter.current = data.sku ?? 1001;
+    }).catch(() => {
+      if (localSkuCounter.current === null) localSkuCounter.current = 1001;
+    });
+  }, []);
   const allocateSku = useCallback(() => {
-    if (localSkuCounter.current === null) localSkuCounter.current = settings.nextSkuNo || 1001;
+    if (localSkuCounter.current === null) localSkuCounter.current = 1001;
     return String(localSkuCounter.current++);
-  }, [settings.nextSkuNo]);
+  }, []);
 
   const fileInputRef = useRef(null);
 
@@ -403,13 +408,9 @@ export default function PurchaseInvoiceCreate() {
         navigate('/purchases');
         return;
       }
+      // Backend auto-issues on create — no separate issue call needed
       const saved = await addPurchaseInvoice({ ...invData, status: 'draft' });
-      if (status === 'issued') {
-        const issued = await issuePurchaseInvoice(saved.id);
-        toast.success(`${issued.invoiceNumber} issued · Stock & prices updated`);
-      } else {
-        toast.success('Draft saved');
-      }
+      toast.success(`${saved.invoiceNumber} issued · Stock & prices updated`);
       setTimeout(() => navigate(`/purchases/${saved.id}`), 400);
     } catch (e) {
       toast.error(e.message);
@@ -553,9 +554,8 @@ export default function PurchaseInvoiceCreate() {
 
         <div className="flex justify-end gap-3 pb-10">
           <Button variant="secondary" onClick={() => navigate('/purchases')}>Cancel</Button>
-          <Button variant="outline" onClick={() => handleSave('draft')}>Save Draft</Button>
           <Button variant="success" onClick={() => handleSave('issued')}>
-            Issue & Update Stock + Prices
+            Save & Add to Stock
           </Button>
         </div>
       </div>
