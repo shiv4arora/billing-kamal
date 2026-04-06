@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  username    String   @unique
+  password    String
+  name        String
+  role        String   @default("user")
+  permissions String   @default("[]")  // stored as JSON string (SQLite has no array type)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Customer {
+  id        String        @id @default(cuid())
+  name      String
+  place     String        @default("")
+  type      String        @default("retail")
+  phone     String        @default("")
+  email     String        @default("")
+  address   String        @default("")
+  gstin     String        @default("")
+  balance   Float         @default(0)
+  isActive  Boolean       @default(true)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  saleInvoices  SaleInvoice[]
+  ledgerEntries LedgerEntry[]
+}
+
+model Supplier {
+  id        String           @id @default(cuid())
+  name      String
+  place     String           @default("")
+  type      String           @default("")
+  phone     String           @default("")
+  email     String           @default("")
+  address   String           @default("")
+  gstin     String           @default("")
+  balance   Float            @default(0)
+  isActive  Boolean          @default(true)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  products         Product[]
+  purchaseInvoices PurchaseInvoice[]
+}
+
+model Product {
+  id                String      @id @default(cuid())
+  sku               String      @unique
+  name              String
+  description       String      @default("")
+  category          String      @default("")
+  unit              String      @default("Pcs")
+  hsnCode           String      @default("")
+  gstRate           Float       @default(0)
+  pricing           String      @default("{}")  // JSON string
+  costPrice         Float       @default(0)
+  supplierId        String?
+  currentStock      Float       @default(0)
+  lowStockThreshold Float       @default(10)
+  isActive          Boolean     @default(true)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  supplier     Supplier?     @relation(fields: [supplierId], references: [id])
+  stockEntries StockLedger[]
+}
+
+model SaleInvoice {
+  id            String   @id @default(cuid())
+  invoiceNumber String   @unique @default("")
+  date          String
+  dueDate       String   @default("")
+  customerId    String?
+  customerName  String   @default("")
+  customerPlace String   @default("")
+  customerType  String   @default("retail")
+  items         String   @default("[]")  // JSON string
+  subtotal      Float    @default(0)
+  totalDiscount Float    @default(0)
+  totalCGST     Float    @default(0)
+  totalSGST     Float    @default(0)
+  totalIGST     Float    @default(0)
+  totalGST      Float    @default(0)
+  grandTotal    Float    @default(0)
+  roundOff      Float    @default(0)
+  amountPaid    Float    @default(0)
+  paymentMethod String   @default("cash")
+  paymentStatus String   @default("unpaid")
+  paymentDate   String?
+  notes         String   @default("")
+  status        String   @default("draft")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  customer     Customer?     @relation(fields: [customerId], references: [id])
+  reminderLogs ReminderLog[]
+
+  @@index([customerId])
+  @@index([date])
+  @@index([status])
+}
+
+model PurchaseInvoice {
+  id                    String   @id @default(cuid())
+  invoiceNumber         String   @unique @default("")
+  supplierInvoiceNumber String   @default("")
+  date                  String
+  dueDate               String   @default("")
+  supplierId            String?
+  supplierName          String   @default("")
+  items                 String   @default("[]")  // JSON string
+  subtotal              Float    @default(0)
+  totalDiscount         Float    @default(0)
+  totalCGST             Float    @default(0)
+  totalSGST             Float    @default(0)
+  totalIGST             Float    @default(0)
+  totalGST              Float    @default(0)
+  grandTotal            Float    @default(0)
+  roundOff              Float    @default(0)
+  amountPaid            Float    @default(0)
+  paymentMethod         String   @default("cash")
+  paymentStatus         String   @default("unpaid")
+  notes                 String   @default("")
+  status                String   @default("draft")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
+
+  @@index([supplierId])
+  @@index([date])
+}
+
+model LedgerEntry {
+  id            String   @id @default(cuid())
+  partyType     String
+  partyId       String
+  partyName     String   @default("")
+  date          String
+  type          String
+  debit         Float    @default(0)
+  credit        Float    @default(0)
+  referenceType String   @default("")
+  referenceId   String   @default("")
+  referenceNo   String   @default("")
+  narration     String   @default("")
+  createdAt     DateTime @default(now())
+
+  customer Customer? @relation(fields: [partyId], references: [id])
+
+  @@index([partyType, partyId])
+  @@index([date])
+}
+
+model StockLedger {
+  id           String   @id @default(cuid())
+  productId    String
+  date         String
+  movementType String
+  quantity     Float
+  referenceId  String   @default("")
+  referenceNo  String   @default("")
+  createdAt    DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+}
+
+model Settings {
+  id   String @id @default("singleton")
+  data String  // JSON string
+}
+
+model Counter {
+  key   String @id
+  value Int    @default(1)
+}
+
+model ReminderLog {
+  id            String      @id @default(cuid())
+  invoiceId     String
+  dayOffset     Int
+  customerName  String      @default("")
+  invoiceNumber String      @default("")
+  sentAt        DateTime    @default(now())
+
+  invoice SaleInvoice @relation(fields: [invoiceId], references: [id])
+
+  @@unique([invoiceId, dayOffset])
+}
