@@ -3,10 +3,9 @@ import { useParams } from 'react-router-dom';
 import { QRCode } from 'react-qr-code';
 import { useProducts } from '../../context/ProductContext';
 import { useSuppliers } from '../../context/SupplierContext';
-import { formatCurrency } from '../../utils/helpers';
 
 /* ─── Barcode renderer ──────────────────────────────────────────────── */
-function Barcode({ value, onReady }) {
+function Barcode({ value }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -16,8 +15,8 @@ function Barcode({ value, onReady }) {
       try {
         JsBarcode(ref.current, value, {
           format: 'CODE128',
-          width: 1.4,        // narrow bar width (px) – keeps it compact
-          height: 28,        // px – will be overridden by CSS to fit label
+          width: 1.4,
+          height: 28,
           displayValue: true,
           fontSize: 7,
           textMargin: 1,
@@ -25,14 +24,12 @@ function Barcode({ value, onReady }) {
           background: '#ffffff',
           lineColor: '#000000',
         });
-        // make SVG fluid so CSS controls actual print size
         if (ref.current) {
           ref.current.removeAttribute('width');
           ref.current.removeAttribute('height');
           ref.current.style.width = '100%';
           ref.current.style.height = 'auto';
         }
-        onReady?.();
       } catch (e) {
         console.warn('Barcode error:', e);
       }
@@ -42,28 +39,28 @@ function Barcode({ value, onReady }) {
   return <svg ref={ref} style={{ display: 'block', width: '100%' }} />;
 }
 
-/* ─── One 34×20 mm label ────────────────────────────────────────────── */
+/* ─── One 34×22 mm label ────────────────────────────────────────────── */
 function StickerLabel({ product, supplier }) {
   const supplierCode = supplier
-    ? (supplier.code || supplier.name.replace(/\s+/g, '').slice(0, 8).toUpperCase())
+    ? (supplier.code || supplier.name.replace(/\s+/g, '').slice(0, 4).toUpperCase())
     : '—';
 
-  const qrValue = `CODE:${product.sku}|NAME:${product.name}|WS:${product.pricing?.wholesale || 0}|SH:${product.pricing?.shop || 0}|SUP:${supplierCode}`;
+  const ws = Math.round((product.pricing?.wholesale || 0) * 2);
+  const sh = Math.round(product.pricing?.shop || 0);
+
+  // Coded prices: supplierCode-wholesaleX2 and supplierCode-shop
+  const wCode = `${supplierCode}-${ws}`;
+  const sCode = `${supplierCode}-${sh}`;
+
+  // QR contains only the SKU ID
+  const qrValue = product.sku || product.id;
 
   return (
-    /*
-      At print:
-        • outer box = 34mm × 20mm exactly
-        • left column = 21mm (text + barcode)
-        • right column = 13mm (QR code)
-      On screen: we scale it up 3.5× with transform-origin top-left
-      so users can read it.
-    */
     <div
       className="label-sticker"
       style={{
         width: '34mm',
-        height: '20mm',
+        height: '22mm',
         boxSizing: 'border-box',
         border: '0.3mm solid #bbb',
         display: 'flex',
@@ -71,49 +68,65 @@ function StickerLabel({ product, supplier }) {
         overflow: 'hidden',
         backgroundColor: '#fff',
         fontFamily: 'Arial, sans-serif',
-        padding: '0.7mm',
-        gap: '0.4mm',
+        padding: '0.8mm 0.8mm 0 0.8mm',
+        gap: '0.3mm',
       }}
     >
       {/* ── Top row: info (left) + QR (right) ── */}
-      <div style={{ display: 'flex', flex: '0 0 auto', gap: '0.5mm', alignItems: 'stretch' }}>
+      <div style={{ display: 'flex', flex: '0 0 auto', gap: '0.5mm', alignItems: 'flex-start' }}>
 
-        {/* Left: text info */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.4mm', overflow: 'hidden' }}>
+        {/* Left: product name + SKU + supplier + coded prices */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5mm', overflow: 'hidden' }}>
+
           {/* Product name */}
-          <p style={{ margin: 0, fontSize: '5.5pt', fontWeight: 'bold', lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#111' }}>
+          <p style={{
+            margin: 0, fontSize: '5pt', fontWeight: 'bold', lineHeight: 1.1,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#111',
+          }}>
             {product.name}
           </p>
-          {/* Item code + supplier */}
-          <p style={{ margin: 0, fontSize: '4.5pt', lineHeight: 1.1, color: '#444', fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-            {product.sku}  &nbsp;·&nbsp;  SUP: {supplierCode}
+
+          {/* SKU + Supplier code */}
+          <p style={{ margin: 0, fontSize: '4pt', lineHeight: 1.1, color: '#555', fontFamily: 'monospace' }}>
+            SKU: {product.sku || '—'} &nbsp;·&nbsp; {supplierCode}
           </p>
-          {/* 3 prices */}
-          <div style={{ display: 'flex', gap: '1mm', marginTop: '0.2mm' }}>
-            {[
-              { label: 'W', value: product.pricing?.wholesale, color: '#1d4ed8' },
-              { label: 'S', value: product.pricing?.shop,      color: '#7e22ce' },
-            ].map(({ label, value, color }) => (
-              <div key={label} style={{ display: 'flex', alignItems: 'baseline', gap: '0.3mm' }}>
-                <span style={{ fontSize: '3.5pt', fontWeight: 'bold', color, lineHeight: 1 }}>{label}:</span>
-                <span style={{ fontSize: '4.5pt', fontWeight: 'bold', color, lineHeight: 1 }}>
-                  ₹{(value || 0).toFixed(0)}
-                </span>
-              </div>
-            ))}
+
+          {/* Coded prices — the main info */}
+          <div style={{ display: 'flex', gap: '1.5mm', marginTop: '0.5mm' }}>
+            <div style={{
+              background: '#eff6ff', border: '0.2mm solid #bfdbfe',
+              borderRadius: '0.8mm', padding: '0.5mm 1mm',
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+            }}>
+              <span style={{ fontSize: '3pt', color: '#3b82f6', fontWeight: 'bold', lineHeight: 1, textTransform: 'uppercase' }}>W</span>
+              <span style={{ fontSize: '6pt', fontWeight: 'bold', color: '#1d4ed8', lineHeight: 1.1, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
+                {wCode}
+              </span>
+            </div>
+            <div style={{
+              background: '#faf5ff', border: '0.2mm solid #e9d5ff',
+              borderRadius: '0.8mm', padding: '0.5mm 1mm',
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+            }}>
+              <span style={{ fontSize: '3pt', color: '#9333ea', fontWeight: 'bold', lineHeight: 1, textTransform: 'uppercase' }}>S</span>
+              <span style={{ fontSize: '6pt', fontWeight: 'bold', color: '#7e22ce', lineHeight: 1.1, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
+                {sCode}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Right: QR code — fixed 11mm wide */}
-        <div style={{ flexShrink: 0, width: '11mm', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <QRCode value={qrValue} size={120} style={{ width: '11mm', height: '11mm' }} />
+        {/* Right: QR code (SKU only) */}
+        <div style={{ flexShrink: 0, width: '12mm', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3mm' }}>
+          <QRCode value={qrValue} size={128} style={{ width: '11mm', height: '11mm' }} />
+          <span style={{ fontSize: '3pt', color: '#888', fontFamily: 'monospace', lineHeight: 1 }}>{product.sku}</span>
         </div>
       </div>
 
-      {/* ── Bottom: full-width barcode ── */}
+      {/* ── Bottom: barcode ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', minHeight: 0 }}>
         <div style={{ width: '100%' }}>
-          <Barcode value={product.sku} />
+          <Barcode value={product.sku || product.id} />
         </div>
       </div>
     </div>
@@ -137,6 +150,12 @@ export default function BarcodeLabel() {
   }
 
   const supplier = suppliers.find(s => s.id === product.supplierId);
+
+  const ws = Math.round((product.pricing?.wholesale || 0) * 2);
+  const sh = Math.round(product.pricing?.shop || 0);
+  const supplierCode = supplier
+    ? (supplier.code || supplier.name.replace(/\s+/g, '').slice(0, 4).toUpperCase())
+    : '—';
 
   return (
     <>
@@ -195,19 +214,22 @@ export default function BarcodeLabel() {
         </div>
       </div>
 
-      {/* ── Screen: preview info ── */}
-      <div className="no-print bg-blue-50 border-b border-blue-100 px-6 py-2 text-xs text-blue-700 flex gap-6">
-        <span>Sticker size: <strong>34mm × 20mm</strong></span>
-        <span>Layout: <strong>3 per row</strong> on sticker sheet</span>
-        <span>Preview is scaled up 3.2× for readability</span>
+      {/* ── Info bar ── */}
+      <div className="no-print bg-blue-50 border-b border-blue-100 px-6 py-2 text-xs text-blue-700 flex gap-6 flex-wrap">
+        <span>Sticker: <strong>34mm × 22mm</strong></span>
+        <span>Supplier: <strong>{supplierCode}</strong></span>
+        <span>W code: <strong className="font-mono">{supplierCode}-{ws}</strong></span>
+        <span>S code: <strong className="font-mono">{supplierCode}-{sh}</strong></span>
+        <span>QR: <strong>SKU ID only</strong></span>
+        <span className="ml-auto text-gray-500">Preview scaled 3.2×</span>
       </div>
 
       {/* ── Screen preview ── */}
       <div className="no-print p-10">
-        <p className="text-xs text-gray-500 mb-4 font-medium uppercase tracking-wide">Preview (3 labels as they appear on sticker sheet)</p>
-        <div className="flex gap-8 flex-wrap">
+        <p className="text-xs text-gray-500 mb-6 font-medium uppercase tracking-wide">Preview (up to 3 labels)</p>
+        <div className="flex gap-10 flex-wrap">
           {Array.from({ length: Math.min(copies, 3) }).map((_, i) => (
-            <div key={i} style={{ width: '108.8px', height: '64px' /* 34mm×20mm at 96dpi scaled 3.2× */ }}>
+            <div key={i} style={{ width: '108.8px', height: '70.4px' /* 34mm×22mm at 96dpi scaled 3.2× */ }}>
               <div className="label-preview-scale">
                 <StickerLabel product={product} supplier={supplier} />
               </div>
