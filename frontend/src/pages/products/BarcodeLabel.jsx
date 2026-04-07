@@ -1,56 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { QRCode } from 'react-qr-code';
 import { useProducts } from '../../context/ProductContext';
 import { useSuppliers } from '../../context/SupplierContext';
 
-/* ─── Barcode renderer ──────────────────────────────────────────────── */
-function Barcode({ value }) {
-  const ref = useRef(null);
-
-  useEffect(() => {
-    if (!ref.current || !value) return;
-    import('jsbarcode').then(mod => {
-      const JsBarcode = mod.default || mod;
-      try {
-        JsBarcode(ref.current, value, {
-          format: 'CODE128',
-          width: 1.4,
-          height: 28,
-          displayValue: true,
-          fontSize: 7,
-          textMargin: 1,
-          margin: 0,
-          background: '#ffffff',
-          lineColor: '#000000',
-        });
-        if (ref.current) {
-          ref.current.removeAttribute('width');
-          ref.current.removeAttribute('height');
-          ref.current.style.width = '100%';
-          ref.current.style.height = 'auto';
-        }
-      } catch (e) {
-        console.warn('Barcode error:', e);
-      }
-    });
-  }, [value]);
-
-  return <svg ref={ref} style={{ display: 'block', width: '100%' }} />;
-}
-
-/* ─── One 34×22 mm label ────────────────────────────────────────────── */
+/* ─── One 34×20 mm label ────────────────────────────────────────────── */
 function StickerLabel({ product, supplier }) {
   const supplierCode = supplier
     ? (supplier.code || supplier.name.replace(/\s+/g, '').slice(0, 4).toUpperCase())
-    : '—';
+    : '';
 
-  const ws = Math.round((product.pricing?.wholesale || 0) * 2);
-  const sh = Math.round(product.pricing?.shop || 0);
+  const wCoded = Math.round((product.pricing?.wholesale || 0) * 2);
+  const sPrice = Math.round(product.pricing?.shop || 0);
 
-  // Coded prices: supplierCode-wholesaleX2 and supplierCode-shop
-  const wCode = `${supplierCode}-${ws}`;
-  const sCode = `${supplierCode}-${sh}`;
+  // W code: D.No.{wholesale×2}   S rate: plain number
+  const wCode = `D.No.${wCoded}`;
+  const sCode = `${sPrice}`;
 
   // QR contains only the SKU ID
   const qrValue = product.sku || product.id;
@@ -60,7 +25,7 @@ function StickerLabel({ product, supplier }) {
       className="label-sticker"
       style={{
         width: '34mm',
-        height: '22mm',
+        height: '20mm',
         boxSizing: 'border-box',
         border: '0.3mm solid #bbb',
         display: 'flex',
@@ -68,65 +33,67 @@ function StickerLabel({ product, supplier }) {
         overflow: 'hidden',
         backgroundColor: '#fff',
         fontFamily: 'Arial, sans-serif',
-        padding: '0.8mm 0.8mm 0 0.8mm',
-        gap: '0.3mm',
+        padding: '0.8mm',
       }}
     >
-      {/* ── Top row: info (left) + QR (right) ── */}
-      <div style={{ display: 'flex', flex: '0 0 auto', gap: '0.5mm', alignItems: 'flex-start' }}>
-
-        {/* Left: product name + SKU + supplier + coded prices */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5mm', overflow: 'hidden' }}>
-
-          {/* Product name */}
+      {/* ── Row 1: product name + supplier + SKU ── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5mm' }}>
+        <div style={{ flex: 1, overflow: 'hidden' }}>
           <p style={{
-            margin: 0, fontSize: '5pt', fontWeight: 'bold', lineHeight: 1.1,
+            margin: 0, fontSize: '5.5pt', fontWeight: 'bold', lineHeight: 1.15,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#111',
           }}>
             {product.name}
           </p>
-
-          {/* SKU + Supplier code */}
-          <p style={{ margin: 0, fontSize: '4pt', lineHeight: 1.1, color: '#555', fontFamily: 'monospace' }}>
-            SKU: {product.sku || '—'} &nbsp;·&nbsp; {supplierCode}
+          <p style={{ margin: 0, fontSize: '4pt', color: '#666', lineHeight: 1.2, fontFamily: 'monospace' }}>
+            {product.sku && `SKU: ${product.sku}`}{supplierCode && ` · ${supplierCode}`}
           </p>
-
-          {/* Coded prices — the main info */}
-          <div style={{ display: 'flex', gap: '1.5mm', marginTop: '0.5mm' }}>
-            <div style={{
-              background: '#eff6ff', border: '0.2mm solid #bfdbfe',
-              borderRadius: '0.8mm', padding: '0.5mm 1mm',
-              display: 'flex', flexDirection: 'column', alignItems: 'center',
-            }}>
-              <span style={{ fontSize: '3pt', color: '#3b82f6', fontWeight: 'bold', lineHeight: 1, textTransform: 'uppercase' }}>W</span>
-              <span style={{ fontSize: '6pt', fontWeight: 'bold', color: '#1d4ed8', lineHeight: 1.1, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                {wCode}
-              </span>
-            </div>
-            <div style={{
-              background: '#faf5ff', border: '0.2mm solid #e9d5ff',
-              borderRadius: '0.8mm', padding: '0.5mm 1mm',
-              display: 'flex', flexDirection: 'column', alignItems: 'center',
-            }}>
-              <span style={{ fontSize: '3pt', color: '#9333ea', fontWeight: 'bold', lineHeight: 1, textTransform: 'uppercase' }}>S</span>
-              <span style={{ fontSize: '6pt', fontWeight: 'bold', color: '#7e22ce', lineHeight: 1.1, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                {sCode}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: QR code (SKU only) */}
-        <div style={{ flexShrink: 0, width: '12mm', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3mm' }}>
-          <QRCode value={qrValue} size={128} style={{ width: '11mm', height: '11mm' }} />
-          <span style={{ fontSize: '3pt', color: '#888', fontFamily: 'monospace', lineHeight: 1 }}>{product.sku}</span>
         </div>
       </div>
 
-      {/* ── Bottom: barcode ── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', minHeight: 0 }}>
-        <div style={{ width: '100%' }}>
-          <Barcode value={product.sku || product.id} />
+      {/* ── Row 2: coded prices (left) + QR (right) ── */}
+      <div style={{ display: 'flex', flex: 1, gap: '1mm', alignItems: 'center' }}>
+
+        {/* Coded prices — dominant */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.8mm' }}>
+
+          {/* W code */}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '1mm' }}>
+            <span style={{
+              fontSize: '4pt', fontWeight: 'bold', color: '#fff',
+              background: '#1d4ed8', borderRadius: '0.5mm',
+              padding: '0.2mm 0.8mm', lineHeight: 1.3, flexShrink: 0,
+            }}>W</span>
+            <span style={{
+              fontSize: '10pt', fontWeight: 'bold', color: '#1d4ed8',
+              fontFamily: 'Arial, sans-serif', letterSpacing: '0.01em', lineHeight: 1,
+            }}>
+              {wCode}
+            </span>
+          </div>
+
+          {/* S rate */}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '1mm' }}>
+            <span style={{
+              fontSize: '4pt', fontWeight: 'bold', color: '#fff',
+              background: '#7e22ce', borderRadius: '0.5mm',
+              padding: '0.2mm 0.8mm', lineHeight: 1.3, flexShrink: 0,
+            }}>S</span>
+            <span style={{
+              fontSize: '10pt', fontWeight: 'bold', color: '#7e22ce',
+              fontFamily: 'Arial, sans-serif', letterSpacing: '0.01em', lineHeight: 1,
+            }}>
+              {sCode}
+            </span>
+          </div>
+        </div>
+
+        {/* QR code — SKU only */}
+        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2mm' }}>
+          <QRCode value={qrValue} size={140} style={{ width: '12mm', height: '12mm' }} />
+          <span style={{ fontSize: '3pt', color: '#999', fontFamily: 'monospace', lineHeight: 1 }}>
+            {product.sku}
+          </span>
         </div>
       </div>
     </div>
@@ -150,37 +117,29 @@ export default function BarcodeLabel() {
   }
 
   const supplier = suppliers.find(s => s.id === product.supplierId);
-
-  const ws = Math.round((product.pricing?.wholesale || 0) * 2);
-  const sh = Math.round(product.pricing?.shop || 0);
+  const wCoded = Math.round((product.pricing?.wholesale || 0) * 2);
+  const sPrice = Math.round(product.pricing?.shop || 0);
   const supplierCode = supplier
     ? (supplier.code || supplier.name.replace(/\s+/g, '').slice(0, 4).toUpperCase())
     : '—';
 
   return (
     <>
-      {/* ── Print stylesheet ── */}
       <style>{`
         @media print {
           html, body { margin: 0; padding: 0; background: white; }
           .no-print { display: none !important; }
-          .label-sheet {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0;
-            padding: 0;
-            margin: 0;
-          }
+          .label-sheet { display: flex; flex-wrap: wrap; gap: 0; padding: 0; margin: 0; }
           .label-preview-scale { transform: none !important; }
           .label-sticker {
             page-break-inside: avoid;
             break-inside: avoid;
-            border: 0.3mm dashed #aaa !important;
+            border: 0.3mm dashed #bbb !important;
           }
         }
         @media screen {
           .label-preview-scale {
-            transform: scale(3.2);
+            transform: scale(3.5);
             transform-origin: top left;
           }
         }
@@ -188,7 +147,7 @@ export default function BarcodeLabel() {
 
       {/* ── Toolbar ── */}
       <div className="no-print sticky top-0 z-10 bg-gray-900 text-white px-6 py-3 flex items-center gap-4 shadow-lg">
-        <button onClick={() => window.history.back()} className="text-gray-300 hover:text-white text-sm flex items-center gap-1">
+        <button onClick={() => window.history.back()} className="text-gray-300 hover:text-white text-sm">
           ← Back
         </button>
         <span className="text-gray-600">|</span>
@@ -215,21 +174,21 @@ export default function BarcodeLabel() {
       </div>
 
       {/* ── Info bar ── */}
-      <div className="no-print bg-blue-50 border-b border-blue-100 px-6 py-2 text-xs text-blue-700 flex gap-6 flex-wrap">
-        <span>Sticker: <strong>34mm × 22mm</strong></span>
+      <div className="no-print bg-blue-50 border-b border-blue-100 px-6 py-2 text-xs text-blue-700 flex gap-6 flex-wrap items-center">
+        <span>Size: <strong>34mm × 20mm</strong></span>
         <span>Supplier: <strong>{supplierCode}</strong></span>
-        <span>W code: <strong className="font-mono">{supplierCode}-{ws}</strong></span>
-        <span>S code: <strong className="font-mono">{supplierCode}-{sh}</strong></span>
-        <span>QR: <strong>SKU ID only</strong></span>
-        <span className="ml-auto text-gray-500">Preview scaled 3.2×</span>
+        <span className="font-mono font-bold text-blue-800">W → D.No.{wCoded}</span>
+        <span className="font-mono font-bold text-purple-800">S → {sPrice}</span>
+        <span>QR = SKU ID only</span>
       </div>
 
       {/* ── Screen preview ── */}
       <div className="no-print p-10">
-        <p className="text-xs text-gray-500 mb-6 font-medium uppercase tracking-wide">Preview (up to 3 labels)</p>
-        <div className="flex gap-10 flex-wrap">
+        <p className="text-xs text-gray-500 mb-8 font-medium uppercase tracking-wide">Preview (scaled up 3.5×)</p>
+        <div className="flex gap-12 flex-wrap">
           {Array.from({ length: Math.min(copies, 3) }).map((_, i) => (
-            <div key={i} style={{ width: '108.8px', height: '70.4px' /* 34mm×22mm at 96dpi scaled 3.2× */ }}>
+            /* 34mm×20mm at 96dpi = 128×75px, scaled 3.5× = 448×265px container */
+            <div key={i} style={{ width: '119px', height: '70px' }}>
               <div className="label-preview-scale">
                 <StickerLabel product={product} supplier={supplier} />
               </div>
@@ -246,9 +205,7 @@ export default function BarcodeLabel() {
       </div>
 
       <style>{`
-        @media print {
-          .label-sheet { display: flex !important; flex-wrap: wrap; }
-        }
+        @media print { .label-sheet { display: flex !important; flex-wrap: wrap; } }
       `}</style>
     </>
   );
