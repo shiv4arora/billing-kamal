@@ -31,6 +31,7 @@ function pickPurchaseData(b: any) {
     ...(b.totalSGST             !== undefined && { totalSGST:             b.totalSGST }),
     ...(b.totalIGST             !== undefined && { totalIGST:             b.totalIGST }),
     ...(b.totalGST              !== undefined && { totalGST:              b.totalGST }),
+    ...(b.billDiscount          !== undefined && { billDiscount:          b.billDiscount }),
     ...(b.grandTotal            !== undefined && { grandTotal:            b.grandTotal }),
     ...(b.roundOff              !== undefined && { roundOff:              b.roundOff }),
     ...(b.amountPaid            !== undefined && { amountPaid:            b.amountPaid }),
@@ -71,8 +72,10 @@ async function issuePurchase(invoiceId: string) {
 
   const rawItems = parseItems(existing.items);
   const totals = buildInvoiceTotals(rawItems, isInterState);
+  const billDiscount = Number(existing.billDiscount) || 0;
+  const finalGrandTotal = Math.max(0, Math.round(totals.grandTotal - billDiscount));
   const paid = Number(existing.amountPaid);
-  const payStatus = paid >= totals.grandTotal - 0.01 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
+  const payStatus = paid >= finalGrandTotal - 0.01 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
 
   return prisma.$transaction(async (tx) => {
     const invNo = await nextPurchaseInvoiceNumber(prefix, tx);
@@ -149,7 +152,7 @@ async function issuePurchase(invoiceId: string) {
         subtotal: totals.subtotal, totalDiscount: totals.totalDiscount,
         totalCGST: totals.totalCGST, totalSGST: totals.totalSGST,
         totalIGST: totals.totalIGST, totalGST: totals.totalGST,
-        grandTotal: totals.grandTotal, roundOff: totals.roundOff,
+        grandTotal: finalGrandTotal, roundOff: totals.roundOff,
         paymentStatus: payStatus, status: 'issued',
       },
     });
@@ -158,7 +161,7 @@ async function issuePurchase(invoiceId: string) {
     if (existing.supplierId) {
       await postPurchaseInvoice(tx, {
         supplierId: existing.supplierId, supplierName: existing.supplierName,
-        date: existing.date, invoiceId: existing.id, invoiceNo: invNo, amount: totals.grandTotal,
+        date: existing.date, invoiceId: existing.id, invoiceNo: invNo, amount: finalGrandTotal,
       });
       if (paid > 0) {
         await postPaymentOut(tx, {
@@ -169,7 +172,7 @@ async function issuePurchase(invoiceId: string) {
       }
       await tx.supplier.update({
         where: { id: existing.supplierId },
-        data: { balance: { increment: totals.grandTotal - paid } },
+        data: { balance: { increment: finalGrandTotal - paid } },
       });
     }
 

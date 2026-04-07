@@ -255,6 +255,9 @@ export default function PurchaseInvoiceCreate() {
   const [notes, setNotes]               = useState('');
   const [amountPaid, setAmountPaid]     = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [billDiscount, setBillDiscount] = useState('');
+  const [supplierSearch, setSupplierSearch] = useState('');
+  const [showSupplierDrop, setShowSupplierDrop] = useState(false);
 
   useEffect(() => {
     if (isEdit) {
@@ -272,6 +275,9 @@ export default function PurchaseInvoiceCreate() {
         setNotes(inv.notes || '');
         setAmountPaid(inv.amountPaid || '');
         setPaymentMethod(inv.paymentMethod || 'cash');
+        setBillDiscount(inv.billDiscount || '');
+        const sup = suppliers.find(s => s.id === (inv.supplierId || ''));
+        if (sup) setSupplierSearch(sup.name);
       }
     }
   }, [id]);
@@ -397,6 +403,7 @@ export default function PurchaseInvoiceCreate() {
       date, supplierId, supplierName: supplier?.name || '',
       items: validItems,
       amountPaid: paid, paymentMethod, notes,
+      billDiscount: +billDiscount || 0,
     };
 
     try {
@@ -448,10 +455,38 @@ export default function PurchaseInvoiceCreate() {
         <div className="grid grid-cols-2 gap-5">
           <Card>
             <h3 className="font-semibold text-gray-800 mb-3">Supplier</h3>
-            <Select label="Select Supplier *" value={supplierId} onChange={e => handleSupplierChange(e.target.value)}>
-              <option value="">— Select —</option>
-              {suppliers.map(s => <option key={s.id} value={s.id}>{s.code ? `[${s.code}] ` : ''}{s.name}{s.place ? ` (${s.place})` : ''}</option>)}
-            </Select>
+            {/* Searchable supplier dropdown */}
+            <div className="relative">
+              <label className="text-sm font-medium text-gray-700 block mb-1">Select Supplier *</label>
+              <input
+                value={supplierSearch}
+                onChange={e => { setSupplierSearch(e.target.value); setShowSupplierDrop(true); }}
+                onFocus={() => setShowSupplierDrop(true)}
+                onBlur={() => setTimeout(() => setShowSupplierDrop(false), 150)}
+                placeholder="Type to search supplier…"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {showSupplierDrop && (
+                <div className="absolute z-30 top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-52 overflow-y-auto">
+                  {suppliers
+                    .filter(s => !supplierSearch || s.name.toLowerCase().includes(supplierSearch.toLowerCase()) || (s.code && s.code.toLowerCase().includes(supplierSearch.toLowerCase())) || (s.place && s.place.toLowerCase().includes(supplierSearch.toLowerCase())))
+                    .map(s => (
+                      <div
+                        key={s.id}
+                        className="px-4 py-2.5 hover:bg-blue-50 cursor-pointer"
+                        onMouseDown={() => { handleSupplierChange(s.id); setSupplierSearch(s.name); setShowSupplierDrop(false); }}
+                      >
+                        <p className="text-sm font-semibold text-gray-800">{s.code ? <span className="text-xs text-gray-400 font-mono mr-1">[{s.code}]</span> : null}{s.name}</p>
+                        {s.place && <p className="text-xs text-gray-400">{s.place}</p>}
+                      </div>
+                    ))
+                  }
+                  {suppliers.filter(s => !supplierSearch || s.name.toLowerCase().includes(supplierSearch.toLowerCase()) || (s.code && s.code.toLowerCase().includes(supplierSearch.toLowerCase()))).length === 0 && (
+                    <p className="px-4 py-3 text-sm text-gray-400">No suppliers found</p>
+                  )}
+                </div>
+              )}
+            </div>
             {supplier && (
               <div className="mt-3 p-3 bg-green-50 rounded-xl text-sm space-y-1">
                 <p className="font-semibold text-green-800">{supplier.name}</p>
@@ -556,25 +591,36 @@ export default function PurchaseInvoiceCreate() {
         {validItems.length > 0 && (
           <Card>
             <div className="flex justify-end">
-              <div className="w-64 space-y-2 text-sm">
+              <div className="w-72 space-y-2 text-sm">
                 <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>{formatCurrency(totals.subtotal)}</span></div>
                 {totals.totalDiscount > 0 && (
-                  <div className="flex justify-between text-orange-600"><span>Discount</span><span>− {formatCurrency(totals.totalDiscount)}</span></div>
+                  <div className="flex justify-between text-orange-600"><span>Item Discount</span><span>− {formatCurrency(totals.totalDiscount)}</span></div>
                 )}
                 <div className="flex justify-between"><span className="text-gray-500">GST</span><span>{formatCurrency(totals.totalGST)}</span></div>
                 {totals.roundOff !== 0 && (
                   <div className="flex justify-between text-gray-400"><span>Round Off</span><span>{totals.roundOff > 0 ? '+' : ''}{formatCurrency(totals.roundOff)}</span></div>
                 )}
+                {/* Bill-level discount */}
+                <div className="flex items-center gap-2 border-t pt-2">
+                  <span className="text-gray-500 whitespace-nowrap">Bill Discount (₹)</span>
+                  <input
+                    type="number" min="0" step="0.01"
+                    value={billDiscount}
+                    onChange={e => setBillDiscount(e.target.value)}
+                    placeholder="0"
+                    className="w-full border border-orange-200 bg-orange-50 rounded-lg px-2 py-1 text-sm text-right font-semibold text-orange-700 focus:outline-none focus:ring-1 focus:ring-orange-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                </div>
                 <div className="flex justify-between font-bold text-base border-t pt-2">
                   <span>Grand Total</span>
-                  <span className="text-green-700">{formatCurrency(totals.grandTotal)}</span>
+                  <span className="text-green-700">{formatCurrency(Math.max(0, totals.grandTotal - (+billDiscount || 0)))}</span>
                 </div>
                 {+amountPaid > 0 && (
                   <div className="flex justify-between text-green-600"><span>Paid</span><span>{formatCurrency(+amountPaid)}</span></div>
                 )}
-                {+amountPaid < totals.grandTotal && (
+                {+amountPaid < Math.max(0, totals.grandTotal - (+billDiscount || 0)) && (
                   <div className="flex justify-between text-red-600 font-medium">
-                    <span>Balance Due</span><span>{formatCurrency(totals.grandTotal - (+amountPaid || 0))}</span>
+                    <span>Balance Due</span><span>{formatCurrency(Math.max(0, totals.grandTotal - (+billDiscount || 0)) - (+amountPaid || 0))}</span>
                   </div>
                 )}
               </div>

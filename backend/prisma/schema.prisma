@@ -133,6 +133,7 @@ model PurchaseInvoice {
   totalSGST             Float    @default(0)
   totalIGST             Float    @default(0)
   totalGST              Float    @default(0)
+  billDiscount          Float    @default(0)   // flat ₹ discount on total bill
   grandTotal            Float    @default(0)
   roundOff              Float    @default(0)
   amountPaid            Float    @default(0)
