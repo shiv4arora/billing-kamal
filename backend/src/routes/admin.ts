@@ -88,4 +88,24 @@ router.post('/import', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── CLEAR INVOICES (sale + purchase + related ledger/stock) ──────────────────
+router.delete('/invoices', async (_req, res, next) => {
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.stockLedger.deleteMany();
+      await tx.ledgerEntry.deleteMany();
+      await tx.saleInvoice.deleteMany();
+      await tx.purchaseInvoice.deleteMany();
+      // Reset invoice + SKU counters so numbering starts fresh
+      await tx.counter.deleteMany();
+      // Reset all product stock to 0
+      await tx.product.updateMany({ data: { currentStock: 0 } });
+      // Reset supplier/customer balances
+      await tx.supplier.updateMany({ data: { balance: 0 } });
+      await tx.customer.updateMany({ data: { balance: 0 } });
+    });
+    res.json({ ok: true, message: 'All invoices, ledger entries, stock movements cleared. Balances and counters reset.' });
+  } catch (err) { next(err); }
+});
+
 export default router;

@@ -122,32 +122,16 @@ function StickerLabel({ product, supplier }) {
       {/* ── RIGHT: QR code (SKU only) ── */}
       <div style={{
         flexShrink:     0,
-        width:          '12.5mm',
+        width:          '14mm',
         display:        'flex',
-        flexDirection:  'column',
         alignItems:     'center',
         justifyContent: 'center',
-        gap:            '0.4mm',
       }}>
         <QRCode
           value={qrValue}
           size={256}
-          style={{ width: '12mm', height: '12mm', display: 'block' }}
+          style={{ width: '14mm', height: '14mm', display: 'block' }}
         />
-        <span style={{
-          fontSize:     '3.5pt',
-          color:        '#555',
-          fontFamily:   'monospace',
-          lineHeight:   1,
-          textAlign:    'center',
-          maxWidth:     '12mm',
-          overflow:     'hidden',
-          whiteSpace:   'nowrap',
-          textOverflow: 'ellipsis',
-          display:      'block',
-        }}>
-          {product.sku}
-        </span>
       </div>
     </div>
   );

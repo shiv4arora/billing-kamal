@@ -43,7 +43,8 @@ router.post('/', async (req, res, next) => {
 
 router.put('/:id', async (req, res, next) => {
   try {
-    const { balance, ...rest } = serializeMargin(req.body);
+    // Strip read-only / auto-managed fields so Prisma doesn't reject them
+    const { id, balance, createdAt, updatedAt, products, purchaseInvoices, ...rest } = serializeMargin(req.body);
     const s = await prisma.supplier.update({ where: { id: req.params.id }, data: rest });
     res.json(parseSupplier(s));
   } catch (err) { next(err); }
