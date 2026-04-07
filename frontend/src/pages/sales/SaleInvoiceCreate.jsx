@@ -26,6 +26,8 @@ export default function SaleInvoiceCreate() {
 
   const [customerId, setCustomerId] = useState('');
   const [customerType, setCustomerType] = useState('shop');
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [showCustomerDrop, setShowCustomerDrop] = useState(false);
   const [date, setDate] = useState(today());
   const [dueDate, setDueDate] = useState('');
   const [items, setItems] = useState([{ ...BLANK_ITEM }]);
@@ -44,6 +46,8 @@ export default function SaleInvoiceCreate() {
       if (inv) {
         setCustomerId(inv.customerId || '');
         setCustomerType(inv.customerType || 'shop');
+        const cust = customers.find(c => c.id === (inv.customerId || ''));
+        if (cust) setCustomerSearch(formatCustomerDisplay(cust));
         setDate(inv.date);
         setDueDate(inv.dueDate || '');
         setItems(inv.items || [{ ...BLANK_ITEM }]);
@@ -174,10 +178,37 @@ export default function SaleInvoiceCreate() {
         <div className="grid grid-cols-2 gap-5">
           <Card>
             <h3 className="font-semibold text-gray-800 mb-4">Customer</h3>
-            <Select label="Select Customer *" value={customerId} onChange={e => handleCustomerChange(e.target.value)}>
-              <option value="">-- Select --</option>
-              {customers.map(c => <option key={c.id} value={c.id}>{formatCustomerDisplay(c)}</option>)}
-            </Select>
+            <div className="relative">
+              <label className="text-sm font-medium text-gray-700 block mb-1">Select Customer *</label>
+              <input
+                value={customerSearch}
+                onChange={e => { setCustomerSearch(e.target.value); setShowCustomerDrop(true); }}
+                onFocus={() => setShowCustomerDrop(true)}
+                onBlur={() => setTimeout(() => setShowCustomerDrop(false), 150)}
+                placeholder="Type to search customer…"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {showCustomerDrop && (
+                <div className="absolute z-30 top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-52 overflow-y-auto">
+                  {customers
+                    .filter(c => !customerSearch || formatCustomerDisplay(c).toLowerCase().includes(customerSearch.toLowerCase()) || c.phone?.includes(customerSearch))
+                    .map(c => (
+                      <div
+                        key={c.id}
+                        className="px-4 py-2.5 hover:bg-blue-50 cursor-pointer"
+                        onMouseDown={() => { handleCustomerChange(c.id); setCustomerSearch(formatCustomerDisplay(c)); setShowCustomerDrop(false); }}
+                      >
+                        <p className="text-sm font-semibold text-gray-800">{formatCustomerDisplay(c)}</p>
+                        {c.phone && <p className="text-xs text-gray-400">{c.phone}{c.place ? ` · ${c.place}` : ''}</p>}
+                      </div>
+                    ))
+                  }
+                  {customers.filter(c => !customerSearch || formatCustomerDisplay(c).toLowerCase().includes(customerSearch.toLowerCase()) || c.phone?.includes(customerSearch)).length === 0 && (
+                    <p className="px-4 py-3 text-sm text-gray-400">No customers found</p>
+                  )}
+                </div>
+              )}
+            </div>
             {customer && (
               <div className="mt-3 p-3 bg-blue-50 rounded-lg text-sm">
                 <p className="font-semibold text-blue-800">{formatCustomerDisplay(customer)}</p>

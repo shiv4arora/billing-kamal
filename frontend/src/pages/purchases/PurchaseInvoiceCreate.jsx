@@ -608,7 +608,7 @@ export default function PurchaseInvoiceCreate() {
                     value={billDiscount}
                     onChange={e => setBillDiscount(e.target.value)}
                     placeholder="0"
-                    className="w-full border border-orange-200 bg-orange-50 rounded-lg px-2 py-1 text-sm text-right font-semibold text-orange-700 focus:outline-none focus:ring-1 focus:ring-orange-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-full border border-gray-300 rounded-lg px-2 py-1 text-sm text-right font-semibold text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
                 <div className="flex justify-between font-bold text-base border-t pt-2">
