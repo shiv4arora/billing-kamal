@@ -133,9 +133,15 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             {item.productId && (
-              <p className="text-xs text-gray-400 mt-1 font-mono">
-                {item.sku} · {item.category} · {item.unit}
-              </p>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                {item.sku && (
+                  <span className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 rounded-md px-2 py-0.5 text-xs font-mono font-bold text-blue-700">
+                    SKU: {item.sku}
+                  </span>
+                )}
+                {item.category && <span className="text-xs text-gray-400">{item.category}</span>}
+                {item.unit && <span className="text-xs text-gray-400">· {item.unit}</span>}
+              </div>
             )}
             {showDrop && filtered.length > 0 && (
               <div ref={dropRef} className="absolute z-30 top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-52 overflow-y-auto">
@@ -257,7 +263,8 @@ export default function PurchaseInvoiceCreate() {
         setSupplierId(inv.supplierId || '');
         setSupplierInvNo(inv.supplierInvoiceNumber || '');
         setDate(inv.date);
-        setItems(inv.items?.map(i => ({ ...BLANK_ITEM, ...i })) || [{ ...BLANK_ITEM }]);
+        // Force isNew: false when editing — items were already created on first save
+        setItems(inv.items?.map(i => ({ ...BLANK_ITEM, ...i, isNew: false })) || [{ ...BLANK_ITEM }]);
         setNotes(inv.notes || '');
         setAmountPaid(inv.amountPaid || '');
         setPaymentMethod(inv.paymentMethod || 'cash');
