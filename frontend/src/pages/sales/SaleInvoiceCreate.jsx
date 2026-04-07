@@ -5,7 +5,8 @@ import { useProducts } from '../../context/ProductContext';
 import { useCustomers } from '../../context/CustomerContext';
 import { useSettings } from '../../context/SettingsContext';
 import { useLedger } from '../../context/LedgerContext';
-import { Button, Input, Select, Textarea, Card, useToast, Toast } from '../../components/ui';
+import { Button, Input, Select, Textarea, Card } from '../../components/ui';
+import { useGlobalToast } from '../../context/ToastContext';
 import { buildInvoiceTotals, formatCurrency, getPrice, nextInvoiceNumber, today, formatCustomerDisplay } from '../../utils/helpers';
 import { GST_RATES } from '../../constants';
 import { useInvoiceLock } from '../../hooks/useInvoiceLock';
@@ -15,7 +16,7 @@ const BLANK_ITEM = { productId: '', productName: '', sku: '', hsnCode: '', unit:
 export default function SaleInvoiceCreate() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const toast = useToast();
+  const toast = useGlobalToast();
   const { addSaleInvoice, issueSaleInvoice, updateSaleInvoice, getSaleInvoice, addStockEntry } = useInvoices();
   const { active: products, updateStock } = useProducts();
   const { active: customers, updateBalance } = useCustomers();
@@ -168,7 +169,6 @@ export default function SaleInvoiceCreate() {
 
   return (
     <>
-      <Toast toasts={toast.toasts} remove={toast.remove} />
       <div className="max-w-5xl space-y-5">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/sales')} className="text-gray-400 hover:text-gray-600">←</button>

@@ -6,7 +6,8 @@ import { useInvoices } from '../../context/InvoiceContext';
 import { useProducts } from '../../context/ProductContext';
 import { useSuppliers } from '../../context/SupplierContext';
 import { useSettings } from '../../context/SettingsContext';
-import { Button, Input, Select, Textarea, Card, useToast, Toast } from '../../components/ui';
+import { Button, Input, Select, Textarea, Card } from '../../components/ui';
+import { useGlobalToast } from '../../context/ToastContext';
 import { buildInvoiceTotals, formatCurrency, today } from '../../utils/helpers';
 import { GST_RATES, UNITS } from '../../constants';
 import * as XLSX from 'xlsx';
@@ -232,7 +233,7 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
 export default function PurchaseInvoiceCreate() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const toast = useToast();
+  const toast = useGlobalToast();
   const { addPurchaseInvoice, updatePurchaseInvoice, getPurchaseInvoice } = useInvoices();
   const { active: products, refresh: refreshProducts } = useProducts();
   const { active: suppliers } = useSuppliers();
@@ -409,15 +410,15 @@ export default function PurchaseInvoiceCreate() {
     try {
       if (isEdit) {
         await updatePurchaseInvoice(id, invData);
-        await refreshProducts(); // stock & pricing changed on backend — sync frontend
-        toast.success('Invoice updated');
-        navigate('/purchases');
+        await refreshProducts();
+        toast.success('Invoice updated · Stock & prices synced');
+        setTimeout(() => { navigate('/purchases'); }, 600);
         return;
       }
-      // Backend auto-issues on create — no separate issue call needed
       const saved = await addPurchaseInvoice({ ...invData, status: 'draft' });
-      toast.success(`${saved.invoiceNumber} issued · Stock & prices updated`);
-      setTimeout(() => navigate(`/purchases/${saved.id}`), 400);
+      await refreshProducts();
+      toast.success(`${saved.invoiceNumber} saved · Stock updated`);
+      setTimeout(() => navigate(`/purchases/${saved.id}`), 800);
     } catch (e) {
       toast.error(e.message);
     }
@@ -444,7 +445,6 @@ export default function PurchaseInvoiceCreate() {
 
   return (
     <>
-      <Toast toasts={toast.toasts} remove={toast.remove} />
       <div className="max-w-4xl space-y-5">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/purchases')} className="text-gray-400 hover:text-gray-600">←</button>
