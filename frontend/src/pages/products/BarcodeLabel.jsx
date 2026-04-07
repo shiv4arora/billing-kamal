@@ -46,13 +46,14 @@ function StickerLabel({ product, supplier }) {
         {/* Product name */}
         <p style={{
           margin:       0,
-          fontSize:     '5.5pt',
+          fontSize:     '10pt',
           fontWeight:   'bold',
           lineHeight:   1.15,
           color:        '#111',
           whiteSpace:   'nowrap',
           overflow:     'hidden',
           textOverflow: 'ellipsis',
+          paddingBottom: '0.5mm',
         }}>
           {product.name}
         </p>
@@ -60,7 +61,7 @@ function StickerLabel({ product, supplier }) {
         {/* SKU · Supplier */}
         <p style={{
           margin:       0,
-          fontSize:     '4.5pt',
+          fontSize:     '10pt',
           fontWeight:   '600',
           lineHeight:   1.2,
           color:        '#555',
@@ -68,6 +69,7 @@ function StickerLabel({ product, supplier }) {
           whiteSpace:   'nowrap',
           overflow:     'hidden',
           textOverflow: 'ellipsis',
+          paddingBottom: '0.5mm',
         }}>
           {product.sku || '—'}{supplierCode ? `  ·  ${supplierCode}` : ''}
         </p>
