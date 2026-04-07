@@ -234,7 +234,7 @@ export default function PurchaseInvoiceCreate() {
   const navigate = useNavigate();
   const toast = useToast();
   const { addPurchaseInvoice, updatePurchaseInvoice, getPurchaseInvoice } = useInvoices();
-  const { active: products } = useProducts();
+  const { active: products, refresh: refreshProducts } = useProducts();
   const { active: suppliers } = useSuppliers();
   const { settings } = useSettings();
   const isEdit = !!id;
@@ -263,8 +263,12 @@ export default function PurchaseInvoiceCreate() {
         setSupplierId(inv.supplierId || '');
         setSupplierInvNo(inv.supplierInvoiceNumber || '');
         setDate(inv.date);
+        // Parse items — context stores them as a JSON string (SQLite), not an array
+        const parsedItems = Array.isArray(inv.items)
+          ? inv.items
+          : (() => { try { return JSON.parse(inv.items || '[]'); } catch { return []; } })();
         // Force isNew: false when editing — items were already created on first save
-        setItems(inv.items?.map(i => ({ ...BLANK_ITEM, ...i, isNew: false })) || [{ ...BLANK_ITEM }]);
+        setItems(parsedItems.length ? parsedItems.map(i => ({ ...BLANK_ITEM, ...i, isNew: false })) : [{ ...BLANK_ITEM }]);
         setNotes(inv.notes || '');
         setAmountPaid(inv.amountPaid || '');
         setPaymentMethod(inv.paymentMethod || 'cash');
@@ -398,6 +402,7 @@ export default function PurchaseInvoiceCreate() {
     try {
       if (isEdit) {
         await updatePurchaseInvoice(id, invData);
+        await refreshProducts(); // stock & pricing changed on backend — sync frontend
         toast.success('Invoice updated');
         navigate('/purchases');
         return;

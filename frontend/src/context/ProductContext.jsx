@@ -70,10 +70,15 @@ export function ProductProvider({ children }) {
     setProducts(p => p.map(x => x.id === id ? { ...x, currentStock: newStock } : x));
   };
 
+  const refresh = async () => {
+    if (!isApiAvailable()) return;
+    try { setProducts(await api('/products')); } catch {}
+  };
+
   const active = products.filter(p => p.isActive !== false);
 
   return (
-    <Ctx.Provider value={{ products, active, add, update, remove, get, updateStock, updateStockLocal }}>
+    <Ctx.Provider value={{ products, active, add, update, remove, get, updateStock, updateStockLocal, refresh }}>
       {children}
     </Ctx.Provider>
   );
