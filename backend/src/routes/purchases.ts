@@ -190,9 +190,20 @@ router.put('/:id', async (req, res, next) => {
   try {
     const rawItems = parseItems(req.body.items);
 
-    // Process items: create new products, update existing product prices
+    // Load old invoice to compute stock quantity diffs
+    const oldInv = await prisma.purchaseInvoice.findUniqueOrThrow({ where: { id: req.params.id } });
+    const oldItems = parseItems(oldInv.items);
+
+    // Map: productId → old quantity
+    const oldQtyMap: Record<string, number> = {};
+    for (const oi of oldItems) {
+      if (oi.productId) oldQtyMap[oi.productId] = (oldQtyMap[oi.productId] || 0) + Number(oi.quantity || 0);
+    }
+
     const processedItems = await prisma.$transaction(async (tx) => {
       const result = [];
+      const newQtyMap: Record<string, number> = {};
+
       for (const item of rawItems) {
         const out = { ...item };
 
@@ -203,31 +214,22 @@ router.put('/:id', async (req, res, next) => {
             : null;
 
           if (existing) {
-            // Link to the already-created product instead of duplicating
             out.productId = existing.id;
             out.sku = existing.sku || '';
             out.isNew = false;
-            // Still update pricing
             const updateData: any = { costPrice: item.unitPrice };
             if (item.pricing?.wholesale != null || item.pricing?.shop != null) {
               updateData.pricing = JSON.stringify({ wholesale: item.pricing?.wholesale || 0, shop: item.pricing?.shop || 0 });
             }
             await tx.product.update({ where: { id: existing.id }, data: updateData });
           } else {
-            // Genuinely new product — create with auto SKU
             const sku = String(await allocateSkuNumbers(1, tx));
             const newProd = await tx.product.create({
               data: {
-                sku,
-                name: item.productName,
-                unit: item.unit || 'Pcs',
-                gstRate: item.gstRate || 0,
-                hsnCode: item.hsnCode || '',
+                sku, name: item.productName, unit: item.unit || 'Pcs',
+                gstRate: item.gstRate || 0, hsnCode: item.hsnCode || '',
                 category: item.category || '',
-                pricing: JSON.stringify({
-                  wholesale: item.pricing?.wholesale || 0,
-                  shop: item.pricing?.shop || item.unitPrice || 0,
-                }),
+                pricing: JSON.stringify({ wholesale: item.pricing?.wholesale || 0, shop: item.pricing?.shop || item.unitPrice || 0 }),
                 costPrice: item.unitPrice || 0,
                 supplierId: req.body.supplierId || null,
                 currentStock: 0,
@@ -238,23 +240,33 @@ router.put('/:id', async (req, res, next) => {
             out.isNew = false;
           }
         } else if (!item.isNew && item.productId) {
-          // Update existing product cost price and selling prices
           const updateData: any = { costPrice: item.unitPrice };
           if (item.pricing?.wholesale != null || item.pricing?.shop != null) {
-            updateData.pricing = JSON.stringify({
-              wholesale: item.pricing?.wholesale || 0,
-              shop: item.pricing?.shop || 0,
-            });
+            updateData.pricing = JSON.stringify({ wholesale: item.pricing?.wholesale || 0, shop: item.pricing?.shop || 0 });
           }
           await tx.product.update({ where: { id: item.productId }, data: updateData });
         }
 
+        // Accumulate new quantities per product
+        if (out.productId) {
+          newQtyMap[out.productId] = (newQtyMap[out.productId] || 0) + Number(item.quantity || 0);
+        }
+
         result.push(out);
       }
+
+      // Apply stock quantity diffs (handles adds, changes, and removals)
+      const allIds = new Set([...Object.keys(oldQtyMap), ...Object.keys(newQtyMap)]);
+      for (const productId of allIds) {
+        const diff = (newQtyMap[productId] || 0) - (oldQtyMap[productId] || 0);
+        if (diff !== 0) {
+          await tx.product.update({ where: { id: productId }, data: { currentStock: { increment: diff } } });
+        }
+      }
+
       return result;
     });
 
-    // Save invoice with processed items (new products now have productId + sku)
     const body = { ...req.body, items: processedItems };
     const inv = await prisma.purchaseInvoice.update({
       where: { id: req.params.id },

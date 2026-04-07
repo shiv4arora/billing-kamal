@@ -32,7 +32,7 @@ const BLANK_ITEM = {
   gstRate: 0,
   quantity: 1,
   unitPrice: 0,         // purchase cost
-  pricing: { wholesale: 0, shop: 0 },
+  pricing: { wholesale: '', shop: '' },
 };
 
 /* ─── Inline item card ───────────────────────────────────────────────── */
@@ -204,7 +204,7 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
                   <input
                     type="number" min="0" step="0.01"
                     value={item.pricing[tier]}
-                    onChange={e => onUpdate('pricing', { ...item.pricing, [tier]: +e.target.value })}
+                    onChange={e => onUpdate('pricing', { ...item.pricing, [tier]: e.target.value === '' ? '' : +e.target.value })}
                     className={`w-full bg-white border border-${color}-200 rounded-lg px-2 py-1 text-sm text-right font-bold text-${color}-800 focus:outline-none focus:ring-1 focus:ring-${color}-400`}
                   />
                 </div>
@@ -470,13 +470,6 @@ export default function PurchaseInvoiceCreate() {
             <div className="grid grid-cols-2 gap-3">
               <Input label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} />
               <Input label="Supplier Invoice #" value={supplierInvNo} onChange={e => setSupplierInvNo(e.target.value)} placeholder="Supplier's ref" />
-              <Select label="Payment Method" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
-                <option value="cash">Cash</option>
-                <option value="upi">UPI</option>
-                <option value="bank">Bank Transfer</option>
-                <option value="credit">Credit</option>
-              </Select>
-              <Input label="Amount Paid (₹)" type="number" min="0" value={amountPaid} onChange={e => setAmountPaid(e.target.value)} placeholder="0" />
             </div>
           </Card>
         </div>
@@ -558,14 +551,6 @@ export default function PurchaseInvoiceCreate() {
                   <span>Grand Total</span>
                   <span className="text-green-700">{formatCurrency(totals.grandTotal)}</span>
                 </div>
-                {+amountPaid > 0 && (
-                  <div className="flex justify-between text-green-600"><span>Paid</span><span>{formatCurrency(+amountPaid)}</span></div>
-                )}
-                {+amountPaid < totals.grandTotal && (
-                  <div className="flex justify-between text-red-600 font-medium">
-                    <span>Balance Due</span><span>{formatCurrency(totals.grandTotal - (+amountPaid || 0))}</span>
-                  </div>
-                )}
               </div>
             </div>
           </Card>
