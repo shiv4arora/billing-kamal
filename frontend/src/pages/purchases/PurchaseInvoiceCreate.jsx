@@ -205,7 +205,7 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
                     type="number" min="0" step="0.01"
                     value={item.pricing[tier]}
                     onChange={e => onUpdate('pricing', { ...item.pricing, [tier]: e.target.value === '' ? '' : +e.target.value })}
-                    className={`w-full bg-white border border-${color}-200 rounded-lg px-2 py-1 text-sm text-right font-bold text-${color}-800 focus:outline-none focus:ring-1 focus:ring-${color}-400`}
+                    className={`w-full bg-white border border-${color}-200 rounded-lg px-2 py-1 text-sm text-right font-bold text-${color}-800 focus:outline-none focus:ring-1 focus:ring-${color}-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                   />
                 </div>
               </div>
@@ -553,7 +553,13 @@ export default function PurchaseInvoiceCreate() {
             <div className="flex justify-end">
               <div className="w-64 space-y-2 text-sm">
                 <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>{formatCurrency(totals.subtotal)}</span></div>
+                {totals.totalDiscount > 0 && (
+                  <div className="flex justify-between text-orange-600"><span>Discount</span><span>− {formatCurrency(totals.totalDiscount)}</span></div>
+                )}
                 <div className="flex justify-between"><span className="text-gray-500">GST</span><span>{formatCurrency(totals.totalGST)}</span></div>
+                {totals.roundOff !== 0 && (
+                  <div className="flex justify-between text-gray-400"><span>Round Off</span><span>{totals.roundOff > 0 ? '+' : ''}{formatCurrency(totals.roundOff)}</span></div>
+                )}
                 <div className="flex justify-between font-bold text-base border-t pt-2">
                   <span>Grand Total</span>
                   <span className="text-green-700">{formatCurrency(totals.grandTotal)}</span>
