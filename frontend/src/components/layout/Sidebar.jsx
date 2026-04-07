@@ -7,7 +7,7 @@ import { useReminderLog } from '../../context/ReminderContext';
 export default function Sidebar() {
   const { active } = useProducts();
   const { settings } = useSettings();
-  const { currentUser, isAdmin, logout } = useAuth();
+  const { currentUser, isAdmin, logout, can } = useAuth();
   const { pendingCount } = useReminderLog();
   const navigate = useNavigate();
 
@@ -26,49 +26,49 @@ export default function Sidebar() {
     {
       section: 'Transactions',
       items: [
-        { to: '/sales', label: 'Sale Invoices', icon: '🧾' },
-        { to: '/purchases', label: 'Purchase Invoices', icon: '📦' },
+        ...(can('sales_view')     ? [{ to: '/sales',     label: 'Sale Invoices',     icon: '🧾' }] : []),
+        ...(can('purchases_view') ? [{ to: '/purchases', label: 'Purchase Invoices', icon: '📦' }] : []),
       ],
     },
     {
       section: 'Master',
       items: [
-        { to: '/products', label: 'Products', icon: '🏷️' },
-        { to: '/inventory', label: 'Inventory', icon: '🗃️' },
-        { to: '/customers', label: 'Customers', icon: '👥' },
-        { to: '/suppliers', label: 'Suppliers', icon: '🏭' },
+        ...(can('products_view')   ? [{ to: '/products',  label: 'Products',   icon: '🏷️' }] : []),
+        ...(can('inventory_view')  ? [{ to: '/inventory', label: 'Inventory',  icon: '🗃️' }] : []),
+        ...(can('customers_view')  ? [{ to: '/customers', label: 'Customers',  icon: '👥' }] : []),
+        ...(can('suppliers_view')  ? [{ to: '/suppliers', label: 'Suppliers',  icon: '🏭' }] : []),
       ],
     },
     {
       section: 'Accounts',
       items: [
-        { to: '/customers', label: 'Customer Ledgers', icon: '📒' },
-        { to: '/suppliers', label: 'Supplier Ledgers', icon: '📗' },
+        ...(can('customers_view') ? [{ to: '/customers', label: 'Customer Ledgers', icon: '📒' }] : []),
+        ...(can('suppliers_view') ? [{ to: '/suppliers', label: 'Supplier Ledgers', icon: '📗' }] : []),
         { to: '/reminders', label: 'Reminders', icon: '🔔' },
       ],
     },
-    ...(isAdmin
-      ? [
-          {
-            section: 'Reports',
-            items: [
-              { to: '/reports/sales', label: 'Sales Report', icon: '📈' },
-              { to: '/reports/purchases', label: 'Purchase Report', icon: '📉' },
-              { to: '/reports/inventory', label: 'Inventory Report', icon: '📋' },
-              { to: '/reports/profit-loss', label: 'Profit & Loss', icon: '💰' },
-              { to: '/reports/vendor-sales', label: 'Vendor-wise Sales', icon: '🏭' },
-            ],
-          },
-          {
-            section: 'Config',
-            items: [
-              { to: '/settings', label: 'Settings', icon: '⚙️' },
-              { to: '/users', label: 'User Management', icon: '👤' },
-            ],
-          },
-        ]
+    ...(can('reports')
+      ? [{
+          section: 'Reports',
+          items: [
+            { to: '/reports/sales',        label: 'Sales Report',      icon: '📈' },
+            { to: '/reports/purchases',    label: 'Purchase Report',   icon: '📉' },
+            { to: '/reports/inventory',    label: 'Inventory Report',  icon: '📋' },
+            { to: '/reports/profit-loss',  label: 'Profit & Loss',     icon: '💰' },
+            { to: '/reports/vendor-sales', label: 'Vendor-wise Sales', icon: '🏭' },
+          ],
+        }]
       : []),
-  ];
+    ...((can('settings') || can('users_manage'))
+      ? [{
+          section: 'Config',
+          items: [
+            ...(can('settings')      ? [{ to: '/settings', label: 'Settings',         icon: '⚙️' }] : []),
+            ...(can('users_manage')  ? [{ to: '/users',    label: 'User Management',  icon: '👤' }] : []),
+          ],
+        }]
+      : []),
+  ].filter(s => s.items.length > 0);
 
   return (
     <aside className="fixed top-0 left-0 h-screen w-60 bg-gray-900 text-gray-300 flex flex-col z-40">

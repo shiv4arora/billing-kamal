@@ -48,7 +48,7 @@ function ProtectedRoute({ children }) {
 }
 
 function LayoutRoutes() {
-  const { isAdmin } = useAuth();
+  const { can } = useAuth();
   return (
     <ProtectedRoute>
       <MainLayout>
@@ -75,13 +75,13 @@ function LayoutRoutes() {
           <Route path="/purchases/:id/edit" element={<PurchaseInvoiceCreate />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/reminders" element={<Reminders />} />
-          {isAdmin && <Route path="/reports/sales" element={<SalesReport />} />}
-          {isAdmin && <Route path="/reports/purchases" element={<PurchasesReport />} />}
-          {isAdmin && <Route path="/reports/inventory" element={<InventoryReport />} />}
-          {isAdmin && <Route path="/reports/profit-loss" element={<ProfitLoss />} />}
-          {isAdmin && <Route path="/reports/vendor-sales" element={<VendorSalesReport />} />}
-          {isAdmin && <Route path="/settings" element={<Settings />} />}
-          {isAdmin && <Route path="/users" element={<UserManagement />} />}
+          {can('reports') && <Route path="/reports/sales" element={<SalesReport />} />}
+          {can('reports') && <Route path="/reports/purchases" element={<PurchasesReport />} />}
+          {can('reports') && <Route path="/reports/inventory" element={<InventoryReport />} />}
+          {can('reports') && <Route path="/reports/profit-loss" element={<ProfitLoss />} />}
+          {can('reports') && <Route path="/reports/vendor-sales" element={<VendorSalesReport />} />}
+          {can('settings') && <Route path="/settings" element={<Settings />} />}
+          {can('users_manage') && <Route path="/users" element={<UserManagement />} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </MainLayout>

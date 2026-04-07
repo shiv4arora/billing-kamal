@@ -45,7 +45,7 @@ function Barcode({ value, onReady }) {
 /* ─── One 34×20 mm label ────────────────────────────────────────────── */
 function StickerLabel({ product, supplier }) {
   const supplierCode = supplier
-    ? supplier.name.replace(/\s+/g, '').slice(0, 8).toUpperCase()
+    ? (supplier.code || supplier.name.replace(/\s+/g, '').slice(0, 8).toUpperCase())
     : '—';
 
   const qrValue = `CODE:${product.sku}|NAME:${product.name}|WS:${product.pricing?.wholesale || 0}|SH:${product.pricing?.shop || 0}|RT:${product.pricing?.retail || 0}|SUP:${supplierCode}`;
