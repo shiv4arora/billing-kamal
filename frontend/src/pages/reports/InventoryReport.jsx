@@ -10,19 +10,18 @@ export default function InventoryReport() {
 
   const stats = useMemo(() => {
     const totalValue = products.reduce((s, p) => s + (p.currentStock || 0) * (p.costPrice || 0), 0);
-    const totalRetailValue = products.reduce((s, p) => s + (p.currentStock || 0) * (p.pricing?.retail || 0), 0);
     const outOfStock = products.filter(p => (p.currentStock || 0) <= 0).length;
     const lowStock = products.filter(p => { const s = p.currentStock || 0; const t = p.lowStockThreshold ?? settings.lowStockThreshold; return s > 0 && s <= t; }).length;
-    return { totalValue, totalRetailValue, outOfStock, lowStock };
+    return { totalValue, outOfStock, lowStock };
   }, [products, settings]);
 
   const handleExport = () => exportToCSV('inventory_report.csv',
-    ['Product', 'SKU', 'Category', 'Unit', 'Stock', 'Cost Price', 'Retail Price', 'Stock Value (Cost)', 'Status'],
+    ['Product', 'SKU', 'Category', 'Unit', 'Stock', 'Cost Price', 'Stock Value (Cost)', 'Status'],
     products.map(p => {
       const stock = p.currentStock || 0;
       const thresh = p.lowStockThreshold ?? settings.lowStockThreshold;
       const status = stock <= 0 ? 'Out of Stock' : stock <= thresh ? 'Low Stock' : 'In Stock';
-      return [p.name, p.sku||'', p.category||'', p.unit, stock, p.costPrice||0, p.pricing?.retail||0, stock*(p.costPrice||0), status];
+      return [p.name, p.sku||'', p.category||'', p.unit, stock, p.costPrice||0, stock*(p.costPrice||0), status];
     })
   );
 
@@ -52,7 +51,7 @@ export default function InventoryReport() {
             <thead><tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
               <th className="px-4 py-3 text-left">Product</th><th className="px-4 py-3 text-left">Category</th>
               <th className="px-4 py-3 text-right">Stock</th><th className="px-4 py-3 text-right">Cost Price</th>
-              <th className="px-4 py-3 text-right">Retail Price</th><th className="px-4 py-3 text-right">Stock Value</th><th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3 text-right">Stock Value</th><th className="px-4 py-3">Status</th>
             </tr></thead>
             <tbody>
               {products.map(p => {
@@ -63,7 +62,6 @@ export default function InventoryReport() {
                     <td className="px-4 py-2">{p.category || '-'}</td>
                     <td className="px-4 py-2 text-right font-bold">{p.currentStock || 0} {p.unit}</td>
                     <td className="px-4 py-2 text-right">{formatCurrency(p.costPrice || 0)}</td>
-                    <td className="px-4 py-2 text-right">{formatCurrency(p.pricing?.retail || 0)}</td>
                     <td className="px-4 py-2 text-right font-medium">{formatCurrency((p.currentStock||0)*(p.costPrice||0))}</td>
                     <td className="px-4 py-2"><Badge color={s.color}>{s.label}</Badge></td>
                   </tr>

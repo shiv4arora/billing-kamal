@@ -5,7 +5,7 @@ import { useLedger } from '../../context/LedgerContext';
 import { Button, Table, Badge, SearchInput, ConfirmDialog, Card } from '../../components/ui';
 import { formatCurrency } from '../../utils/helpers';
 
-const typeColor = { wholesale: 'blue', shop: 'purple', retail: 'green' };
+const typeColor = { wholesale: 'blue', shop: 'purple' };
 
 export default function CustomerList() {
   const { active, remove } = useCustomers();
@@ -78,7 +78,6 @@ export default function CustomerList() {
 
   const wholesale = active.filter(c => c.type === 'wholesale').length;
   const shop = active.filter(c => c.type === 'shop').length;
-  const retail = active.filter(c => c.type === 'retail').length;
 
   return (
     <div className="space-y-5">
@@ -88,7 +87,7 @@ export default function CustomerList() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div className="bg-gray-50 rounded-xl p-4 text-center">
           <p className="text-2xl font-bold text-gray-900">{active.length}</p>
           <p className="text-xs text-gray-500 mt-0.5">Total Customers</p>
@@ -101,10 +100,6 @@ export default function CustomerList() {
           <p className="text-2xl font-bold text-purple-700">{shop}</p>
           <p className="text-xs text-purple-500 mt-0.5">Shop</p>
         </div>
-        <div className="bg-green-50 rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-green-700">{retail}</p>
-          <p className="text-xs text-green-500 mt-0.5">Retail</p>
-        </div>
       </div>
 
       <Card padding={false}>
@@ -114,7 +109,6 @@ export default function CustomerList() {
             <option value="all">All Types</option>
             <option value="wholesale">Wholesale</option>
             <option value="shop">Shop</option>
-            <option value="retail">Retail</option>
           </select>
         </div>
         <Table columns={columns} data={filtered} onRowClick={c => navigate(`/customers/${c.id}/ledger`)} emptyMsg="No customers found. Add your first customer!" />

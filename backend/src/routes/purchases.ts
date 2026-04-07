@@ -96,7 +96,7 @@ async function issuePurchase(invoiceId: string) {
             sku, name: item.productName, unit: item.unit || 'Pcs',
             gstRate: item.gstRate || 0, hsnCode: item.hsnCode || '',
             category: item.category || '',
-            pricing: JSON.stringify({ wholesale: item.pricing?.wholesale || 0, shop: item.pricing?.shop || item.unitPrice || 0 }),
+            pricing: JSON.stringify({ wholesale: item.pricing?.wholesale || 0, shop: item.pricing?.shop || 0 }),
             costPrice: item.unitPrice || 0,
             supplierId: existing.supplierId || null,
             currentStock: 0,
@@ -211,37 +211,22 @@ router.put('/:id', async (req, res, next) => {
         const out = { ...item };
 
         if (item.isNew && !item.productId) {
-          // Guard: product may already exist (old invoices stored isNew:true without productId)
-          const existing = item.productName
-            ? await tx.product.findFirst({ where: { name: item.productName } })
-            : null;
-
-          if (existing) {
-            out.productId = existing.id;
-            out.sku = existing.sku || '';
-            out.isNew = false;
-            const updateData: any = { costPrice: item.unitPrice };
-            if (item.pricing?.wholesale != null || item.pricing?.shop != null) {
-              updateData.pricing = JSON.stringify({ wholesale: item.pricing?.wholesale || 0, shop: item.pricing?.shop || 0 });
-            }
-            await tx.product.update({ where: { id: existing.id }, data: updateData });
-          } else {
-            const sku = String(await allocateSkuNumbers(1, tx));
-            const newProd = await tx.product.create({
-              data: {
-                sku, name: item.productName, unit: item.unit || 'Pcs',
-                gstRate: item.gstRate || 0, hsnCode: item.hsnCode || '',
-                category: item.category || '',
-                pricing: JSON.stringify({ wholesale: item.pricing?.wholesale || 0, shop: item.pricing?.shop || item.unitPrice || 0 }),
-                costPrice: item.unitPrice || 0,
-                supplierId: req.body.supplierId || null,
-                currentStock: 0,
-              },
-            });
-            out.productId = newProd.id;
-            out.sku = sku;
-            out.isNew = false;
-          }
+          // Always create a new product — never match by name (would return wrong/old SKU)
+          const sku = String(await allocateSkuNumbers(1, tx));
+          const newProd = await tx.product.create({
+            data: {
+              sku, name: item.productName, unit: item.unit || 'Pcs',
+              gstRate: item.gstRate || 0, hsnCode: item.hsnCode || '',
+              category: item.category || '',
+              pricing: JSON.stringify({ wholesale: item.pricing?.wholesale || 0, shop: item.pricing?.shop || item.unitPrice || 0 }),
+              costPrice: item.unitPrice || 0,
+              supplierId: req.body.supplierId || null,
+              currentStock: 0,
+            },
+          });
+          out.productId = newProd.id;
+          out.sku = sku;
+          out.isNew = false;
         } else if (!item.isNew && item.productId) {
           const updateData: any = { costPrice: item.unitPrice };
           if (item.pricing?.wholesale != null || item.pricing?.shop != null) {

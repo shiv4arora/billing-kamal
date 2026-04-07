@@ -7,7 +7,7 @@ const BLANK = {
   name: '', place: '', phone: '', contactPerson: '', email: '',
   address: '', gstin: '', isActive: true,
   discount: 0,                                    // % discount supplier gives us on their invoice
-  margin: { wholesale: 0, shop: 0, retail: 0 },  // % markup over cost → selling price
+  margin: { wholesale: 0, shop: 0 },  // % markup over cost → selling price
 };
 
 export default function SupplierForm() {
@@ -40,7 +40,7 @@ export default function SupplierForm() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validate()) return;
-    const data = { ...form, discount: +form.discount || 0, margin: { wholesale: +form.margin.wholesale || 0, shop: +form.margin.shop || 0, retail: +form.margin.retail || 0 } };
+    const data = { ...form, discount: +form.discount || 0, margin: { wholesale: +form.margin.wholesale || 0, shop: +form.margin.shop || 0 } };
     if (isEdit) update(id, data); else add(data);
     navigate('/suppliers');
   };
@@ -51,7 +51,6 @@ export default function SupplierForm() {
   const ex = {
     wholesale: +(exCost * (1 + (+form.margin.wholesale || 0) / 100)).toFixed(2),
     shop: +(exCost * (1 + (+form.margin.shop || 0) / 100)).toFixed(2),
-    retail: +(exCost * (1 + (+form.margin.retail || 0) / 100)).toFixed(2),
   };
 
   return (
@@ -93,11 +92,10 @@ export default function SupplierForm() {
           </div>
 
           {/* Margin tiers */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {[
               { tier: 'wholesale', label: 'Wholesale Margin', color: 'blue' },
               { tier: 'shop',      label: 'Shop Margin',      color: 'purple' },
-              { tier: 'retail',    label: 'Retail Margin',    color: 'green' },
             ].map(({ tier, label, color }) => (
               <div key={tier} className={`bg-${color}-50 border border-${color}-100 rounded-xl p-3`}>
                 <p className={`text-xs font-bold text-${color}-600 uppercase tracking-wide mb-2`}>{label}</p>
@@ -121,11 +119,10 @@ export default function SupplierForm() {
               Preview — if purchase cost = ₹{exampleCost}
               {+form.discount > 0 && ` (after ${form.discount}% discount = ₹${exCost.toFixed(2)})`}:
             </p>
-            <div className="grid grid-cols-3 gap-2 text-sm">
+            <div className="grid grid-cols-2 gap-2 text-sm">
               {[
                 { label: 'Wholesale', val: ex.wholesale, color: 'text-blue-700' },
                 { label: 'Shop',      val: ex.shop,      color: 'text-purple-700' },
-                { label: 'Retail',    val: ex.retail,    color: 'text-green-700' },
               ].map(r => (
                 <div key={r.label} className="text-center">
                   <p className="text-xs text-gray-400">{r.label}</p>

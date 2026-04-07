@@ -16,7 +16,6 @@ function calcSellingPrices(cost, supplierMargin = {}, supplierDiscount = 0) {
   return {
     wholesale: +(netCost * (1 + (supplierMargin.wholesale || 0) / 100)).toFixed(2),
     shop:      +(netCost * (1 + (supplierMargin.shop      || 0) / 100)).toFixed(2),
-    retail:    +(netCost * (1 + (supplierMargin.retail    || 0) / 100)).toFixed(2),
   };
 }
 
@@ -32,7 +31,7 @@ const BLANK_ITEM = {
   gstRate: 5,
   quantity: 1,
   unitPrice: 0,         // purchase cost
-  pricing: { wholesale: 0, shop: 0, retail: 0 },
+  pricing: { wholesale: 0, shop: 0 },
 };
 
 /* ─── Inline item card ───────────────────────────────────────────────── */
@@ -187,11 +186,10 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, allocateS
               </p>
             )}
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {[
               { tier: 'wholesale', label: 'Wholesale', color: 'blue',   margin: supplier?.margin?.wholesale },
               { tier: 'shop',      label: 'Shop',      color: 'purple', margin: supplier?.margin?.shop },
-              { tier: 'retail',    label: 'Retail',    color: 'green',  margin: supplier?.margin?.retail },
             ].map(({ tier, label, color, margin }) => (
               <div key={tier} className={`bg-${color}-50 border border-${color}-100 rounded-xl p-2.5`}>
                 <div className="flex items-center justify-between mb-1">
@@ -421,7 +419,7 @@ export default function PurchaseInvoiceCreate() {
           name: item.productName, sku: finalSku, category: item.category,
           unit: item.unit, hsnCode: item.hsnCode, gstRate: item.gstRate,
           costPrice: item.unitPrice,
-          pricing: { wholesale: item.pricing.wholesale, shop: item.pricing.shop, retail: item.pricing.retail },
+          pricing: { wholesale: item.pricing.wholesale, shop: item.pricing.shop },
           supplierId, currentStock: 0, lowStockThreshold: 10, isActive: true,
         });
         productId = newProd.id;
@@ -431,7 +429,7 @@ export default function PurchaseInvoiceCreate() {
         // Update existing product's cost + selling prices
         updateProduct(item.productId, {
           costPrice: item.unitPrice,
-          pricing: { wholesale: item.pricing.wholesale, shop: item.pricing.shop, retail: item.pricing.retail },
+          pricing: { wholesale: item.pricing.wholesale, shop: item.pricing.shop },
         });
       }
       resolvedItems.push({ ...item, productId, productName: item.productName });
@@ -485,11 +483,10 @@ export default function PurchaseInvoiceCreate() {
               <div className="mt-3 p-3 bg-green-50 rounded-xl text-sm space-y-1">
                 <p className="font-semibold text-green-800">{supplier.name}</p>
                 <p className="text-green-600 text-xs">{supplier.phone}{supplier.place ? ` · ${supplier.place}` : ''}</p>
-                {(supplier.margin?.wholesale || supplier.margin?.shop || supplier.margin?.retail) ? (
+                {(supplier.margin?.wholesale || supplier.margin?.shop) ? (
                   <div className="flex gap-3 pt-1 text-xs font-medium">
                     <span className="text-blue-600">W: {supplier.margin.wholesale || 0}%</span>
                     <span className="text-purple-600">S: {supplier.margin.shop || 0}%</span>
-                    <span className="text-green-600">R: {supplier.margin.retail || 0}%</span>
                     {supplier.discount > 0 && <span className="text-gray-500">· {supplier.discount}% disc</span>}
                   </div>
                 ) : (

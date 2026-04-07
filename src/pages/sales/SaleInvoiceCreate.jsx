@@ -23,7 +23,7 @@ export default function SaleInvoiceCreate() {
   const isEdit = !!id;
 
   const [customerId, setCustomerId] = useState('');
-  const [customerType, setCustomerType] = useState('retail');
+  const [customerType, setCustomerType] = useState('shop');
   const [date, setDate] = useState(today());
   const [dueDate, setDueDate] = useState('');
   const [items, setItems] = useState([{ ...BLANK_ITEM }]);
@@ -41,7 +41,7 @@ export default function SaleInvoiceCreate() {
       const inv = getSaleInvoice(id);
       if (inv) {
         setCustomerId(inv.customerId || '');
-        setCustomerType(inv.customerType || 'retail');
+        setCustomerType(inv.customerType || 'shop');
         setDate(inv.date);
         setDueDate(inv.dueDate || '');
         setItems(inv.items || [{ ...BLANK_ITEM }]);
@@ -236,7 +236,7 @@ export default function SaleInvoiceCreate() {
                                   <p className="font-medium text-gray-800 text-sm truncate">{p.name}</p>
                                   <span className="shrink-0 text-xs font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded font-mono">#{p.sku}</span>
                                 </div>
-                                <p className="text-xs text-gray-400 mt-0.5">W:{formatCurrency(p.pricing?.wholesale||0)} · S:{formatCurrency(p.pricing?.shop||0)} · R:{formatCurrency(p.pricing?.retail||0)} · Stock:{p.currentStock||0}</p>
+                                <p className="text-xs text-gray-400 mt-0.5">W:{formatCurrency(p.pricing?.wholesale||0)} · S:{formatCurrency(p.pricing?.shop||0)} · Stock:{p.currentStock||0}</p>
                               </div>
                             ))}
                           </div>

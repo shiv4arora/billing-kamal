@@ -44,7 +44,7 @@ export default function Dashboard() {
     });
 
     // Customer type breakdown
-    const typeData = ['wholesale', 'shop', 'retail'].map(type => ({
+    const typeData = ['wholesale', 'shop'].map(type => ({
       name: type.charAt(0).toUpperCase() + type.slice(1),
       value: saleInvoices.filter(i => i.customerType === type && i.status !== 'void').reduce((s, i) => s + (i.grandTotal || 0), 0),
     })).filter(d => d.value > 0);

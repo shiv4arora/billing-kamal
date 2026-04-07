@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useCustomers } from '../../context/CustomerContext';
 import { Button, Input, Select, Textarea, Card } from '../../components/ui';
 
-const BLANK = { name: '', place: '', phone: '', type: 'retail', email: '', address: '', gstin: '', creditLimit: '', isActive: true };
+const BLANK = { name: '', place: '', phone: '', type: 'shop', email: '', address: '', gstin: '', creditLimit: '', isActive: true };
 
 export default function CustomerForm() {
   const { id } = useParams();
@@ -59,7 +59,6 @@ export default function CustomerForm() {
             <Select label="Customer Type" value={form.type} onChange={e => set('type', e.target.value)} className="col-span-2">
               <option value="wholesale">Wholesale (H)</option>
               <option value="shop">Shop (S)</option>
-              <option value="retail">Retail (E)</option>
             </Select>
             <Input label="Email" type="email" value={form.email} onChange={e => set('email', e.target.value)} />
             <Input label="Credit Limit (₹)" type="number" value={form.creditLimit} onChange={e => set('creditLimit', e.target.value)} />

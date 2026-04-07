@@ -491,11 +491,10 @@ export default function PurchaseInvoiceCreate() {
               <div className="mt-3 p-3 bg-green-50 rounded-xl text-sm space-y-1">
                 <p className="font-semibold text-green-800">{supplier.name}</p>
                 <p className="text-green-600 text-xs">{supplier.phone}{supplier.place ? ` · ${supplier.place}` : ''}</p>
-                {(supplier.margin?.wholesale || supplier.margin?.shop || supplier.margin?.retail) ? (
+                {(supplier.margin?.wholesale || supplier.margin?.shop) ? (
                   <div className="flex gap-3 pt-1 text-xs font-medium">
                     <span className="text-blue-600">W: {supplier.margin.wholesale || 0}%</span>
                     <span className="text-purple-600">S: {supplier.margin.shop || 0}%</span>
-                    <span className="text-green-600">R: {supplier.margin.retail || 0}%</span>
                     {supplier.discount > 0 && <span className="text-gray-500">· {supplier.discount}% disc</span>}
                   </div>
                 ) : (

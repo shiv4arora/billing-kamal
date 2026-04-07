@@ -8,7 +8,7 @@ import { GST_RATES, UNITS } from '../../constants';
 
 const BLANK = {
   name: '', sku: '', category: '', unit: 'Pcs', description: '',
-  pricing: { wholesale: '', shop: '', retail: '' },
+  pricing: { wholesale: '', shop: '' },
   costPrice: '', gstRate: 0, hsnCode: '', supplierId: '',
   currentStock: 0, lowStockThreshold: 10, isActive: true,
 };
@@ -26,7 +26,7 @@ export default function ProductForm() {
   useEffect(() => {
     if (isEdit) {
       const p = get(id);
-      if (p) setForm({ ...BLANK, ...p, pricing: { wholesale: p.pricing?.wholesale ?? '', shop: p.pricing?.shop ?? '', retail: p.pricing?.retail ?? '' } });
+      if (p) setForm({ ...BLANK, ...p, pricing: { wholesale: p.pricing?.wholesale ?? '', shop: p.pricing?.shop ?? '' } });
     } else {
       // Pre-fill with the upcoming sequential code (preview only — officially bumped on submit)
       setForm(f => ({ ...f, sku: String(settings.nextSkuNo || 1001) }));
@@ -39,7 +39,6 @@ export default function ProductForm() {
   const validate = () => {
     const e = {};
     if (!form.name.trim()) e.name = 'Name is required';
-    if (!form.pricing.retail) e.retailPrice = 'Retail price is required';
     if (!form.sku.trim()) e.sku = 'Item code is required';
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -50,7 +49,7 @@ export default function ProductForm() {
     if (!validate()) return;
     const data = {
       ...form,
-      pricing: { wholesale: +form.pricing.wholesale || 0, shop: +form.pricing.shop || 0, retail: +form.pricing.retail || 0 },
+      pricing: { wholesale: +form.pricing.wholesale || 0, shop: +form.pricing.shop || 0 },
       costPrice: +form.costPrice || 0,
       gstRate: +form.gstRate,
       currentStock: +form.currentStock || 0,
@@ -122,9 +121,9 @@ export default function ProductForm() {
         </Card>
 
         <Card>
-          <h3 className="font-semibold text-gray-800 mb-1">Pricing (3 Tiers)</h3>
-          <p className="text-sm text-gray-500 mb-4">Set different prices for wholesale, shop, and retail customers</p>
-          <div className="grid grid-cols-3 gap-4">
+          <h3 className="font-semibold text-gray-800 mb-1">Pricing (2 Tiers)</h3>
+          <p className="text-sm text-gray-500 mb-4">Set different prices for wholesale and shop customers</p>
+          <div className="grid grid-cols-2 gap-4">
             <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
               <p className="text-xs font-bold text-blue-600 uppercase tracking-wide mb-2">Wholesale</p>
               <input type="number" min="0" step="0.01" value={form.pricing.wholesale} onChange={e => setPrice('wholesale', e.target.value)} placeholder="0.00"
@@ -134,12 +133,6 @@ export default function ProductForm() {
               <p className="text-xs font-bold text-purple-600 uppercase tracking-wide mb-2">Shop</p>
               <input type="number" min="0" step="0.01" value={form.pricing.shop} onChange={e => setPrice('shop', e.target.value)} placeholder="0.00"
                 className="w-full bg-white border border-purple-200 rounded-lg px-3 py-2 text-sm text-right font-semibold focus:outline-none focus:ring-2 focus:ring-purple-400" />
-            </div>
-            <div className="bg-green-50 border border-green-100 rounded-xl p-3">
-              <p className="text-xs font-bold text-green-600 uppercase tracking-wide mb-2">Retail *</p>
-              <input type="number" min="0" step="0.01" value={form.pricing.retail} onChange={e => setPrice('retail', e.target.value)} placeholder="0.00"
-                className={`w-full bg-white border rounded-lg px-3 py-2 text-sm text-right font-semibold focus:outline-none focus:ring-2 focus:ring-green-400 ${errors.retailPrice ? 'border-red-400' : 'border-green-200'}`} />
-              {errors.retailPrice && <p className="text-xs text-red-500 mt-1">{errors.retailPrice}</p>}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4 mt-4">

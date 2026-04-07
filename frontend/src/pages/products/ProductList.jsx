@@ -28,7 +28,6 @@ export default function ProductList() {
     { header: 'Category', key: 'category' },
     { header: 'Wholesale', align: 'right', render: p => formatCurrency(p.pricing?.wholesale || 0) },
     { header: 'Shop', align: 'right', render: p => formatCurrency(p.pricing?.shop || 0) },
-    { header: 'Retail', align: 'right', render: p => formatCurrency(p.pricing?.retail || 0) },
     {
       header: 'Stock', align: 'right', render: p => (
         <span className={`font-medium ${(p.currentStock || 0) <= (p.lowStockThreshold || 10) ? 'text-red-600' : 'text-gray-700'}`}>
