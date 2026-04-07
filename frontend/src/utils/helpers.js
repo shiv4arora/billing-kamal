@@ -75,11 +75,11 @@ export function buildInvoiceTotals(items, isInterState = false) {
 }
 
 export function getPrice(product, customerType) {
-  return product?.pricing?.[customerType] ?? product?.pricing?.retail ?? 0;
+  return product?.pricing?.[customerType] ?? product?.pricing?.shop ?? 0;
 }
 
-/** Abbreviation code shown after customer name: Wholesale→H, Shop→S, Retail→E */
-export const TYPE_CODE = { wholesale: 'H', shop: 'S', retail: 'E' };
+/** Abbreviation code shown after customer name: Wholesale→H, Shop→S */
+export const TYPE_CODE = { wholesale: 'H', shop: 'S' };
 
 /**
  * Returns display label in format "Name Place (TypeCode)"

@@ -8,7 +8,7 @@ import { api } from '../../hooks/useApi';
 
 const BLANK = {
   name: '', category: '', unit: 'Pcs', description: '',
-  pricing: { wholesale: '', shop: '', retail: '' },
+  pricing: { wholesale: '', shop: '' },
   costPrice: '', gstRate: 0, hsnCode: '', supplierId: '',
   currentStock: 0, lowStockThreshold: 10, isActive: true,
 };
@@ -22,7 +22,6 @@ function calcPrices(cost, supplier) {
   return {
     wholesale: +((netCost * (1 + (margin.wholesale || 0) / 100)).toFixed(2)),
     shop:      +((netCost * (1 + (margin.shop      || 0) / 100)).toFixed(2)),
-    retail:    +((netCost * (1 + (margin.retail    || 0) / 100)).toFixed(2)),
   };
 }
 
@@ -41,7 +40,7 @@ export default function ProductForm() {
       const p = get(id);
       if (p) setForm({
         ...BLANK, ...p,
-        pricing: { wholesale: p.pricing?.wholesale ?? '', shop: p.pricing?.shop ?? '', retail: p.pricing?.retail ?? '' },
+        pricing: { wholesale: p.pricing?.wholesale ?? '', shop: p.pricing?.shop ?? '' },
       });
     } else {
       api('/counters').then(d => setPreviewSku(d.sku ?? 1001)).catch(() => setPreviewSku(1001));
@@ -55,12 +54,11 @@ export default function ProductForm() {
   const handleCostChange = (value) => {
     set('costPrice', value);
     const supplier = suppliers.find(s => s.id === form.supplierId);
-    if (supplier && (supplier.margin?.wholesale || supplier.margin?.shop || supplier.margin?.retail)) {
+    if (supplier && (supplier.margin?.wholesale || supplier.margin?.shop)) {
       const prices = calcPrices(value, supplier);
       setForm(f => ({ ...f, costPrice: value, pricing: {
         wholesale: prices.wholesale || f.pricing.wholesale,
         shop:      prices.shop      || f.pricing.shop,
-        retail:    prices.retail    || f.pricing.retail,
       }}));
     }
   };
@@ -74,7 +72,6 @@ export default function ProductForm() {
       setForm(f => ({ ...f, supplierId: sid, pricing: {
         wholesale: prices.wholesale || f.pricing.wholesale,
         shop:      prices.shop      || f.pricing.shop,
-        retail:    prices.retail    || f.pricing.retail,
       }}));
     }
   };
@@ -82,7 +79,7 @@ export default function ProductForm() {
   const validate = () => {
     const e = {};
     if (!form.name.trim()) e.name = 'Name is required';
-    if (!form.pricing.retail) e.retailPrice = 'Retail price is required';
+    if (!form.pricing.shop) e.shopPrice = 'Shop price is required';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -92,7 +89,7 @@ export default function ProductForm() {
     if (!validate()) return;
     const data = {
       ...form,
-      pricing: { wholesale: +form.pricing.wholesale || 0, shop: +form.pricing.shop || 0, retail: +form.pricing.retail || 0 },
+      pricing: { wholesale: +form.pricing.wholesale || 0, shop: +form.pricing.shop || 0 },
       costPrice: +form.costPrice || 0,
       gstRate: +form.gstRate,
       currentStock: +form.currentStock || 0,
@@ -154,7 +151,7 @@ export default function ProductForm() {
         </Card>
 
         <Card>
-          <h3 className="font-semibold text-gray-800 mb-1">Pricing (3 Tiers)</h3>
+          <h3 className="font-semibold text-gray-800 mb-1">Pricing</h3>
           <p className="text-sm text-gray-500 mb-4">
             Enter cost price first — if a supplier with margins is selected, selling prices auto-fill.
           </p>
@@ -170,7 +167,7 @@ export default function ProductForm() {
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
               <p className="text-xs font-bold text-blue-600 uppercase tracking-wide mb-2">Wholesale</p>
               <input type="number" min="0" step="0.01" value={form.pricing.wholesale}
@@ -178,17 +175,11 @@ export default function ProductForm() {
                 className="w-full bg-white border border-blue-200 rounded-lg px-3 py-2 text-sm text-right font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400" />
             </div>
             <div className="bg-purple-50 border border-purple-100 rounded-xl p-3">
-              <p className="text-xs font-bold text-purple-600 uppercase tracking-wide mb-2">Shop</p>
+              <p className="text-xs font-bold text-purple-600 uppercase tracking-wide mb-2">Shop *</p>
               <input type="number" min="0" step="0.01" value={form.pricing.shop}
                 onChange={e => setPrice('shop', e.target.value)} placeholder="0.00"
-                className="w-full bg-white border border-purple-200 rounded-lg px-3 py-2 text-sm text-right font-semibold focus:outline-none focus:ring-2 focus:ring-purple-400" />
-            </div>
-            <div className="bg-green-50 border border-green-100 rounded-xl p-3">
-              <p className="text-xs font-bold text-green-600 uppercase tracking-wide mb-2">Retail *</p>
-              <input type="number" min="0" step="0.01" value={form.pricing.retail}
-                onChange={e => setPrice('retail', e.target.value)} placeholder="0.00"
-                className={`w-full bg-white border rounded-lg px-3 py-2 text-sm text-right font-semibold focus:outline-none focus:ring-2 focus:ring-green-400 ${errors.retailPrice ? 'border-red-400' : 'border-green-200'}`} />
-              {errors.retailPrice && <p className="text-xs text-red-500 mt-1">{errors.retailPrice}</p>}
+                className={`w-full bg-white border rounded-lg px-3 py-2 text-sm text-right font-semibold focus:outline-none focus:ring-2 focus:ring-purple-400 ${errors.shopPrice ? 'border-red-400' : 'border-purple-200'}`} />
+              {errors.shopPrice && <p className="text-xs text-red-500 mt-1">{errors.shopPrice}</p>}
             </div>
           </div>
 

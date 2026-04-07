@@ -17,7 +17,6 @@ function calcSellingPrices(cost, supplierMargin = {}, supplierDiscount = 0) {
   return {
     wholesale: +(netCost * (1 + (supplierMargin.wholesale || 0) / 100)).toFixed(2),
     shop:      +(netCost * (1 + (supplierMargin.shop      || 0) / 100)).toFixed(2),
-    retail:    +(netCost * (1 + (supplierMargin.retail    || 0) / 100)).toFixed(2),
   };
 }
 
@@ -33,7 +32,7 @@ const BLANK_ITEM = {
   gstRate: 0,
   quantity: 1,
   unitPrice: 0,         // purchase cost
-  pricing: { wholesale: 0, shop: 0, retail: 0 },
+  pricing: { wholesale: 0, shop: 0 },
 };
 
 /* ─── Inline item card ───────────────────────────────────────────────── */
@@ -184,11 +183,10 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
               </p>
             )}
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {[
               { tier: 'wholesale', label: 'Wholesale', color: 'blue',   margin: supplier?.margin?.wholesale },
               { tier: 'shop',      label: 'Shop',      color: 'purple', margin: supplier?.margin?.shop },
-              { tier: 'retail',    label: 'Retail',    color: 'green',  margin: supplier?.margin?.retail },
             ].map(({ tier, label, color, margin }) => (
               <div key={tier} className={`bg-${color}-50 border border-${color}-100 rounded-xl p-2.5`}>
                 <div className="flex items-center justify-between mb-1">

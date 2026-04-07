@@ -48,7 +48,7 @@ function StickerLabel({ product, supplier }) {
     ? (supplier.code || supplier.name.replace(/\s+/g, '').slice(0, 8).toUpperCase())
     : '—';
 
-  const qrValue = `CODE:${product.sku}|NAME:${product.name}|WS:${product.pricing?.wholesale || 0}|SH:${product.pricing?.shop || 0}|RT:${product.pricing?.retail || 0}|SUP:${supplierCode}`;
+  const qrValue = `CODE:${product.sku}|NAME:${product.name}|WS:${product.pricing?.wholesale || 0}|SH:${product.pricing?.shop || 0}|SUP:${supplierCode}`;
 
   return (
     /*
@@ -93,7 +93,6 @@ function StickerLabel({ product, supplier }) {
             {[
               { label: 'W', value: product.pricing?.wholesale, color: '#1d4ed8' },
               { label: 'S', value: product.pricing?.shop,      color: '#7e22ce' },
-              { label: 'R', value: product.pricing?.retail,    color: '#15803d' },
             ].map(({ label, value, color }) => (
               <div key={label} style={{ display: 'flex', alignItems: 'baseline', gap: '0.3mm' }}>
                 <span style={{ fontSize: '3.5pt', fontWeight: 'bold', color, lineHeight: 1 }}>{label}:</span>
