@@ -166,7 +166,61 @@ router.post('/', async (req, res, next) => {
 
 router.put('/:id', async (req, res, next) => {
   try {
-    const inv = await prisma.purchaseInvoice.update({ where: { id: req.params.id }, data: pickPurchaseData(req.body) });
+    const rawItems = parseItems(req.body.items);
+
+    // Process items: create new products, update existing product prices
+    const processedItems = await prisma.$transaction(async (tx) => {
+      const result = [];
+      for (const item of rawItems) {
+        const out = { ...item };
+
+        if (item.isNew && !item.productId) {
+          // Create new product with auto SKU
+          const sku = String(await allocateSkuNumbers(1, tx));
+          const newProd = await tx.product.create({
+            data: {
+              sku,
+              name: item.productName,
+              unit: item.unit || 'Pcs',
+              gstRate: item.gstRate || 0,
+              hsnCode: item.hsnCode || '',
+              category: item.category || '',
+              pricing: JSON.stringify({
+                wholesale: item.pricing?.wholesale || 0,
+                shop: item.pricing?.shop || item.unitPrice || 0,
+              }),
+              costPrice: item.unitPrice || 0,
+              supplierId: req.body.supplierId || null,
+              currentStock: 0,
+            },
+          });
+          out.productId = newProd.id;
+          out.sku = sku;
+          out.isNew = false;
+        } else if (!item.isNew && item.productId) {
+          // Update existing product cost price and selling prices
+          const updateData: any = { costPrice: item.unitPrice };
+          if (item.pricing?.wholesale != null || item.pricing?.shop != null) {
+            updateData.pricing = JSON.stringify({
+              wholesale: item.pricing?.wholesale || 0,
+              shop: item.pricing?.shop || 0,
+            });
+          }
+          await tx.product.update({ where: { id: item.productId }, data: updateData });
+        }
+
+        result.push(out);
+      }
+      return result;
+    });
+
+    // Save invoice with processed items (new products now have productId + sku)
+    const body = { ...req.body, items: processedItems };
+    const inv = await prisma.purchaseInvoice.update({
+      where: { id: req.params.id },
+      data: pickPurchaseData(body),
+    });
+
     res.json(inv);
   } catch (err) { next(err); }
 });

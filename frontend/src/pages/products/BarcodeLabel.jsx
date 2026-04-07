@@ -10,61 +10,63 @@ function StickerLabel({ product, supplier }) {
     ? (supplier.code || supplier.name.replace(/\s+/g, '').slice(0, 4).toUpperCase())
     : '';
 
-  const wCoded = Math.round((product.pricing?.wholesale || 0) * 2);
-  const sPrice = Math.round(product.pricing?.shop || 0);
-  const wCode  = `D.No.${wCoded}`;
+  const wCoded  = Math.round((product.pricing?.wholesale || 0) * 2);
+  const sPrice  = Math.round(product.pricing?.shop || 0);
+  const wCode   = `D.No.${wCoded}`;
+  const sCode   = `P. ${sPrice}`;
   const qrValue = String(product.sku || product.id);
 
   return (
     <div
       className="label-sticker"
       style={{
-        width: '34mm',
-        height: '20mm',
-        boxSizing: 'border-box',
-        border: '0.3mm solid #bbb',
-        display: 'flex',
-        flexDirection: 'row',       // LEFT text | RIGHT qr — side by side
-        overflow: 'hidden',
+        width:           '34mm',
+        height:          '20mm',
+        boxSizing:       'border-box',
+        border:          '0.3mm solid #bbb',
+        display:         'flex',
+        flexDirection:   'row',
+        overflow:        'hidden',
         backgroundColor: '#fff',
-        fontFamily: 'Arial, sans-serif',
-        padding: '0.3mm 0.4mm 0.3mm 0.3mm',
-        gap: '0.4mm',
+        fontFamily:      'Arial, sans-serif',
+        padding:         '0.5mm 0.5mm 0.5mm 0.7mm',
+        gap:             '0.5mm',
       }}
     >
       {/* ── LEFT: all text content ── */}
       <div style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
+        flex:           1,
+        display:        'flex',
+        flexDirection:  'column',
         justifyContent: 'space-between',
-        overflow: 'hidden',
-        minWidth: 0,
+        overflow:       'hidden',
+        minWidth:       0,
       }}>
+
         {/* Product name */}
         <p style={{
-          margin: 0,
-          fontSize: '5pt',
-          fontWeight: 'bold',
-          lineHeight: 1.15,
-          color: '#111',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
+          margin:       0,
+          fontSize:     '5.5pt',
+          fontWeight:   'bold',
+          lineHeight:   1.15,
+          color:        '#111',
+          whiteSpace:   'nowrap',
+          overflow:     'hidden',
           textOverflow: 'ellipsis',
         }}>
           {product.name}
         </p>
 
-        {/* SKU + Supplier — bigger now */}
+        {/* SKU · Supplier */}
         <p style={{
-          margin: 0,
-          fontSize: '5pt',
-          fontWeight: 'bold',
-          lineHeight: 1.2,
-          color: '#333',
-          fontFamily: 'monospace',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
+          margin:       0,
+          fontSize:     '4.5pt',
+          fontWeight:   '600',
+          lineHeight:   1.2,
+          color:        '#555',
+          fontFamily:   'monospace',
+          whiteSpace:   'nowrap',
+          overflow:     'hidden',
           textOverflow: 'ellipsis',
         }}>
           {product.sku || '—'}{supplierCode ? `  ·  ${supplierCode}` : ''}
@@ -73,13 +75,20 @@ function StickerLabel({ product, supplier }) {
         {/* W code */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8mm' }}>
           <span style={{
-            fontSize: '4.5pt', fontWeight: 'bold', color: '#fff',
-            background: '#1d4ed8', borderRadius: '0.4mm',
-            padding: '0.15mm 0.7mm', lineHeight: 1.4, flexShrink: 0,
+            fontSize:     '4pt',
+            fontWeight:   'bold',
+            color:        '#fff',
+            background:   '#1d4ed8',
+            borderRadius: '0.4mm',
+            padding:      '0.15mm 0.7mm',
+            lineHeight:   1.5,
+            flexShrink:   0,
           }}>W</span>
           <span style={{
-            fontSize: '9pt', fontWeight: 'bold', color: '#1d4ed8',
-            fontFamily: 'Arial, sans-serif', lineHeight: 1,
+            fontSize:   '8.5pt',
+            fontWeight: 'bold',
+            color:      '#1d4ed8',
+            lineHeight: 1,
           }}>
             {wCode}
           </span>
@@ -88,33 +97,52 @@ function StickerLabel({ product, supplier }) {
         {/* S rate */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8mm' }}>
           <span style={{
-            fontSize: '4.5pt', fontWeight: 'bold', color: '#fff',
-            background: '#7e22ce', borderRadius: '0.4mm',
-            padding: '0.15mm 0.7mm', lineHeight: 1.4, flexShrink: 0,
+            fontSize:     '4pt',
+            fontWeight:   'bold',
+            color:        '#fff',
+            background:   '#7e22ce',
+            borderRadius: '0.4mm',
+            padding:      '0.15mm 0.7mm',
+            lineHeight:   1.5,
+            flexShrink:   0,
           }}>S</span>
           <span style={{
-            fontSize: '9pt', fontWeight: 'bold', color: '#7e22ce',
-            fontFamily: 'Arial, sans-serif', lineHeight: 1,
+            fontSize:   '8.5pt',
+            fontWeight: 'bold',
+            color:      '#7e22ce',
+            lineHeight: 1,
           }}>
-            {sPrice}
+            {sCode}
           </span>
         </div>
       </div>
 
       {/* ── RIGHT: QR code (SKU only) ── */}
       <div style={{
-        flexShrink: 0,
-        width: '11mm',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
+        flexShrink:     0,
+        width:          '12.5mm',
+        display:        'flex',
+        flexDirection:  'column',
+        alignItems:     'center',
         justifyContent: 'center',
-        gap: '0.3mm',
+        gap:            '0.4mm',
       }}>
-        <QRCode value={qrValue} size={160} style={{ width: '10.5mm', height: '10.5mm' }} />
+        <QRCode
+          value={qrValue}
+          size={256}
+          style={{ width: '12mm', height: '12mm', display: 'block' }}
+        />
         <span style={{
-          fontSize: '3.5pt', color: '#666', fontFamily: 'monospace',
-          lineHeight: 1, textAlign: 'center',
+          fontSize:     '3.5pt',
+          color:        '#555',
+          fontFamily:   'monospace',
+          lineHeight:   1,
+          textAlign:    'center',
+          maxWidth:     '12mm',
+          overflow:     'hidden',
+          whiteSpace:   'nowrap',
+          textOverflow: 'ellipsis',
+          display:      'block',
         }}>
           {product.sku}
         </span>
@@ -139,9 +167,9 @@ export default function BarcodeLabel() {
     );
   }
 
-  const supplier    = suppliers.find(s => s.id === product.supplierId);
-  const wCoded      = Math.round((product.pricing?.wholesale || 0) * 2);
-  const sPrice      = Math.round(product.pricing?.shop || 0);
+  const supplier     = suppliers.find(s => s.id === product.supplierId);
+  const wCoded       = Math.round((product.pricing?.wholesale || 0) * 2);
+  const sPrice       = Math.round(product.pricing?.shop || 0);
   const supplierCode = supplier
     ? (supplier.code || supplier.name.replace(/\s+/g, '').slice(0, 4).toUpperCase())
     : '—';
@@ -149,8 +177,20 @@ export default function BarcodeLabel() {
   return (
     <>
       <style>{`
+        @page {
+          size: 102mm auto;
+          margin: 0;
+        }
         @media print {
-          html, body { margin: 0; padding: 0; background: white; }
+          html, body {
+            margin: 0;
+            padding: 0;
+            background: white !important;
+            color: black !important;
+            color-scheme: light !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
           .no-print { display: none !important; }
           .label-sheet {
             display: flex !important;
@@ -158,17 +198,18 @@ export default function BarcodeLabel() {
             gap: 0;
             padding: 0;
             margin: 0;
+            width: 102mm;
           }
           .label-preview-scale { transform: none !important; }
           .label-sticker {
             page-break-inside: avoid;
             break-inside: avoid;
-            border: 0.3mm dashed #bbb !important;
+            border: 0.3mm dashed #aaa !important;
           }
         }
         @media screen {
           .label-preview-scale {
-            transform: scale(3.8);
+            transform: scale(3.6);
             transform-origin: top left;
           }
         }
@@ -197,20 +238,20 @@ export default function BarcodeLabel() {
 
       {/* ── Info bar ── */}
       <div className="no-print bg-blue-50 border-b border-blue-100 px-6 py-2 text-xs text-blue-700 flex gap-6 flex-wrap items-center">
-        <span>34mm × 20mm · 2 per row · 3 rows per sheet</span>
+        <span>34mm × 20mm · <strong>3 per row</strong> on 102mm sheet</span>
         <span className="font-mono font-bold text-blue-800">W → D.No.{wCoded}</span>
-        <span className="font-mono font-bold text-purple-800">S → {sPrice}</span>
+        <span className="font-mono font-bold text-purple-800">S → P. {sPrice}</span>
         <span>Supplier: <strong>{supplierCode}</strong></span>
         <span>QR = SKU only</span>
       </div>
 
       {/* ── Screen preview ── */}
       <div className="no-print p-10">
-        <p className="text-xs text-gray-500 mb-10 font-medium uppercase tracking-wide">Preview (scaled 3.8×)</p>
+        <p className="text-xs text-gray-500 mb-10 font-medium uppercase tracking-wide">Preview (scaled 3.6×) — 3 labels per row when printed</p>
         <div className="flex gap-14 flex-wrap">
           {Array.from({ length: Math.min(copies, 3) }).map((_, i) => (
-            /* 34×20mm at 96dpi = 128×75px, scaled 3.8× = 487×286px */
-            <div key={i} style={{ width: '128px', height: '75px' }}>
+            /* 34×20mm at 96dpi ≈ 128×76px, scaled 3.6× ≈ 461×272px */
+            <div key={i} style={{ width: '128px', height: '76px' }}>
               <div className="label-preview-scale">
                 <StickerLabel product={product} supplier={supplier} />
               </div>

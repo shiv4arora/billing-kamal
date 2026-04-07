@@ -60,7 +60,7 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
       isNew: false, productId: prod.id, productName: prod.name,
       sku: prod.sku || '', category: prod.category || '',
       unit: prod.unit || 'Pcs', hsnCode: prod.hsnCode || '',
-      gstRate: prod.gstRate || 5, unitPrice: prod.costPrice || 0,
+      gstRate: prod.gstRate ?? 0, unitPrice: prod.costPrice || 0,
       pricing,
     });
   };
@@ -315,7 +315,7 @@ export default function PurchaseInvoiceCreate() {
           const cat  = String(row['Category'] || row['Cat'] || row['category'] || '').trim();
           const unit = String(row['Unit'] || row['UOM'] || row['unit'] || 'Pcs').trim();
           const hsn  = String(row['HSN'] || row['HSN Code'] || row['hsn'] || '').trim();
-          const gst  = +(row['GST%'] || row['GST'] || row['Tax%'] || row['gst'] || 5);
+          const gst  = +(row['GST%'] || row['GST'] || row['Tax%'] || row['gst'] || 0);
           const qty  = +(row['Qty'] || row['Quantity'] || row['quantity'] || row['qty'] || 1);
           const cost = +(row['Cost'] || row['Rate'] || row['Price'] || row['cost'] || row['rate'] || 0);
 
@@ -353,7 +353,7 @@ export default function PurchaseInvoiceCreate() {
               category: cat,
               unit,
               hsnCode: hsn,
-              gstRate: isNaN(gst) ? 5 : gst,
+              gstRate: isNaN(gst) ? 0 : gst,
               quantity: qty,
               unitPrice: cost,
               pricing,
@@ -500,7 +500,6 @@ export default function PurchaseInvoiceCreate() {
               >
                 📤 Upload Excel
               </button>
-              <Button size="sm" variant="secondary" onClick={addItem}>+ Add Item</Button>
             </div>
           </div>
 
@@ -530,6 +529,15 @@ export default function PurchaseInvoiceCreate() {
               onRemove={() => removeItem(idx)}
             />
           ))}
+
+          {/* + Add Item — placed after last item for easy access */}
+          <button
+            type="button"
+            onClick={addItem}
+            className="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+          >
+            + Add Item
+          </button>
         </div>
 
         {/* Totals */}
