@@ -43,8 +43,10 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
   const dropRef = useRef(null);
 
   const filtered = products.filter(p =>
-    p.name?.toLowerCase().includes(search.toLowerCase()) ||
-    p.sku?.toLowerCase().includes(search.toLowerCase())
+    // only show products linked to the current supplier (or unlinked products)
+    (!supplier?.id || !p.supplierId || p.supplierId === supplier.id) &&
+    (p.name?.toLowerCase().includes(search.toLowerCase()) ||
+     p.sku?.toLowerCase().includes(search.toLowerCase()))
   ).slice(0, 8);
 
   // Recalculate selling prices when cost or supplier margin changes
