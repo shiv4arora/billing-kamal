@@ -27,7 +27,7 @@ function StickerLabel({ product, supplier }) {
         overflow:        'hidden',
         backgroundColor: '#fff',
         fontFamily:      'Arial, sans-serif',
-        padding:         '0.5mm 0.5mm 0.5mm 0',
+        padding:         '1mm 0.5mm 1mm 1mm',
         gap:             '0.5mm',
       }}
     >
@@ -43,15 +43,15 @@ function StickerLabel({ product, supplier }) {
 
         {/* Product name */}
         <p style={{
-          margin:            0,
-          fontSize:          '10pt',
-          fontWeight:        'bold',
-          lineHeight:        1.15,
-          color:             '#111',
-          display:           '-webkit-box',
-          WebkitLineClamp:   2,
-          WebkitBoxOrient:   'vertical',
-          overflow:          'hidden',
+          margin:          0,
+          fontSize:        '9pt',
+          fontWeight:      'bold',
+          lineHeight:      1.15,
+          color:           '#111',
+          display:         '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow:        'hidden',
         }}>
           {product.name}
         </p>
@@ -69,7 +69,7 @@ function StickerLabel({ product, supplier }) {
             flexShrink:   0,
           }}>W</span>
           <span style={{
-            fontSize:   '8.5pt',
+            fontSize:   '8pt',
             fontWeight: 'bold',
             color:      '#1d4ed8',
             lineHeight: 1,
@@ -81,7 +81,7 @@ function StickerLabel({ product, supplier }) {
         {/* SKU · Supplier */}
         <p style={{
           margin:       0,
-          fontSize:     '8.5pt',
+          fontSize:     '7.5pt',
           fontWeight:   '600',
           lineHeight:   1.2,
           color:        '#555',
@@ -106,7 +106,7 @@ function StickerLabel({ product, supplier }) {
         <QRCode
           value={qrValue}
           size={256}
-          style={{ width: '14mm', height: '14mm', display: 'block' }}
+          style={{ width: '13mm', height: '13mm', display: 'block' }}
         />
       </div>
     </div>
