@@ -127,7 +127,7 @@ export default function SaleInvoiceView() {
           {inv.status !== 'void' && <Button variant="outline" onClick={() => setRetOpen(true)}>↩ Return</Button>}
           {inv.paymentStatus !== 'paid' && inv.status !== 'void' && <Button variant="success" onClick={markPaid}>✓ Mark Paid</Button>}
           {inv.status !== 'void' && <Button variant="danger" onClick={voidInv}>Void</Button>}
-          <Button variant="danger" onClick={() => setDeleteOpen(true)}>🗑 Delete</Button>}
+          <Button variant="danger" onClick={() => setDeleteOpen(true)}>🗑 Delete</Button>
         </div>
       </div>
 
