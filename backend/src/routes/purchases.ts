@@ -232,6 +232,7 @@ router.put('/:id', async (req, res, next) => {
           out.isNew = false;
         } else if (!item.isNew && item.productId) {
           const updateData: any = { costPrice: item.unitPrice };
+          if (item.productName) updateData.name = item.productName;
           if (item.pricing?.wholesale != null || item.pricing?.shop != null) {
             updateData.pricing = JSON.stringify({ wholesale: item.pricing?.wholesale || 0, shop: item.pricing?.shop || 0 });
           }

@@ -130,6 +130,7 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
               value={search}
               onChange={e => { setSearch(e.target.value); setShowDrop(true); }}
               onFocus={() => setShowDrop(true)}
+              onBlur={() => { setTimeout(() => setShowDrop(false), 150); if (search.trim()) onUpdate('productName', search.trim()); }}
               placeholder="Search by name or SKU ID…"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
