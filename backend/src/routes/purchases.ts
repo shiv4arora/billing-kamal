@@ -32,6 +32,8 @@ function pickPurchaseData(b: any) {
     ...(b.totalIGST             !== undefined && { totalIGST:             b.totalIGST }),
     ...(b.totalGST              !== undefined && { totalGST:              b.totalGST }),
     ...(b.billDiscount          !== undefined && { billDiscount:          b.billDiscount }),
+    ...(b.otherCharges          !== undefined && { otherCharges:          b.otherCharges }),
+    ...(b.otherChargesNarration !== undefined && { otherChargesNarration: b.otherChargesNarration }),
     ...(b.grandTotal            !== undefined && { grandTotal:            b.grandTotal }),
     ...(b.roundOff              !== undefined && { roundOff:              b.roundOff }),
     ...(b.amountPaid            !== undefined && { amountPaid:            b.amountPaid }),
@@ -73,7 +75,8 @@ async function issuePurchase(invoiceId: string) {
   const rawItems = parseItems(existing.items);
   const totals = buildInvoiceTotals(rawItems, isInterState);
   const billDiscount = Number(existing.billDiscount) || 0;
-  const finalGrandTotal = Math.max(0, Math.round(totals.grandTotal - billDiscount));
+  const otherCharges = Number(existing.otherCharges) || 0;
+  const finalGrandTotal = Math.max(0, Math.round(totals.grandTotal - billDiscount + otherCharges));
   const paid = Number(existing.amountPaid);
   const payStatus = paid >= finalGrandTotal - 0.01 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
 
@@ -261,7 +264,8 @@ router.put('/:id', async (req, res, next) => {
     const isInterState = s.tax?.intraState === false;
     const totals = buildInvoiceTotals(processedItems, isInterState);
     const billDiscount = Number(req.body.billDiscount) || 0;
-    const finalGrandTotal = Math.max(0, Math.round(totals.grandTotal - billDiscount));
+    const otherCharges = Number(req.body.otherCharges) || 0;
+    const finalGrandTotal = Math.max(0, Math.round(totals.grandTotal - billDiscount + otherCharges));
     const paid = Number(req.body.amountPaid) || 0;
     const payStatus = paid >= finalGrandTotal - 0.01 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
 

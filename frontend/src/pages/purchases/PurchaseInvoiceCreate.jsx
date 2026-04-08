@@ -257,6 +257,8 @@ export default function PurchaseInvoiceCreate() {
   const [amountPaid, setAmountPaid]     = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [billDiscount, setBillDiscount] = useState('');
+  const [otherCharges, setOtherCharges] = useState('');
+  const [otherChargesNarration, setOtherChargesNarration] = useState('');
   const [supplierSearch, setSupplierSearch] = useState('');
   const [showSupplierDrop, setShowSupplierDrop] = useState(false);
 
@@ -277,6 +279,8 @@ export default function PurchaseInvoiceCreate() {
         setAmountPaid(inv.amountPaid || '');
         setPaymentMethod(inv.paymentMethod || 'cash');
         setBillDiscount(inv.billDiscount || '');
+        setOtherCharges(inv.otherCharges || '');
+        setOtherChargesNarration(inv.otherChargesNarration || '');
         const sup = suppliers.find(s => s.id === (inv.supplierId || ''));
         if (sup) setSupplierSearch(sup.name);
       }
@@ -405,6 +409,8 @@ export default function PurchaseInvoiceCreate() {
       items: validItems,
       amountPaid: paid, paymentMethod, notes,
       billDiscount: +billDiscount || 0,
+      otherCharges: +otherCharges || 0,
+      otherChargesNarration: otherChargesNarration || '',
     };
 
     try {
@@ -610,9 +616,26 @@ export default function PurchaseInvoiceCreate() {
                     className="w-full border border-gray-300 rounded-lg px-2 py-1 text-sm text-right font-semibold text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
+                {/* Other charges */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={otherChargesNarration}
+                    onChange={e => setOtherChargesNarration(e.target.value)}
+                    placeholder="Other charges (e.g. Freight)"
+                    className="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  />
+                  <input
+                    type="number" min="0" step="0.01"
+                    value={otherCharges}
+                    onChange={e => setOtherCharges(e.target.value)}
+                    placeholder="0"
+                    className="w-24 border border-gray-300 rounded-lg px-2 py-1 text-sm text-right font-semibold text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                </div>
                 <div className="flex justify-between font-bold text-base border-t pt-2">
                   <span>Grand Total</span>
-                  <span className="text-green-700">{formatCurrency(Math.max(0, totals.grandTotal - (+billDiscount || 0)))}</span>
+                  <span className="text-green-700">{formatCurrency(Math.max(0, totals.grandTotal - (+billDiscount || 0) + (+otherCharges || 0)))}</span>
                 </div>
                 {+amountPaid > 0 && (
                   <div className="flex justify-between text-green-600"><span>Paid</span><span>{formatCurrency(+amountPaid)}</span></div>

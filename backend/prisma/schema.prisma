@@ -134,6 +134,8 @@ model PurchaseInvoice {
   totalIGST             Float    @default(0)
   totalGST              Float    @default(0)
   billDiscount          Float    @default(0)   // flat ₹ discount on total bill
+  otherCharges          Float    @default(0)   // additional charges (freight, loading, etc.)
+  otherChargesNarration String   @default("")  // description of other charges
   grandTotal            Float    @default(0)
   roundOff              Float    @default(0)
   amountPaid            Float    @default(0)
