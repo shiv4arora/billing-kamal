@@ -41,15 +41,15 @@ function StickerLabel({ product, supplier }) {
       }}>
         {/* Product name */}
         <p style={{
-          margin:        0,
-          fontSize:      '10pt',
-          fontWeight:    'bold',
-          lineHeight:    1.15,
-          color:         '#111',
-          whiteSpace:    'nowrap',
-          overflow:      'hidden',
-          textOverflow:  'ellipsis',
-          paddingBottom: '0.5mm',
+          margin:          0,
+          fontSize:        '10pt',
+          fontWeight:      'bold',
+          lineHeight:      1.15,
+          color:           '#111',
+          display:         '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow:        'hidden',
         }}>
           {product.name}
         </p>
