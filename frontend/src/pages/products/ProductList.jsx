@@ -9,6 +9,7 @@ export default function ProductList() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [confirm, setConfirm] = useState(null);
+  const [selected, setSelected] = useState(new Set());
 
   const filtered = active.filter(p =>
     p.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -16,7 +17,62 @@ export default function ProductList() {
     p.category?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const allSelected = filtered.length > 0 && filtered.every(p => selected.has(p.id));
+  const someSelected = selected.size > 0;
+
+  const toggleOne = (id) => setSelected(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelected(prev => {
+        const next = new Set(prev);
+        filtered.forEach(p => next.delete(p.id));
+        return next;
+      });
+    } else {
+      setSelected(prev => {
+        const next = new Set(prev);
+        filtered.forEach(p => next.add(p.id));
+        return next;
+      });
+    }
+  };
+
+  const printSelected = () => {
+    const selectedProducts = active.filter(p => selected.has(p.id));
+    navigate('/labels/bulk', {
+      state: {
+        items: selectedProducts.map(p => ({ product: p, qty: 1, supplier: null })),
+      },
+    });
+  };
+
   const columns = [
+    {
+      header: (
+        <input
+          type="checkbox"
+          checked={allSelected}
+          onChange={toggleAll}
+          className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer"
+          title={allSelected ? 'Deselect all' : 'Select all'}
+        />
+      ),
+      render: p => (
+        <div onClick={e => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={selected.has(p.id)}
+            onChange={() => toggleOne(p.id)}
+            className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer"
+          />
+        </div>
+      ),
+    },
     {
       header: 'Product', render: p => (
         <div>
@@ -57,11 +113,29 @@ export default function ProductList() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Products</h1>
-        <Link to="/products/new"><Button>+ Add Product</Button></Link>
+        <div className="flex items-center gap-2">
+          {someSelected && (
+            <button
+              onClick={printSelected}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg font-medium transition-colors"
+            >
+              🏷 Print Labels ({selected.size})
+            </button>
+          )}
+          <Link to="/products/new"><Button>+ Add Product</Button></Link>
+        </div>
       </div>
       <Card padding={false}>
-        <div className="p-4 border-b border-gray-100">
+        <div className="p-4 border-b border-gray-100 flex items-center gap-3">
           <SearchInput value={search} onChange={setSearch} placeholder="Search by name, SKU ID, category…" />
+          {someSelected && (
+            <button
+              onClick={() => setSelected(new Set())}
+              className="text-xs text-gray-400 hover:text-gray-600 whitespace-nowrap"
+            >
+              Clear ({selected.size})
+            </button>
+          )}
         </div>
         <Table columns={columns} data={filtered} onRowClick={p => navigate(`/products/${p.id}/edit`)} emptyMsg="No products found. Add your first product!" />
       </Card>
