@@ -131,6 +131,9 @@ export default function PurchaseInvoiceView() {
         <Card>
           <p className="text-xs text-gray-500 uppercase mb-2">Payment</p>
           <div className="space-y-1.5 text-sm">
+            {(inv.billDiscount || 0) > 0 && (
+              <div className="flex justify-between"><span className="text-gray-500">Discount</span><span className="text-orange-600 font-medium">− {formatCurrency(inv.billDiscount)}</span></div>
+            )}
             <div className="flex justify-between"><span className="text-gray-500">Total</span><span className="font-semibold">{formatCurrency(inv.grandTotal)}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Paid</span><span className="text-green-600 font-semibold">{formatCurrency(inv.amountPaid || 0)}</span></div>
             {remaining > 0.01 && (
@@ -168,6 +171,9 @@ export default function PurchaseInvoiceView() {
           <div className="w-56 space-y-1.5 text-sm">
             <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>{formatCurrency(inv.subtotal)}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">GST</span><span>{formatCurrency(inv.totalGST)}</span></div>
+            {(inv.billDiscount || 0) > 0 && (
+              <div className="flex justify-between text-orange-600"><span>Bill Discount</span><span>− {formatCurrency(inv.billDiscount)}</span></div>
+            )}
             <div className="flex justify-between font-bold text-base border-t pt-2"><span>Grand Total</span><span className="text-green-700">{formatCurrency(inv.grandTotal)}</span></div>
             {(inv.amountPaid || 0) > 0 && <div className="flex justify-between text-green-600"><span>Paid</span><span>{formatCurrency(inv.amountPaid)}</span></div>}
             {remaining > 0.01 && <div className="flex justify-between font-semibold text-red-600"><span>Balance Due</span><span>{formatCurrency(remaining)}</span></div>}
