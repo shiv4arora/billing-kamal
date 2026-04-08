@@ -1,85 +1,125 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { QRCode } from 'react-qr-code';
+import { useSuppliers } from '../../context/SupplierContext';
 
-/* ─── Barcode renderer ──────────────────────────────────────────────── */
-function Barcode({ value }) {
-  const ref = useRef(null);
-
-  useEffect(() => {
-    if (!ref.current || !value) return;
-    import('jsbarcode').then(mod => {
-      const JsBarcode = mod.default || mod;
-      try {
-        JsBarcode(ref.current, value, {
-          format: 'CODE128', width: 1.4, height: 28,
-          displayValue: true, fontSize: 7, textMargin: 1,
-          margin: 0, background: '#ffffff', lineColor: '#000000',
-        });
-        if (ref.current) {
-          ref.current.removeAttribute('width');
-          ref.current.removeAttribute('height');
-          ref.current.style.width = '100%';
-          ref.current.style.height = 'auto';
-        }
-      } catch (e) { console.warn('Barcode error:', e); }
-    });
-  }, [value]);
-
-  return <svg ref={ref} style={{ display: 'block', width: '100%' }} />;
-}
-
-/* ─── One 34×20 mm label ────────────────────────────────────────────── */
+/* ─── Same label format as BarcodeLabel.jsx ────────────────────────── */
 function StickerLabel({ product, supplier }) {
   const supplierCode = supplier
-    ? supplier.name.replace(/\s+/g, '').slice(0, 8).toUpperCase()
-    : '—';
+    ? (supplier.code || supplier.name.replace(/\s+/g, '').slice(0, 4).toUpperCase())
+    : '';
 
-  const qrValue = `CODE:${product.sku}|NAME:${product.name}|WS:${product.pricing?.wholesale || 0}|SH:${product.pricing?.shop || 0}|SUP:${supplierCode}`;
+  const wCoded  = Math.round((product.pricing?.wholesale || 0) * 2);
+  const sPrice  = Math.round(product.pricing?.shop || 0);
+  const wCode   = `D.No.${wCoded}`;
+  const sCode   = `P. ${sPrice}`;
+  const qrValue = String(product.sku || product.id);
 
   return (
     <div
       className="label-sticker"
       style={{
-        width: '34mm', height: '20mm', boxSizing: 'border-box',
-        border: '0.3mm solid #bbb', display: 'flex', flexDirection: 'column',
-        overflow: 'hidden', backgroundColor: '#fff', fontFamily: 'Arial, sans-serif',
-        padding: '0.7mm', gap: '0.4mm',
+        width:           '34mm',
+        height:          '20mm',
+        boxSizing:       'border-box',
+        border:          '0.3mm solid #bbb',
+        display:         'flex',
+        flexDirection:   'row',
+        overflow:        'hidden',
+        backgroundColor: '#fff',
+        fontFamily:      'Arial, sans-serif',
+        padding:         '0.5mm 0.5mm 0.5mm 0.7mm',
+        gap:             '0.5mm',
       }}
     >
-      <div style={{ display: 'flex', flex: '0 0 auto', gap: '0.5mm', alignItems: 'stretch' }}>
-        {/* Left: text info */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.4mm', overflow: 'hidden' }}>
-          <p style={{ margin: 0, fontSize: '5.5pt', fontWeight: 'bold', lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#111' }}>
-            {product.name}
-          </p>
-          <p style={{ margin: 0, fontSize: '4.5pt', lineHeight: 1.1, color: '#444', fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-            {product.sku}&nbsp;·&nbsp;SUP: {supplierCode}
-          </p>
-          <div style={{ display: 'flex', gap: '1mm', marginTop: '0.2mm' }}>
-            {[
-              { label: 'W', value: product.pricing?.wholesale, color: '#1d4ed8' },
-              { label: 'S', value: product.pricing?.shop,      color: '#7e22ce' },
-            ].map(({ label, value, color }) => (
-              <div key={label} style={{ display: 'flex', alignItems: 'baseline', gap: '0.3mm' }}>
-                <span style={{ fontSize: '3.5pt', fontWeight: 'bold', color, lineHeight: 1 }}>{label}:</span>
-                <span style={{ fontSize: '4.5pt', fontWeight: 'bold', color, lineHeight: 1 }}>
-                  ₹{(value || 0).toFixed(0)}
-                </span>
-              </div>
-            ))}
-          </div>
+      {/* ── LEFT: all text content ── */}
+      <div style={{
+        flex:           1,
+        display:        'flex',
+        flexDirection:  'column',
+        justifyContent: 'space-between',
+        overflow:       'hidden',
+        minWidth:       0,
+      }}>
+        {/* Product name */}
+        <p style={{
+          margin:        0,
+          fontSize:      '10pt',
+          fontWeight:    'bold',
+          lineHeight:    1.15,
+          color:         '#111',
+          whiteSpace:    'nowrap',
+          overflow:      'hidden',
+          textOverflow:  'ellipsis',
+          paddingBottom: '0.5mm',
+        }}>
+          {product.name}
+        </p>
+
+        {/* SKU · Supplier */}
+        <p style={{
+          margin:        0,
+          fontSize:      '10pt',
+          fontWeight:    '600',
+          lineHeight:    1.2,
+          color:         '#555',
+          fontFamily:    'monospace',
+          whiteSpace:    'nowrap',
+          overflow:      'hidden',
+          textOverflow:  'ellipsis',
+          paddingBottom: '0.5mm',
+        }}>
+          {product.sku || '—'}{supplierCode ? `  ·  ${supplierCode}` : ''}
+        </p>
+
+        {/* W code */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8mm' }}>
+          <span style={{
+            fontSize:     '4pt',
+            fontWeight:   'bold',
+            color:        '#fff',
+            background:   '#1d4ed8',
+            borderRadius: '0.4mm',
+            padding:      '0.15mm 0.7mm',
+            lineHeight:   1.5,
+            flexShrink:   0,
+          }}>W</span>
+          <span style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#1d4ed8', lineHeight: 1 }}>
+            {wCode}
+          </span>
         </div>
-        {/* Right: QR */}
-        <div style={{ flexShrink: 0, width: '11mm', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <QRCode value={qrValue} size={120} style={{ width: '11mm', height: '11mm' }} />
+
+        {/* S rate */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8mm' }}>
+          <span style={{
+            fontSize:     '4pt',
+            fontWeight:   'bold',
+            color:        '#fff',
+            background:   '#7e22ce',
+            borderRadius: '0.4mm',
+            padding:      '0.15mm 0.7mm',
+            lineHeight:   1.5,
+            flexShrink:   0,
+          }}>S</span>
+          <span style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#7e22ce', lineHeight: 1 }}>
+            {sCode}
+          </span>
         </div>
       </div>
-      {/* Bottom: barcode */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', minHeight: 0 }}>
-        <div style={{ width: '100%' }}>
-          <Barcode value={product.sku} />
-        </div>
+
+      {/* ── RIGHT: QR code (SKU only) ── */}
+      <div style={{
+        flexShrink:     0,
+        width:          '14mm',
+        display:        'flex',
+        alignItems:     'center',
+        justifyContent: 'center',
+      }}>
+        <QRCode
+          value={qrValue}
+          size={256}
+          style={{ width: '14mm', height: '14mm', display: 'block' }}
+        />
       </div>
     </div>
   );
@@ -89,6 +129,7 @@ function StickerLabel({ product, supplier }) {
 export default function BulkLabelPrint() {
   const { state } = useLocation();
   const navigate = useNavigate();
+  const { suppliers } = useSuppliers();
 
   // state.items = [{ product, qty, supplier? }]
   const [items, setItems] = useState(
@@ -108,29 +149,54 @@ export default function BulkLabelPrint() {
   }
 
   const totalLabels = items.reduce((s, i) => s + (i.qty || 0), 0);
-  const allLabels = items.flatMap(i =>
-    Array.from({ length: i.qty || 0 }, () => ({ product: i.product, supplier: i.supplier || null }))
-  );
+  const allLabels = items.flatMap(i => {
+    const supplier = i.supplier || suppliers.find(s => s.id === i.product?.supplierId) || null;
+    return Array.from({ length: i.qty || 0 }, () => ({ product: i.product, supplier }));
+  });
 
   return (
     <>
       <style>{`
+        @page {
+          size: 102mm auto;
+          margin: 0;
+        }
         @media print {
-          html, body { margin: 0; padding: 0; background: white; }
+          html, body {
+            margin: 0;
+            padding: 0;
+            background: white !important;
+            color: black !important;
+            color-scheme: light !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
           .no-print { display: none !important; }
-          .label-sheet { display: flex !important; flex-wrap: wrap; }
-          .label-sticker { page-break-inside: avoid; break-inside: avoid; border: 0.3mm dashed #aaa !important; }
+          .label-sheet {
+            display: flex !important;
+            flex-wrap: wrap;
+            gap: 0;
+            padding: 0;
+            margin: 0;
+            width: 102mm;
+          }
+          .label-sticker {
+            page-break-inside: avoid;
+            break-inside: avoid;
+            border: 0.3mm dashed #aaa !important;
+          }
         }
         @media screen {
-          .label-preview-scale { transform: scale(3.2); transform-origin: top left; }
+          .label-preview-scale {
+            transform: scale(3.6);
+            transform-origin: top left;
+          }
         }
       `}</style>
 
       {/* ── Toolbar ── */}
       <div className="no-print sticky top-0 z-10 bg-gray-900 text-white px-6 py-3 flex items-center gap-4 shadow-lg">
-        <button onClick={() => navigate(-1)} className="text-gray-300 hover:text-white text-sm flex items-center gap-1">
-          ← Back
-        </button>
+        <button onClick={() => navigate(-1)} className="text-gray-300 hover:text-white text-sm">← Back</button>
         <span className="text-gray-600">|</span>
         <span className="text-sm font-medium">{items.length} product{items.length !== 1 ? 's' : ''}</span>
         <span className="text-xs text-gray-400">{totalLabels} label{totalLabels !== 1 ? 's' : ''} total</span>
@@ -176,23 +242,23 @@ export default function BulkLabelPrint() {
       </div>
 
       {/* ── Info bar ── */}
-      <div className="no-print bg-blue-50 border-b border-blue-100 px-6 py-2 text-xs text-blue-700 flex gap-6">
-        <span>Sticker size: <strong>34mm × 20mm</strong></span>
-        <span>Layout: <strong>3 per row</strong> on sticker sheet</span>
-        <span>Preview scaled 3.2× for readability</span>
+      <div className="no-print bg-blue-50 border-b border-blue-100 px-6 py-2 text-xs text-blue-700 flex gap-6 flex-wrap items-center">
+        <span>34mm × 20mm · <strong>3 per row</strong> on 102mm sheet</span>
+        <span>QR = SKU only</span>
+        <span className="text-gray-400">W price shown as D.No. code · S price shown as P. code</span>
       </div>
 
       {/* ── Screen preview ── */}
       <div className="no-print p-10">
-        <p className="text-xs text-gray-500 mb-4 font-medium uppercase tracking-wide">
-          Preview (first {Math.min(allLabels.length, 3)} label{allLabels.length > 1 ? 's' : ''})
+        <p className="text-xs text-gray-500 mb-10 font-medium uppercase tracking-wide">
+          Preview (scaled 3.6×) — first {Math.min(allLabels.length, 3)} label{allLabels.length !== 1 ? 's' : ''}
         </p>
         {allLabels.length === 0 ? (
           <p className="text-sm text-gray-400">Set qty &gt; 0 for at least one product to see a preview.</p>
         ) : (
-          <div className="flex gap-8 flex-wrap">
+          <div className="flex gap-14 flex-wrap">
             {allLabels.slice(0, 3).map((l, i) => (
-              <div key={i} style={{ width: '108.8px', height: '64px' }}>
+              <div key={i} style={{ width: '128px', height: '76px' }}>
                 <div className="label-preview-scale">
                   <StickerLabel product={l.product} supplier={l.supplier} />
                 </div>
@@ -208,7 +274,6 @@ export default function BulkLabelPrint() {
           <StickerLabel key={i} product={l.product} supplier={l.supplier} />
         ))}
       </div>
-      <style>{`@media print { .label-sheet { display: flex !important; flex-wrap: wrap; } }`}</style>
     </>
   );
 }
