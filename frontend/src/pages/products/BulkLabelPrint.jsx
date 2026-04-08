@@ -10,9 +10,7 @@ function StickerLabel({ product, supplier }) {
     : '';
 
   const wCoded  = Math.round((product.pricing?.wholesale || 0) * 2);
-  const sPrice  = Math.round(product.pricing?.shop || 0);
   const wCode   = `D.No.${wCoded}`;
-  const sCode   = `P. ${sPrice}`;
   const qrValue = String(product.sku || product.id);
 
   return (
@@ -56,22 +54,6 @@ function StickerLabel({ product, supplier }) {
           {product.name}
         </p>
 
-        {/* SKU · Supplier */}
-        <p style={{
-          margin:        0,
-          fontSize:      '8.5pt',
-          fontWeight:    '600',
-          lineHeight:    1.2,
-          color:         '#555',
-          fontFamily:    'monospace',
-          whiteSpace:    'nowrap',
-          overflow:      'hidden',
-          textOverflow:  'ellipsis',
-          paddingBottom: '0.5mm',
-        }}>
-          {product.sku || '—'}{supplierCode ? `  ·  ${supplierCode}` : ''}
-        </p>
-
         {/* W code */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8mm' }}>
           <span style={{
@@ -89,22 +71,20 @@ function StickerLabel({ product, supplier }) {
           </span>
         </div>
 
-        {/* S rate */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8mm' }}>
-          <span style={{
-            fontSize:     '4pt',
-            fontWeight:   'bold',
-            color:        '#fff',
-            background:   '#7e22ce',
-            borderRadius: '0.4mm',
-            padding:      '0.15mm 0.7mm',
-            lineHeight:   1.5,
-            flexShrink:   0,
-          }}>S</span>
-          <span style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#7e22ce', lineHeight: 1 }}>
-            {sCode}
-          </span>
-        </div>
+        {/* SKU · Supplier */}
+        <p style={{
+          margin:       0,
+          fontSize:     '8.5pt',
+          fontWeight:   '600',
+          lineHeight:   1.2,
+          color:        '#555',
+          fontFamily:   'monospace',
+          whiteSpace:   'nowrap',
+          overflow:     'hidden',
+          textOverflow: 'ellipsis',
+        }}>
+          {product.sku || '—'}{supplierCode ? `  ·  ${supplierCode}` : ''}
+        </p>
       </div>
 
       {/* ── RIGHT: QR code (SKU only) ── */}

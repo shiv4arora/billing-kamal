@@ -11,9 +11,7 @@ function StickerLabel({ product, supplier }) {
     : '';
 
   const wCoded  = Math.round((product.pricing?.wholesale || 0) * 2);
-  const sPrice  = Math.round(product.pricing?.shop || 0);
   const wCode   = `D.No.${wCoded}`;
-  const sCode   = `P. ${sPrice}`;
   const qrValue = String(product.sku || product.id);
 
   return (
@@ -58,22 +56,6 @@ function StickerLabel({ product, supplier }) {
           {product.name}
         </p>
 
-        {/* SKU · Supplier */}
-        <p style={{
-          margin:       0,
-          fontSize:     '8.5pt',
-          fontWeight:   '600',
-          lineHeight:   1.2,
-          color:        '#555',
-          fontFamily:   'monospace',
-          whiteSpace:   'nowrap',
-          overflow:     'hidden',
-          textOverflow: 'ellipsis',
-          paddingBottom: '0.5mm',
-        }}>
-          {product.sku || '—'}{supplierCode ? `  ·  ${supplierCode}` : ''}
-        </p>
-
         {/* W code */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8mm' }}>
           <span style={{
@@ -96,27 +78,20 @@ function StickerLabel({ product, supplier }) {
           </span>
         </div>
 
-        {/* S rate */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8mm' }}>
-          <span style={{
-            fontSize:     '4pt',
-            fontWeight:   'bold',
-            color:        '#fff',
-            background:   '#7e22ce',
-            borderRadius: '0.4mm',
-            padding:      '0.15mm 0.7mm',
-            lineHeight:   1.5,
-            flexShrink:   0,
-          }}>S</span>
-          <span style={{
-            fontSize:   '8.5pt',
-            fontWeight: 'bold',
-            color:      '#7e22ce',
-            lineHeight: 1,
-          }}>
-            {sCode}
-          </span>
-        </div>
+        {/* SKU · Supplier */}
+        <p style={{
+          margin:       0,
+          fontSize:     '8.5pt',
+          fontWeight:   '600',
+          lineHeight:   1.2,
+          color:        '#555',
+          fontFamily:   'monospace',
+          whiteSpace:   'nowrap',
+          overflow:     'hidden',
+          textOverflow: 'ellipsis',
+        }}>
+          {product.sku || '—'}{supplierCode ? `  ·  ${supplierCode}` : ''}
+        </p>
       </div>
 
       {/* ── RIGHT: QR code (SKU only) ── */}
@@ -156,7 +131,6 @@ export default function BarcodeLabel() {
 
   const supplier     = suppliers.find(s => s.id === product.supplierId);
   const wCoded       = Math.round((product.pricing?.wholesale || 0) * 2);
-  const sPrice       = Math.round(product.pricing?.shop || 0);
   const supplierCode = supplier
     ? (supplier.code || supplier.name.replace(/\s+/g, '').slice(0, 4).toUpperCase())
     : '—';
@@ -227,7 +201,6 @@ export default function BarcodeLabel() {
       <div className="no-print bg-blue-50 border-b border-blue-100 px-6 py-2 text-xs text-blue-700 flex gap-6 flex-wrap items-center">
         <span>34mm × 20mm · <strong>3 per row</strong> on 102mm sheet</span>
         <span className="font-mono font-bold text-blue-800">W → D.No.{wCoded}</span>
-        <span className="font-mono font-bold text-purple-800">S → P. {sPrice}</span>
         <span>Supplier: <strong>{supplierCode}</strong></span>
         <span>QR = SKU only</span>
       </div>
