@@ -53,7 +53,7 @@ function StickerLabel({ product, supplier }) {
           WebkitBoxOrient: 'vertical',
           overflow:        'hidden',
         }}>
-          {product.name}{product.unit ? ` (${product.unit})` : ''}
+          {product.name}{product.unit ? ` (${product.unit === 'Dozen' ? 'dz' : product.unit.toLowerCase()})` : ''}
         </p>
 
         {/* W code */}
