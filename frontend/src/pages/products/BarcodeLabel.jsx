@@ -53,7 +53,7 @@ function StickerLabel({ product, supplier }) {
           WebkitBoxOrient: 'vertical',
           overflow:        'hidden',
         }}>
-          {product.name}
+          {product.name}{product.unit ? ` (${product.unit})` : ''}
         </p>
 
         {/* W code */}
@@ -81,7 +81,7 @@ function StickerLabel({ product, supplier }) {
         {/* SKU · Supplier */}
         <p style={{
           margin:       0,
-          fontSize:     '7.5pt',
+          fontSize:     '8pt',
           fontWeight:   '600',
           lineHeight:   1.2,
           color:        '#555',
