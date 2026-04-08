@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useInvoices } from '../../context/InvoiceContext';
 import { useLedger } from '../../context/LedgerContext';
+import { useProducts } from '../../context/ProductContext';
+import { useSuppliers } from '../../context/SupplierContext';
 import { Button, Badge, Card, Modal, Input, Select, useToast, Toast } from '../../components/ui';
 import { formatCurrency, formatDate, today } from '../../utils/helpers';
 
@@ -14,13 +16,36 @@ export default function PurchaseInvoiceView() {
   const toast = useToast();
   const { getPurchaseInvoice, updatePurchaseInvoice } = useInvoices();
   const { addPaymentOut, addPurchaseReturn } = useLedger();
+  const { get: getProduct } = useProducts();
+  const { suppliers } = useSuppliers();
 
   const inv = getPurchaseInvoice(id);
 
   const [payOpen, setPayOpen] = useState(false);
   const [retOpen, setRetOpen] = useState(false);
+  const [labelOpen, setLabelOpen] = useState(false);
+  const [labelQtys, setLabelQtys] = useState([]);
   const [payForm, setPayForm] = useState({ date: today(), amount: '', method: 'cash', notes: '' });
   const [retForm, setRetForm] = useState({ date: today(), amount: '', notes: '' });
+
+  const openLabelModal = () => {
+    setLabelQtys((inv.items || []).map(item => ({ ...item, labelQty: item.quantity || 1 })));
+    setLabelOpen(true);
+  };
+
+  const printLabels = () => {
+    const items = labelQtys
+      .filter(item => (item.labelQty || 0) > 0 && item.productId)
+      .map(item => {
+        const product = getProduct(item.productId);
+        const supplier = suppliers.find(s => s.id === inv.supplierId) || null;
+        return { product, qty: item.labelQty, supplier };
+      })
+      .filter(i => i.product);
+    if (!items.length) { toast.error('No valid items to print'); return; }
+    setLabelOpen(false);
+    navigate('/labels/bulk', { state: { items } });
+  };
 
   if (!inv) return <div className="p-8 text-center text-gray-400">Invoice not found.</div>;
 
@@ -67,6 +92,7 @@ export default function PurchaseInvoiceView() {
         </div>
         <div className="flex gap-2 flex-wrap">
           {inv.supplierId && <Link to={`/suppliers/${inv.supplierId}/ledger`}><Button variant="secondary">📗 Ledger</Button></Link>}
+          <Button variant="secondary" onClick={openLabelModal}>🏷 Print Labels</Button>
           <Button variant="secondary" onClick={() => navigate(`/purchases/${id}/edit`)}>Edit</Button>
           {inv.status !== 'void' && remaining > 0.01 && (
             <Button variant="success" onClick={() => { setPayForm(f => ({ ...f, amount: remaining.toFixed(2) })); setPayOpen(true); }}>
@@ -170,6 +196,49 @@ export default function PurchaseInvoiceView() {
         <div className="flex justify-end gap-2 pt-2 border-t">
           <Button variant="secondary" onClick={() => setRetOpen(false)}>Cancel</Button>
           <Button onClick={handlePurchaseReturn}>↩ Record Return</Button>
+        </div>
+      </div>
+    </Modal>
+
+    {/* Print Labels Modal */}
+    <Modal open={labelOpen} onClose={() => setLabelOpen(false)} title={`Print Labels — ${inv.invoiceNumber}`}>
+      <div className="space-y-4">
+        <p className="text-sm text-gray-500">Set the number of stickers to print for each item.</p>
+        <div className="space-y-2">
+          {labelQtys.map((item, idx) => (
+            <div key={idx} className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-800 truncate">{item.productName}</p>
+                {item.sku && <p className="text-xs text-blue-500 font-mono mt-0.5">#{item.sku}</p>}
+                <p className="text-xs text-gray-400 mt-0.5">Purchased: {item.quantity} {item.unit}</p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={() => setLabelQtys(prev => prev.map((it, i) => i === idx ? { ...it, labelQty: Math.max(0, it.labelQty - 1) } : it))}
+                  className="w-7 h-7 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 text-base font-bold flex items-center justify-center select-none"
+                >−</button>
+                <input
+                  type="number" min="0"
+                  value={item.labelQty}
+                  onChange={e => setLabelQtys(prev => prev.map((it, i) => i === idx ? { ...it, labelQty: Math.max(0, +e.target.value || 0) } : it))}
+                  className="w-14 text-center border border-gray-300 rounded-lg px-1 py-1 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+                <button
+                  onClick={() => setLabelQtys(prev => prev.map((it, i) => i === idx ? { ...it, labelQty: it.labelQty + 1 } : it))}
+                  className="w-7 h-7 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 text-base font-bold flex items-center justify-center select-none"
+                >+</button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-between items-center pt-2 border-t">
+          <p className="text-sm text-gray-500">
+            Total: <strong>{labelQtys.reduce((s, i) => s + (i.labelQty || 0), 0)}</strong> labels
+          </p>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => setLabelOpen(false)}>Cancel</Button>
+            <Button onClick={printLabels}>🏷 Print Labels</Button>
+          </div>
         </div>
       </div>
     </Modal>

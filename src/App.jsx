@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import ProductList from './pages/products/ProductList';
 import ProductForm from './pages/products/ProductForm';
 import BarcodeLabel from './pages/products/BarcodeLabel';
+import BulkLabelPrint from './pages/products/BulkLabelPrint';
 import CustomerList from './pages/customers/CustomerList';
 import CustomerForm from './pages/customers/CustomerForm';
 import CustomerLedger from './pages/customers/CustomerLedger';
@@ -97,6 +98,7 @@ export default function App() {
           {/* Full-page views (no sidebar) — protected */}
           <Route path="/sales/:id/print" element={<ProtectedRoute><SaleInvoicePrint /></ProtectedRoute>} />
           <Route path="/products/:id/label" element={<ProtectedRoute><BarcodeLabel /></ProtectedRoute>} />
+          <Route path="/labels/bulk" element={<ProtectedRoute><BulkLabelPrint /></ProtectedRoute>} />
           <Route path="/customers/:id/ledger/print" element={<ProtectedRoute><CustomerLedgerPrint /></ProtectedRoute>} />
           <Route path="/suppliers/:id/ledger/print" element={<ProtectedRoute><SupplierLedgerPrint /></ProtectedRoute>} />
           {/* Main app with sidebar */}
