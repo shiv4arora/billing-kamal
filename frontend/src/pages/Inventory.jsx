@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useProducts } from '../context/ProductContext';
 import { useSettings } from '../context/SettingsContext';
+import { useSuppliers } from '../context/SupplierContext';
 import { api } from '../hooks/useApi';
 import { Button, Table, Badge, SearchInput, Card, Modal, Input, useToast, Toast } from '../components/ui';
 import { formatDate } from '../utils/helpers';
@@ -8,6 +9,7 @@ import { formatDate } from '../utils/helpers';
 export default function Inventory() {
   const { active: products, updateStockLocal } = useProducts();
   const { settings } = useSettings();
+  const { suppliers } = useSuppliers();
   const toast = useToast();
   const [search, setSearch] = useState('');
   const [filterLow, setFilterLow] = useState(false);
@@ -46,6 +48,12 @@ export default function Inventory() {
 
   const columns = [
     { header: 'Product', render: p => <div><p className="font-medium text-gray-900">{p.name}</p><p className="text-xs text-gray-400">{p.category} · {p.sku}</p></div> },
+    { header: 'Vendor', render: p => {
+      const s = suppliers.find(s => s.id === p.supplierId);
+      return s
+        ? <div><p className="text-sm font-medium text-gray-800">{s.name}</p>{s.phone && <p className="text-xs text-gray-400">{s.phone}</p>}</div>
+        : <span className="text-xs text-gray-300">—</span>;
+    }},
     { header: 'Unit', key: 'unit' },
     { header: 'Stock', align: 'right', render: p => {
       const low = (p.currentStock || 0) <= (p.lowStockThreshold ?? settings.lowStockThreshold);

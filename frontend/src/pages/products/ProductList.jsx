@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useProducts } from '../../context/ProductContext';
+import { useSuppliers } from '../../context/SupplierContext';
 import { Button, Table, SearchInput, ConfirmDialog, Card } from '../../components/ui';
 import { formatCurrency } from '../../utils/helpers';
 
 export default function ProductList() {
   const { active, remove } = useProducts();
+  const { suppliers } = useSuppliers();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [confirm, setConfirm] = useState(null);
@@ -81,6 +83,12 @@ export default function ProductList() {
         </div>
       )
     },
+    { header: 'Vendor', render: p => {
+      const s = suppliers.find(s => s.id === p.supplierId);
+      return s
+        ? <div><p className="text-sm font-medium text-gray-800">{s.name}</p>{s.phone && <p className="text-xs text-gray-400">{s.phone}</p>}</div>
+        : <span className="text-xs text-gray-300">—</span>;
+    }},
     { header: 'Category', key: 'category' },
     { header: 'Wholesale', align: 'right', render: p => formatCurrency(p.pricing?.wholesale || 0) },
     { header: 'Shop', align: 'right', render: p => formatCurrency(p.pricing?.shop || 0) },
