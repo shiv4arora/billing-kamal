@@ -238,6 +238,48 @@ router.post('/:id/return', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── DELETE ────────────────────────────────────────────────────────────────────
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const inv = await prisma.saleInvoice.findUniqueOrThrow({ where: { id: req.params.id } });
+    const items = parseItems(inv.items);
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete stock ledger entries for this invoice
+      await tx.stockLedger.deleteMany({ where: { referenceId: inv.id } });
+
+      // 2. Reverse stock — sale reduces stock, so add it back
+      for (const item of items) {
+        if (item.productId && Number(item.quantity) > 0) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { currentStock: { increment: Number(item.quantity) } },
+          });
+        }
+      }
+
+      // 3. Delete all ledger entries tied to this invoice
+      await tx.ledgerEntry.deleteMany({ where: { referenceId: inv.id } });
+
+      // 4. Reverse customer balance (net amount that was outstanding)
+      if (inv.customerId) {
+        const netOwed = Number(inv.grandTotal) - Number(inv.amountPaid || 0);
+        if (netOwed !== 0) {
+          await tx.customer.update({
+            where: { id: inv.customerId },
+            data: { balance: { decrement: netOwed } },
+          });
+        }
+      }
+
+      // 5. Delete the invoice
+      await tx.saleInvoice.delete({ where: { id: inv.id } });
+    });
+
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
 // ── Invoice locking ───────────────────────────────────────────────────────────
 const LOCK_TTL_MS = 10 * 60 * 1000; // 10 minutes
 

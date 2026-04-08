@@ -84,6 +84,17 @@ export function InvoiceProvider({ children }) {
   /** Update local cache only — used after dedicated action API calls (payment, void, return) */
   const updateSaleInvoiceLocal = (id, data) => setSaleInvoices(p => p.map(x => x.id === id ? { ...x, ...data } : x));
 
+  const deleteSaleInvoice = async (id) => {
+    if (!isApiAvailable()) {
+      const all = lsGet(LS_SALES).filter(x => x.id !== id);
+      lsSave(LS_SALES, all);
+      setSaleInvoices(all);
+      return;
+    }
+    await api(`/sales/${id}`, { method: 'DELETE' });
+    setSaleInvoices(p => p.filter(x => x.id !== id));
+  };
+
   // ── PURCHASE INVOICES ──────────────────────────────────────────────────────
 
   const addPurchaseInvoice = async (data) => {
@@ -135,6 +146,17 @@ export function InvoiceProvider({ children }) {
   /** Update local cache only — used after dedicated action API calls */
   const updatePurchaseInvoiceLocal = (id, data) => setPurchaseInvoices(p => p.map(x => x.id === id ? { ...x, ...data } : x));
 
+  const deletePurchaseInvoice = async (id) => {
+    if (!isApiAvailable()) {
+      const all = lsGet(LS_PURCH).filter(x => x.id !== id);
+      lsSave(LS_PURCH, all);
+      setPurchaseInvoices(all);
+      return;
+    }
+    await api(`/purchases/${id}`, { method: 'DELETE' });
+    setPurchaseInvoices(p => p.filter(x => x.id !== id));
+  };
+
   // Stock ledger
   const addStockEntry = async (entry) => {
     if (!isApiAvailable()) {
@@ -149,8 +171,8 @@ export function InvoiceProvider({ children }) {
 
   return (
     <Ctx.Provider value={{
-      saleInvoices, addSaleInvoice, issueSaleInvoice, updateSaleInvoice, getSaleInvoice, updateSaleInvoiceLocal,
-      purchaseInvoices, addPurchaseInvoice, issuePurchaseInvoice, updatePurchaseInvoice, getPurchaseInvoice, updatePurchaseInvoiceLocal,
+      saleInvoices, addSaleInvoice, issueSaleInvoice, updateSaleInvoice, getSaleInvoice, updateSaleInvoiceLocal, deleteSaleInvoice,
+      purchaseInvoices, addPurchaseInvoice, issuePurchaseInvoice, updatePurchaseInvoice, getPurchaseInvoice, updatePurchaseInvoiceLocal, deletePurchaseInvoice,
       stockLedger, addStockEntry,
     }}>
       {children}

@@ -13,7 +13,7 @@ export default function PurchaseInvoiceView() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const { getPurchaseInvoice, updatePurchaseInvoiceLocal } = useInvoices();
+  const { getPurchaseInvoice, updatePurchaseInvoiceLocal, deletePurchaseInvoice } = useInvoices();
   const { get: getProduct } = useProducts();
 
   const inv = getPurchaseInvoice(id);
@@ -21,6 +21,7 @@ export default function PurchaseInvoiceView() {
   const [payOpen, setPayOpen] = useState(false);
   const [retOpen, setRetOpen] = useState(false);
   const [labelOpen, setLabelOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [labelQtys, setLabelQtys] = useState([]);
   const [payForm, setPayForm] = useState({ date: today(), amount: '', method: 'cash', notes: '' });
   const [retForm, setRetForm] = useState({ date: today(), amount: '', notes: '' });
@@ -32,6 +33,14 @@ export default function PurchaseInvoiceView() {
   const openLabelModal = () => {
     setLabelQtys((inv.items || []).map(item => ({ ...item, labelQty: item.quantity || 1 })));
     setLabelOpen(true);
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deletePurchaseInvoice(id);
+      toast.success('Invoice deleted · Stock & ledger reversed');
+      setTimeout(() => navigate('/purchases'), 400);
+    } catch (e) { toast.error(e.message); }
   };
 
   const printLabels = () => {
@@ -96,6 +105,7 @@ export default function PurchaseInvoiceView() {
           {inv.supplierId && <Link to={`/suppliers/${inv.supplierId}/ledger`}><Button variant="secondary">📗 Ledger</Button></Link>}
           <Button variant="secondary" onClick={openLabelModal}>🏷 Print Labels</Button>
           <Button variant="secondary" onClick={() => navigate(`/purchases/${id}/edit`)}>Edit</Button>
+          <Button variant="danger" onClick={() => setDeleteOpen(true)}>🗑 Delete</Button>
           {inv.status !== 'void' && remaining > 0.01 && (
             <Button variant="success" onClick={() => { setPayForm(f => ({ ...f, amount: remaining.toFixed(2) })); setPayOpen(true); }}>
               + Record Payment
@@ -198,6 +208,30 @@ export default function PurchaseInvoiceView() {
         <div className="flex justify-end gap-2 pt-2 border-t">
           <Button variant="secondary" onClick={() => setRetOpen(false)}>Cancel</Button>
           <Button onClick={handlePurchaseReturn}>↩ Record Return</Button>
+        </div>
+      </div>
+    </Modal>
+
+    {/* Delete Confirm Modal */}
+    <Modal open={deleteOpen} onClose={() => setDeleteOpen(false)} title="Delete Invoice">
+      <div className="space-y-4">
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          <p className="font-semibold">This will permanently delete <strong>{inv.invoiceNumber}</strong> and:</p>
+          <ul className="mt-2 list-disc list-inside space-y-1 text-red-600">
+            <li>Reverse stock for all {(inv.items || []).length} item(s)</li>
+            <li>Remove all ledger entries for this invoice</li>
+            <li>Reverse supplier balance</li>
+          </ul>
+        </div>
+        <p className="text-sm text-gray-500">This action cannot be undone.</p>
+        <div className="flex justify-end gap-2 pt-2 border-t">
+          <Button variant="secondary" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+          <button
+            onClick={handleDelete}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            Yes, Delete Invoice
+          </button>
         </div>
       </div>
     </Modal>
