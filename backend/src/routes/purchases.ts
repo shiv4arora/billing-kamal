@@ -255,7 +255,27 @@ router.put('/:id', async (req, res, next) => {
       return result;
     });
 
-    const body = { ...req.body, items: processedItems };
+    // Recompute totals from the updated items
+    const settings = await prisma.settings.findUnique({ where: { id: 'singleton' } });
+    const s = parseSettings(settings?.data);
+    const isInterState = s.tax?.intraState === false;
+    const totals = buildInvoiceTotals(processedItems, isInterState);
+    const billDiscount = Number(req.body.billDiscount) || 0;
+    const finalGrandTotal = Math.max(0, Math.round(totals.grandTotal - billDiscount));
+    const paid = Number(req.body.amountPaid) || 0;
+    const payStatus = paid >= finalGrandTotal - 0.01 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
+
+    const body = {
+      ...req.body,
+      items: processedItems,
+      subtotal: totals.subtotal,
+      totalGST: totals.totalGST,
+      totalCGST: totals.totalCGST,
+      totalSGST: totals.totalSGST,
+      totalIGST: totals.totalIGST,
+      grandTotal: finalGrandTotal,
+      paymentStatus: payStatus,
+    };
     const inv = await prisma.purchaseInvoice.update({
       where: { id: req.params.id },
       data: pickPurchaseData(body),

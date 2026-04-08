@@ -59,7 +59,7 @@ function StickerLabel({ product, supplier }) {
         {/* SKU · Supplier */}
         <p style={{
           margin:        0,
-          fontSize:      '7pt',
+          fontSize:      '8.5pt',
           fontWeight:    '600',
           lineHeight:    1.2,
           color:         '#555',
@@ -114,6 +114,7 @@ function StickerLabel({ product, supplier }) {
         display:        'flex',
         alignItems:     'center',
         justifyContent: 'center',
+        paddingRight:   '0.5mm',
       }}>
         <QRCode
           value={qrValue}
