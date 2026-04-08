@@ -26,7 +26,7 @@ function StickerLabel({ product, supplier }) {
         overflow:        'hidden',
         backgroundColor: '#fff',
         fontFamily:      'Arial, sans-serif',
-        padding:         '0.5mm 0.5mm 0.5mm 0.7mm',
+        padding:         '0.5mm 0.5mm 0.5mm 0',
         gap:             '0.5mm',
       }}
     >
@@ -90,7 +90,7 @@ function StickerLabel({ product, supplier }) {
       {/* ── RIGHT: QR code (SKU only) ── */}
       <div style={{
         flexShrink:     0,
-        width:          '12mm',
+        width:          '14mm',
         display:        'flex',
         alignItems:     'center',
         justifyContent: 'center',
@@ -99,7 +99,7 @@ function StickerLabel({ product, supplier }) {
         <QRCode
           value={qrValue}
           size={256}
-          style={{ width: '12mm', height: '12mm', display: 'block' }}
+          style={{ width: '14mm', height: '14mm', display: 'block' }}
         />
       </div>
     </div>
