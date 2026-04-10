@@ -107,6 +107,10 @@ export default function SaleInvoiceCreate() {
     setPendingDelete(null);
   };
   const addItem = () => setItems(prev => [...prev, { ...BLANK_ITEM }]);
+  const insertAfter = (idx) => {
+    setItems(prev => [...prev.slice(0, idx + 1), { ...BLANK_ITEM }, ...prev.slice(idx + 1)]);
+    setPendingDelete(null);
+  };
 
   const totals = buildInvoiceTotals(items.filter(i => i.productId && i.quantity > 0), settings.tax.intraState === false);
 
@@ -312,9 +316,9 @@ export default function SaleInvoiceCreate() {
                           </div>
                         )}
                       </td>
-                      <td className="px-3 py-2"><input type="number" min="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', +e.target.value)} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
-                      <td className="px-3 py-2"><input type="number" min="0" step="0.01" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', +e.target.value)} className="w-24 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
-                      <td className="px-3 py-2"><input type="number" min="0" max="100" value={item.discountPct} onChange={e => updateItem(idx, 'discountPct', +e.target.value)} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
+                      <td className="px-3 py-2"><input type="number" min="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', +e.target.value)} onWheel={e => e.target.blur()} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
+                      <td className="px-3 py-2"><input type="number" min="0" step="0.01" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', +e.target.value)} onWheel={e => e.target.blur()} className="w-24 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
+                      <td className="px-3 py-2"><input type="number" min="0" max="100" value={item.discountPct} onChange={e => updateItem(idx, 'discountPct', +e.target.value)} onWheel={e => e.target.blur()} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
                       <td className="px-3 py-2">
                         <select value={item.gstRate} onChange={e => updateItem(idx, 'gstRate', +e.target.value)} className="w-16 border border-gray-200 rounded px-1 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white">
                           {GST_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
@@ -329,7 +333,10 @@ export default function SaleInvoiceCreate() {
                             <button onClick={() => setPendingDelete(null)} className="text-gray-300 hover:text-gray-500 text-xs">✕</button>
                           </div>
                         ) : (
-                          <button onClick={() => setPendingDelete(idx)} className="text-gray-300 hover:text-red-500">✕</button>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => insertAfter(idx)} className="text-gray-300 hover:text-blue-500 text-base leading-none font-bold" title="Insert row below">+</button>
+                            <button onClick={() => setPendingDelete(idx)} className="text-gray-300 hover:text-red-500">✕</button>
+                          </div>
                         )}
                       </td>
                     </tr>
