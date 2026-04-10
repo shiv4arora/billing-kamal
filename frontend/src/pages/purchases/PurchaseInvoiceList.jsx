@@ -15,8 +15,9 @@ export default function PurchaseInvoiceList() {
 
   const supplierLabel = (inv) => {
     const s = getSupplier(inv.supplierId);
+    const name = s?.name || inv.supplierName;
     const code = s ? (s.code || s.name.replace(/\s+/g,'').slice(0,4).toUpperCase()) : null;
-    return code ? `${inv.supplierName} (${code})` : inv.supplierName;
+    return code ? `${name} (${code})` : name;
   };
   const [search, setSearch] = useState('');
 

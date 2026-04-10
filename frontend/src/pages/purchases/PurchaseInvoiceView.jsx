@@ -124,7 +124,7 @@ export default function PurchaseInvoiceView() {
       <div className="grid grid-cols-3 gap-5">
         <Card>
           <p className="text-xs text-gray-500 uppercase mb-2">Supplier</p>
-          <p className="font-semibold">{inv.supplierName}{vendorCode ? ` (${vendorCode})` : ''}</p>
+          <p className="font-semibold">{supplier?.name || inv.supplierName}{vendorCode ? ` (${vendorCode})` : ''}</p>
           {inv.supplierInvoiceNumber && <p className="text-sm text-gray-500 mt-1">Ref: {inv.supplierInvoiceNumber}</p>}
         </Card>
         <Card>

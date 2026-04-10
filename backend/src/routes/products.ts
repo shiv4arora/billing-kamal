@@ -49,7 +49,9 @@ router.post('/', async (req, res, next) => {
 
 router.put('/:id', async (req, res, next) => {
   try {
-    const p = await prisma.product.update({ where: { id: req.params.id }, data: serializePricing(req.body) });
+    // Strip relation objects and read-only fields so Prisma doesn't reject them
+    const { id, supplier, createdAt, updatedAt, stockLedger, ...rest } = serializePricing(req.body);
+    const p = await prisma.product.update({ where: { id: req.params.id }, data: rest });
     res.json(parseProduct(p));
   } catch (err) { next(err); }
 });
