@@ -116,6 +116,11 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
                 <span className="text-base font-mono font-bold text-blue-800 tracking-widest">
                   {nextSku !== null ? String(nextSku) : '…'}
                 </span>
+                {supplier && (
+                  <span className="ml-1 text-xs font-mono font-bold text-blue-600">
+                    · {supplier.code || supplier.name.replace(/\s+/g,'').slice(0,4).toUpperCase()}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-gray-400 mt-0.5">This SKU ID will be permanently assigned when you save.</p>
             </div>
@@ -140,7 +145,7 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
               <div className="flex items-center gap-2 mt-1 flex-wrap">
                 {item.sku && (
                   <span className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 rounded-md px-2 py-0.5 text-xs font-mono font-bold text-blue-700">
-                    SKU: {item.sku}
+                    SKU: {item.sku}{supplier ? ` · ${supplier.code || supplier.name.replace(/\s+/g,'').slice(0,4).toUpperCase()}` : ''}
                   </span>
                 )}
                 {item.category && <span className="text-xs text-gray-400">{item.category}</span>}
