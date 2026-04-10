@@ -61,6 +61,18 @@ router.delete('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// SKU / invoice history for a product
+router.get('/:id/history', async (req, res, next) => {
+  try {
+    const product = await prisma.product.findUniqueOrThrow({ where: { id: req.params.id } });
+    const movements = await prisma.stockLedger.findMany({
+      where: { productId: req.params.id },
+      orderBy: { date: 'asc' },
+    });
+    res.json({ product: parseProduct(product), movements });
+  } catch (err) { next(err); }
+});
+
 // Manual stock adjustment
 router.patch('/:id/stock', async (req, res, next) => {
   try {

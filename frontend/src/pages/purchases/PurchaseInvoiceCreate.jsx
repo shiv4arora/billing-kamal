@@ -322,7 +322,8 @@ export default function PurchaseInvoiceCreate() {
 
   // Build totals only for valid items
   const validItems = items.filter(i => (i.productId || (i.isNew && i.productName)) && i.quantity > 0);
-  const totals = buildInvoiceTotals(validItems.map(i => ({ ...i, unitPrice: i.unitPrice })), false);
+  const totals     = buildInvoiceTotals(validItems.map(i => ({ ...i, unitPrice: i.unitPrice })), false);
+  const totalQty   = items.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
 
   /* ── Excel upload ─────────────────────────────────────────────────── */
   const handleExcelUpload = (e) => {
@@ -605,6 +606,7 @@ export default function PurchaseInvoiceCreate() {
           <Card>
             <div className="flex justify-end">
               <div className="w-72 space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-gray-500">Total Qty</span><span className="font-medium">{totalQty} pcs</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>{formatCurrency(totals.subtotal)}</span></div>
                 {totals.totalDiscount > 0 && (
                   <div className="flex justify-between text-orange-600"><span>Item Discount</span><span>− {formatCurrency(totals.totalDiscount)}</span></div>
