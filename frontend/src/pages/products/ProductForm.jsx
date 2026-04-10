@@ -84,7 +84,7 @@ export default function ProductForm() {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
     const data = {
@@ -97,10 +97,10 @@ export default function ProductForm() {
     };
     // Never send sku on create — backend auto-assigns next sequential number
     if (isEdit) {
-      update(id, data);
+      await update(id, data);
     } else {
       const { sku: _drop, ...createData } = data;
-      add(createData);
+      await add(createData);
     }
     navigate('/products');
   };
