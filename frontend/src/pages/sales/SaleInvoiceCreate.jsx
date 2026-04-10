@@ -273,18 +273,17 @@ export default function SaleInvoiceCreate() {
                 Add
               </button>
             </div>
-            <Button size="sm" variant="secondary" onClick={addItem}>+ Add Row</Button>
           </div>
-          <div className="overflow-x-auto">
+          <div>
             <table className="w-full text-sm">
               <thead><tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
-                <th className="px-3 py-2 text-left w-64">Product</th>
+                <th className="px-3 py-2 text-left">Product</th>
                 <th className="px-3 py-2 text-right w-20">Qty</th>
                 <th className="px-3 py-2 text-right w-28">Rate (₹)</th>
                 <th className="px-3 py-2 text-right w-20">Disc%</th>
                 <th className="px-3 py-2 text-right w-20">GST%</th>
                 <th className="px-3 py-2 text-right w-28">Total</th>
-                <th className="px-3 py-2 w-24"></th>
+                <th className="px-3 py-2 w-8"></th>
               </tr></thead>
               <tbody>
                 {items.map((item, idx) => {
@@ -333,10 +332,7 @@ export default function SaleInvoiceCreate() {
                             <button onClick={() => setPendingDelete(null)} className="text-gray-300 hover:text-gray-500 text-xs">✕</button>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-2">
-                            <button onClick={() => insertAfter(idx)} className="text-gray-300 hover:text-blue-500 text-base leading-none font-bold" title="Insert row below">+</button>
-                            <button onClick={() => setPendingDelete(idx)} className="text-gray-300 hover:text-red-500">✕</button>
-                          </div>
+                          <button onClick={() => setPendingDelete(idx)} className="text-gray-300 hover:text-red-500">✕</button>
                         )}
                       </td>
                     </tr>
@@ -344,6 +340,12 @@ export default function SaleInvoiceCreate() {
                 })}
               </tbody>
             </table>
+            <button
+              onClick={addItem}
+              className="w-full py-3 border-2 border-dashed border-gray-200 text-gray-400 hover:border-blue-400 hover:text-blue-500 text-sm font-medium transition-colors"
+            >
+              + Add Item
+            </button>
           </div>
           {/* Totals */}
           <div className="flex justify-end p-5 border-t">
