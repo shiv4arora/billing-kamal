@@ -185,10 +185,12 @@ export default function BarcodeLabel() {
         <div className="ml-auto flex items-center gap-4">
           <label className="flex items-center gap-2 text-sm text-gray-300">
             Copies:
-            <select value={copies} onChange={e => setCopies(+e.target.value)}
-              className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm">
-              {[1, 2, 3, 6, 9, 12, 24, 30].map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
+            <input
+              type="number" min="1" max="500"
+              value={copies}
+              onChange={e => setCopies(Math.max(1, +e.target.value || 1))}
+              className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm w-16 text-center"
+            />
           </label>
           <button onClick={() => window.print()}
             className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-5 py-2 rounded-lg font-medium">
