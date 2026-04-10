@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useInvoices } from '../../context/InvoiceContext';
 import { useProducts } from '../../context/ProductContext';
+import { useSuppliers } from '../../context/SupplierContext';
 import { api } from '../../hooks/useApi';
 import { Button, Badge, Card, Modal, Input, Select, useToast, Toast } from '../../components/ui';
 import { formatCurrency, formatDate, today } from '../../utils/helpers';
@@ -15,6 +16,7 @@ export default function PurchaseInvoiceView() {
   const toast = useToast();
   const { getPurchaseInvoice, updatePurchaseInvoiceLocal, deletePurchaseInvoice } = useInvoices();
   const { get: getProduct } = useProducts();
+  const { get: getSupplier } = useSuppliers();
 
   const inv = getPurchaseInvoice(id);
 
@@ -28,7 +30,10 @@ export default function PurchaseInvoiceView() {
 
   if (!inv) return <div className="p-8 text-center text-gray-400">Invoice not found.</div>;
 
-  const remaining = inv.grandTotal - (inv.amountPaid || 0);
+  const remaining   = inv.grandTotal - (inv.amountPaid || 0);
+  const supplier    = getSupplier(inv.supplierId);
+  const vendorCode  = supplier ? (supplier.code || supplier.name.replace(/\s+/g,'').slice(0,4).toUpperCase()) : null;
+  const totalQty    = (inv.items || []).reduce((s, it) => s + (Number(it.quantity) || 0), 0);
 
   const openLabelModal = () => {
     setLabelQtys((inv.items || []).map(item => ({ ...item, labelQty: item.quantity || 1 })));
@@ -131,6 +136,7 @@ export default function PurchaseInvoiceView() {
         <Card>
           <p className="text-xs text-gray-500 uppercase mb-2">Payment</p>
           <div className="space-y-1.5 text-sm">
+            <div className="flex justify-between"><span className="text-gray-500">Total Qty</span><span className="font-medium">{totalQty} pcs</span></div>
             {(inv.billDiscount || 0) > 0 && (
               <div className="flex justify-between"><span className="text-gray-500">Discount</span><span className="text-orange-600 font-medium">− {formatCurrency(inv.billDiscount)}</span></div>
             )}
@@ -161,7 +167,11 @@ export default function PurchaseInvoiceView() {
               <td className="px-4 py-3 text-gray-400">{i+1}</td>
               <td className="px-4 py-3">
                 <p className="font-medium">{item.productName}</p>
-                {item.sku && <p className="text-xs text-blue-500 font-mono mt-0.5">#{item.sku}</p>}
+                {item.sku && (
+                  <p className="text-xs text-blue-500 font-mono mt-0.5">
+                    #{item.sku}{vendorCode ? ` · ${vendorCode}` : ''}
+                  </p>
+                )}
               </td>
               <td className="px-4 py-3 text-right">{item.quantity} {item.unit}</td>
               <td className="px-4 py-3 text-right">{formatCurrency(item.unitPrice)}</td>
@@ -172,6 +182,7 @@ export default function PurchaseInvoiceView() {
         </table>
         <div className="flex justify-end p-5 border-t">
           <div className="w-56 space-y-1.5 text-sm">
+            <div className="flex justify-between"><span className="text-gray-500">Total Qty</span><span className="font-medium">{totalQty} pcs</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>{formatCurrency(inv.subtotal)}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">GST</span><span>{formatCurrency(inv.totalGST)}</span></div>
             {(inv.billDiscount || 0) > 0 && (
