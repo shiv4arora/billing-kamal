@@ -76,11 +76,15 @@ export default function SaleInvoiceCreate() {
 
   const handleProductSelect = (idx, prod) => {
     const price = getPrice(prod, customerType);
-    setItems(prev => prev.map((item, i) => i === idx ? {
-      ...item,
-      productId: prod.id, productName: prod.name, sku: prod.sku || '',
-      hsnCode: prod.hsnCode || '', unit: prod.unit, unitPrice: price, gstRate: prod.gstRate || 0,
-    } : item));
+    setItems(prev => {
+      const updated = prev.map((item, i) => i === idx ? {
+        ...item,
+        productId: prod.id, productName: prod.name, sku: prod.sku || '',
+        hsnCode: prod.hsnCode || '', unit: prod.unit, unitPrice: price, gstRate: prod.gstRate || 0,
+      } : item);
+      if (idx === prev.length - 1) return [...updated, { ...BLANK_ITEM }];
+      return updated;
+    });
     setProductSearch(p => ({ ...p, [idx]: prod.name }));
     setShowDropdown(p => ({ ...p, [idx]: false }));
   };
@@ -89,7 +93,19 @@ export default function SaleInvoiceCreate() {
     setItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
   };
 
-  const removeItem = (idx) => setItems(prev => prev.filter((_, i) => i !== idx));
+  const [pendingDelete, setPendingDelete] = useState(null);
+
+  const removeItem = (idx) => {
+    setItems(prev => prev.filter((_, i) => i !== idx));
+    setProductSearch(p => { const n = {}; Object.entries(p).forEach(([k, v]) => { const ki = +k; if (ki < idx) n[ki] = v; else if (ki > idx) n[ki - 1] = v; }); return n; });
+    setPendingDelete(null);
+  };
+  const replaceItem = (idx) => {
+    setItems(prev => prev.map((item, i) => i === idx ? { ...BLANK_ITEM } : item));
+    setProductSearch(p => ({ ...p, [idx]: '' }));
+    setShowDropdown(p => ({ ...p, [idx]: false }));
+    setPendingDelete(null);
+  };
   const addItem = () => setItems(prev => [...prev, { ...BLANK_ITEM }]);
 
   const totals = buildInvoiceTotals(items.filter(i => i.productId && i.quantity > 0), settings.tax.intraState === false);
@@ -264,7 +280,7 @@ export default function SaleInvoiceCreate() {
                 <th className="px-3 py-2 text-right w-20">Disc%</th>
                 <th className="px-3 py-2 text-right w-20">GST%</th>
                 <th className="px-3 py-2 text-right w-28">Total</th>
-                <th className="px-3 py-2 w-8"></th>
+                <th className="px-3 py-2 w-24"></th>
               </tr></thead>
               <tbody>
                 {items.map((item, idx) => {
@@ -305,7 +321,17 @@ export default function SaleInvoiceCreate() {
                         </select>
                       </td>
                       <td className="px-3 py-2 text-right font-medium">{item.productId ? formatCurrency(lineTotal) : '-'}</td>
-                      <td className="px-3 py-2"><button onClick={() => removeItem(idx)} className="text-gray-300 hover:text-red-500">✕</button></td>
+                      <td className="px-3 py-2">
+                        {pendingDelete === idx ? (
+                          <div className="flex items-center gap-1 whitespace-nowrap">
+                            <button onClick={() => removeItem(idx)} className="px-1.5 py-0.5 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 font-medium">Del</button>
+                            <button onClick={() => replaceItem(idx)} className="px-1.5 py-0.5 text-xs bg-amber-100 text-amber-700 rounded hover:bg-amber-200 font-medium">Replace</button>
+                            <button onClick={() => setPendingDelete(null)} className="text-gray-300 hover:text-gray-500 text-xs">✕</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setPendingDelete(idx)} className="text-gray-300 hover:text-red-500">✕</button>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
