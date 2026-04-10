@@ -277,6 +277,7 @@ export default function SaleInvoiceCreate() {
           <div>
             <table className="w-full text-sm">
               <thead><tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
+                <th className="px-3 py-2 text-center w-8">#</th>
                 <th className="px-3 py-2 text-left">Product</th>
                 <th className="px-3 py-2 text-right w-20">Qty</th>
                 <th className="px-3 py-2 text-right w-28">Rate (₹)</th>
@@ -295,6 +296,7 @@ export default function SaleInvoiceCreate() {
                   const search = productSearch[idx] ?? item.productName ?? '';
                   return (
                     <tr key={idx} className="border-b hover:bg-gray-50">
+                      <td className="px-3 py-2 text-center text-xs text-gray-400 font-medium">{idx + 1}</td>
                       <td className="px-3 py-2 relative">
                         <input value={search} onChange={e => { setProductSearch(p => ({ ...p, [idx]: e.target.value })); setShowDropdown(p => ({ ...p, [idx]: true })); }} onFocus={() => setShowDropdown(p => ({ ...p, [idx]: true }))}
                           placeholder="Search product…" className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400" />
@@ -350,8 +352,9 @@ export default function SaleInvoiceCreate() {
           {/* Totals */}
           <div className="flex justify-end p-5 border-t">
             <div className="w-72 space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-gray-500">Total Items</span><span>{totals.items.length} items · {totals.items.reduce((s, i) => s + i.quantity, 0)} qty</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>{formatCurrency(totals.subtotal)}</span></div>
-              {totals.totalDiscount > 0 && <div className="flex justify-between"><span className="text-gray-500">Discount</span><span className="text-red-600">-{formatCurrency(totals.totalDiscount)}</span></div>}
+              <div className="flex justify-between"><span className="text-gray-500">Discount</span><span className={totals.totalDiscount > 0 ? 'text-red-600' : 'text-gray-400'}>-{formatCurrency(totals.totalDiscount)}</span></div>
               {totals.totalCGST > 0 && <div className="flex justify-between"><span className="text-gray-500">CGST</span><span>{formatCurrency(totals.totalCGST)}</span></div>}
               {totals.totalSGST > 0 && <div className="flex justify-between"><span className="text-gray-500">SGST</span><span>{formatCurrency(totals.totalSGST)}</span></div>}
               {totals.totalIGST > 0 && <div className="flex justify-between"><span className="text-gray-500">IGST</span><span>{formatCurrency(totals.totalIGST)}</span></div>}
