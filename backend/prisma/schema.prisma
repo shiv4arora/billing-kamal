@@ -198,6 +198,25 @@ model Counter {
   value Int    @default(1)
 }
 
+model Lead {
+  id            String   @id @default(cuid())
+  name          String
+  phone         String   @default("")
+  place         String   @default("")
+  source        String   @default("whatsapp")  // whatsapp | call | walkin | other
+  stage         String   @default("lead")       // lead | contacted | catalogue | visit | followup2 | won
+  notes         String   @default("[]")         // JSON array of {text, createdAt}
+  nextFollowUp  String?                          // ISO date YYYY-MM-DD
+  noPickupCount Int      @default(0)
+  visitDate     String?                          // ISO date for scheduled visit
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([stage])
+  @@index([nextFollowUp])
+}
+
 model ReminderLog {
   id            String      @id @default(cuid())
   invoiceId     String

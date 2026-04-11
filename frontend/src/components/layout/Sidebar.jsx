@@ -31,6 +31,10 @@ export default function Sidebar({ isOpen, onClose }) {
       ],
     },
     {
+      section: 'CRM',
+      items: [{ to: '/crm', label: 'Leads', icon: '🎯' }],
+    },
+    {
       section: 'Master',
       items: [
         ...(can('products_view')   ? [{ to: '/products',  label: 'Products',   icon: '🏷️' }] : []),

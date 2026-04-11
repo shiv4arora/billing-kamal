@@ -18,6 +18,7 @@ import settingsRouter from './routes/settings';
 import remindersRouter from './routes/reminders';
 import adminRouter from './routes/admin';
 import countersRouter from './routes/counters';
+import leadsRouter from './routes/leads';
 import { verifyJWT } from './middleware/auth';
 import { errorHandler } from './middleware/errorHandler';
 
@@ -64,6 +65,7 @@ app.use('/api/settings', settingsRouter);
 app.use('/api/reminders', remindersRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/counters', countersRouter);
+app.use('/api/leads', leadsRouter);
 
 app.use(errorHandler);
 

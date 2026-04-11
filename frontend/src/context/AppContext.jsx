@@ -5,6 +5,7 @@ import { SupplierProvider } from './SupplierContext';
 import { InvoiceProvider } from './InvoiceContext';
 import { LedgerProvider } from './LedgerContext';
 import { ReminderProvider } from './ReminderContext';
+import { LeadProvider } from './LeadContext';
 import { AuthProvider } from './AuthContext';
 import { ToastProvider } from './ToastContext';
 
@@ -19,7 +20,9 @@ export function AppProvider({ children }) {
                 <InvoiceProvider>
                   <LedgerProvider>
                     <ReminderProvider>
-                      {children}
+                      <LeadProvider>
+                        {children}
+                      </LeadProvider>
                     </ReminderProvider>
                   </LedgerProvider>
                 </InvoiceProvider>

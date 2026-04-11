@@ -33,6 +33,9 @@ import Settings from './pages/Settings';
 import VendorSalesReport from './pages/reports/VendorSalesReport';
 import LoginPage from './pages/auth/LoginPage';
 import UserManagement from './pages/auth/UserManagement';
+import CrmList from './pages/crm/CrmList';
+import CrmForm from './pages/crm/CrmForm';
+import CrmDetail from './pages/crm/CrmDetail';
 
 /** Redirect to / if already logged in */
 function PublicRoute({ children }) {
@@ -76,6 +79,10 @@ function LayoutRoutes() {
           <Route path="/purchases/:id/edit" element={<PurchaseInvoiceCreate />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/reminders" element={<Reminders />} />
+          <Route path="/crm" element={<CrmList />} />
+          <Route path="/crm/new" element={<CrmForm />} />
+          <Route path="/crm/:id" element={<CrmDetail />} />
+          <Route path="/crm/:id/edit" element={<CrmForm />} />
           {can('reports') && <Route path="/reports/sales" element={<SalesReport />} />}
           {can('reports') && <Route path="/reports/purchases" element={<PurchasesReport />} />}
           {can('reports') && <Route path="/reports/inventory" element={<InventoryReport />} />}
