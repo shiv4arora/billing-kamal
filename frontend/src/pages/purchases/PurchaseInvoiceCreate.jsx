@@ -352,10 +352,10 @@ export default function PurchaseInvoiceCreate() {
 
           if (!name) return null;
 
-          // Try to match existing product by SKU or name
+          // Match existing product by SKU or name, restricted to same supplier
           const existing = products.find(p =>
-            (sku && p.sku === sku) ||
-            p.name?.toLowerCase() === name.toLowerCase()
+            p.supplierId === supplierId &&
+            ((sku && p.sku === sku) || p.name?.toLowerCase() === name.toLowerCase())
           );
 
           const pricing = calcSellingPrices(cost || (existing?.costPrice || 0), sup?.margin, sup?.discount);
