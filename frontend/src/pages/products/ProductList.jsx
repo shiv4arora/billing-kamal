@@ -141,7 +141,7 @@ export default function ProductList() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold text-gray-900">Products</h1>
         <div className="flex items-center gap-2">
           {someSelected && (

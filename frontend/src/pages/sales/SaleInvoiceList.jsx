@@ -39,11 +39,11 @@ export default function SaleInvoiceList() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold text-gray-900">Sale Invoices</h1>
         <Link to="/sales/new"><Button>+ New Invoice</Button></Link>
       </div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-blue-50 rounded-xl p-4"><p className="text-xs text-blue-500 font-medium">Total ({filtered.length})</p><p className="text-xl font-bold text-blue-900">{formatCurrency(totalRevenue)}</p></div>
         <div className="bg-yellow-50 rounded-xl p-4"><p className="text-xs text-yellow-500 font-medium">Unpaid</p><p className="text-xl font-bold text-yellow-900">{formatCurrency(filtered.filter(i => i.paymentStatus === 'unpaid' && i.status !== 'void').reduce((s,i) => s + (i.grandTotal||0), 0))}</p></div>
         <div className="bg-green-50 rounded-xl p-4"><p className="text-xs text-green-500 font-medium">Paid</p><p className="text-xl font-bold text-green-900">{formatCurrency(filtered.filter(i => i.paymentStatus === 'paid').reduce((s,i) => s + (i.grandTotal||0), 0))}</p></div>

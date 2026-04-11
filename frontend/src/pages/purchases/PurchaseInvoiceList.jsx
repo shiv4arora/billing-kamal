@@ -36,7 +36,7 @@ export default function PurchaseInvoiceList() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold text-gray-900">Purchase Invoices</h1>
         <Link to="/purchases/new"><Button variant="success">+ New Purchase</Button></Link>
       </div>

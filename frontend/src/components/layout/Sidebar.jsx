@@ -4,7 +4,7 @@ import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useReminderLog } from '../../context/ReminderContext';
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
   const { active } = useProducts();
   const { settings } = useSettings();
   const { currentUser, isAdmin, logout, can } = useAuth();
@@ -71,10 +71,27 @@ export default function Sidebar() {
   ].filter(s => s.items.length > 0);
 
   return (
-    <aside className="fixed top-0 left-0 h-screen w-60 bg-gray-900 text-gray-300 flex flex-col z-40">
-      <div className="px-5 py-5 border-b border-gray-700">
-        <h1 className="text-white font-bold text-lg leading-tight truncate">{settings.company.name || 'BillingPro'}</h1>
-        <p className="text-gray-400 text-xs mt-0.5">Billing Software</p>
+    <aside
+      className={`
+        fixed top-0 left-0 h-screen w-60 bg-gray-900 text-gray-300 flex flex-col z-40
+        transition-transform duration-200
+        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+        lg:translate-x-0
+      `}
+    >
+      <div className="px-5 py-5 border-b border-gray-700 flex items-center justify-between">
+        <div className="min-w-0">
+          <h1 className="text-white font-bold text-lg leading-tight truncate">{settings.company.name || 'BillingPro'}</h1>
+          <p className="text-gray-400 text-xs mt-0.5">Billing Software</p>
+        </div>
+        {/* Close button — mobile only */}
+        <button
+          onClick={onClose}
+          className="lg:hidden text-gray-400 hover:text-white p-1 ml-2"
+          aria-label="Close menu"
+        >
+          ✕
+        </button>
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4 px-3">
@@ -86,6 +103,7 @@ export default function Sidebar() {
                 key={item.to + item.label}
                 to={item.to}
                 end={item.to === '/'}
+                onClick={onClose}
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-3 py-2 rounded-lg text-sm mb-0.5 transition-colors ${
                     isActive ? 'bg-blue-600 text-white' : 'hover:bg-gray-800 text-gray-300'
@@ -110,7 +128,6 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Logged-in user + logout */}
       <div className="px-4 py-3 border-t border-gray-700">
         <div className="flex items-center gap-2">
           <div className="flex-1 min-w-0">

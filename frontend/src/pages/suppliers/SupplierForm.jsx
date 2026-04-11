@@ -120,7 +120,7 @@ export default function SupplierForm() {
           </div>
 
           {/* Margin tiers */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
               { tier: 'wholesale', label: 'Wholesale Margin', color: 'blue' },
               { tier: 'shop',      label: 'Shop Margin',      color: 'purple' },
@@ -164,7 +164,7 @@ export default function SupplierForm() {
         {/* Additional */}
         <Card>
           <h3 className="font-semibold text-gray-800 mb-4">Additional Details</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="Contact Person" value={form.contactPerson} onChange={e => set('contactPerson', e.target.value)} className="col-span-2" />
             <Input label="Email" type="email" value={form.email} onChange={e => set('email', e.target.value)} />
             <Input label="GSTIN" value={form.gstin} onChange={e => set('gstin', e.target.value)} />

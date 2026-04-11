@@ -55,7 +55,7 @@ export default function CustomerForm() {
         {/* Additional fields */}
         <Card>
           <h3 className="font-semibold text-gray-800 mb-4">Additional Details</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select label="Customer Type" value={form.type} onChange={e => set('type', e.target.value)} className="col-span-2">
               <option value="wholesale">Wholesale (H)</option>
               <option value="shop">Shop (S)</option>

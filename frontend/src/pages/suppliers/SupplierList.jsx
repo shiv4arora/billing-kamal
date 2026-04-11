@@ -80,13 +80,13 @@ export default function SupplierList() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold text-gray-900">Supplier Database</h1>
         <Link to="/suppliers/new"><Button variant="success">+ Add Supplier</Button></Link>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-gray-50 rounded-xl p-4 text-center">
           <p className="text-2xl font-bold text-gray-900">{active.length}</p>
           <p className="text-xs text-gray-500 mt-0.5">Total Suppliers</p>

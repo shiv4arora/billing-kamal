@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { useReminderLog } from '../../context/ReminderContext';
@@ -34,7 +34,6 @@ function ReminderBanner() {
   if (!reminderEnabled) return null;
 
   const handleSendAll = async () => {
-    // Dedupe by invoice
     const seen = new Set();
     const toSend = pendingReminders.filter(r => {
       if (seen.has(r.inv.id)) return false;
@@ -49,7 +48,6 @@ function ReminderBanner() {
       const r = toSend[i];
       const customer = getCustomer(r.inv.customerId);
       const url = buildWhatsAppUrl(r.inv, customer, companyName, template);
-      // Stagger tab opens slightly so browsers don't block them
       await new Promise(res => setTimeout(res, i * 400));
       window.open(url, '_blank');
       await logReminderSent(r.inv.id, r.offset, {
@@ -61,7 +59,7 @@ function ReminderBanner() {
   };
 
   return (
-    <div className="bg-orange-500 text-white px-5 py-3 flex items-center justify-between gap-4 flex-wrap text-sm">
+    <div className="bg-orange-500 text-white px-4 py-3 flex items-center justify-between gap-4 flex-wrap text-sm">
       <div className="flex items-center gap-2">
         <span className="text-lg">🔔</span>
         <span className="font-semibold">
@@ -94,12 +92,38 @@ function ReminderBanner() {
 }
 
 export default function MainLayout({ children }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { settings } = useSettings();
+
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      <main className="flex-1 ml-60 overflow-y-auto flex flex-col">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      <main className="flex-1 lg:ml-60 overflow-y-auto flex flex-col min-w-0">
+        {/* Mobile top bar */}
+        <div className="lg:hidden flex items-center gap-3 px-4 py-3 bg-gray-900 text-white sticky top-0 z-20">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-1.5 rounded-md hover:bg-gray-700 transition-colors"
+            aria-label="Open menu"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <span className="font-semibold text-sm truncate">{settings.company?.name || 'BillingPro'}</span>
+        </div>
+
         <ReminderBanner />
-        <div className="p-6 flex-1">{children}</div>
+        <div className="p-4 lg:p-6 flex-1">{children}</div>
       </main>
     </div>
   );

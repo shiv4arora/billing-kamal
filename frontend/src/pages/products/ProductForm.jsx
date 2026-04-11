@@ -115,7 +115,7 @@ export default function ProductForm() {
       <form onSubmit={handleSubmit} className="space-y-5">
         <Card>
           <h3 className="font-semibold text-gray-800 mb-4">Basic Information</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="Product Name *" value={form.name} onChange={e => set('name', e.target.value)} error={errors.name} className="col-span-2" />
 
             {/* SKU ID — assigned automatically when first purchase is completed */}
@@ -167,7 +167,7 @@ export default function ProductForm() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
               <p className="text-xs font-bold text-blue-600 uppercase tracking-wide mb-2">Wholesale</p>
               <input type="number" min="0" step="0.01" value={form.pricing.wholesale}
@@ -192,7 +192,7 @@ export default function ProductForm() {
 
         <Card>
           <h3 className="font-semibold text-gray-800 mb-4">Inventory</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="Opening Stock" type="number" min="0" value={form.currentStock} onChange={e => set('currentStock', e.target.value)} />
             <Input label="Low Stock Threshold" type="number" min="0" value={form.lowStockThreshold} onChange={e => set('lowStockThreshold', e.target.value)} />
           </div>

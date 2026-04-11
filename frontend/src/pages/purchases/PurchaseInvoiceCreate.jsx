@@ -100,7 +100,7 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
       <div className="p-4 space-y-4">
         {/* ── Product search / name ── */}
         {item.isNew ? (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="Product Name *"
               value={item.productName}
@@ -166,7 +166,7 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
         )}
 
         {/* ── Quantity + Cost + GST ── */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Input
             label="Quantity"
             type="number" min="0"
@@ -467,7 +467,7 @@ export default function PurchaseInvoiceCreate() {
         </div>
 
         {/* Supplier + Invoice details */}
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <Card>
             <h3 className="font-semibold text-gray-800 mb-3">Supplier</h3>
             {/* Searchable supplier dropdown */}
@@ -521,7 +521,7 @@ export default function PurchaseInvoiceCreate() {
 
           <Card>
             <h3 className="font-semibold text-gray-800 mb-3">Invoice Details</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} />
               <Input label="Supplier Invoice #" value={supplierInvNo} onChange={e => setSupplierInvNo(e.target.value)} placeholder="Supplier's ref" />
               <Select label="Payment Method" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
