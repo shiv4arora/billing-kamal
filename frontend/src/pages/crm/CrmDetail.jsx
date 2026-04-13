@@ -232,9 +232,9 @@ export default function CrmDetail() {
             className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors">
             📞 Call Done
           </button>
-          <button onClick={() => quickLog('Photos shared 📸', 'catalogue')} disabled={!!saving}
+          <button onClick={() => quickLog('Sent catalogue 📸', 'catalogue')} disabled={!!saving}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg text-xs font-medium hover:bg-purple-100 transition-colors">
-            📸 Photos Shared
+            📸 Sent Catalogue
           </button>
         </div>
         <div className="flex gap-2 mb-4">
