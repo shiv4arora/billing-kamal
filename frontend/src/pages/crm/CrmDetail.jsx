@@ -79,8 +79,11 @@ export default function CrmDetail() {
   // Save follow-up date
   const saveFollowUp = () => save({ nextFollowUp: nextFollowUp || null }, 'Follow-up saved');
 
-  // Save visit date
-  const saveVisitDate = () => save({ visitDate: visitDate || null }, 'Visit date saved');
+  // Save visit date → also move to visit stage
+  const saveVisitDate = () => save({
+    visitDate: visitDate || null,
+    ...(visitDate ? { stage: 'visit' } : {}),
+  }, visitDate ? 'Visit date saved · moved to Visit stage' : 'Visit date cleared');
 
   // No pickup — auto-snooze +4h or next morning
   const noPickup = async () => {
@@ -109,10 +112,10 @@ export default function CrmDetail() {
     setNextFollowUp('');
   };
 
-  // Quick-log buttons
-  const quickLog = async (text) => {
+  // Quick-log buttons (also advance stage)
+  const quickLog = async (text, stage) => {
     const updated = [...notes, { text, createdAt: new Date().toISOString() }];
-    await save({ notes: JSON.stringify(updated) }, `${text} logged`);
+    await save({ notes: JSON.stringify(updated), stage }, `${text} logged`);
   };
 
   // Mark Won
@@ -225,11 +228,11 @@ export default function CrmDetail() {
       <Card>
         <h3 className="font-semibold text-gray-800 mb-3">Call Log / Notes</h3>
         <div className="flex flex-wrap gap-2 mb-3">
-          <button onClick={() => quickLog('Call done ✅')} disabled={!!saving}
+          <button onClick={() => quickLog('Call done ✅', 'contacted')} disabled={!!saving}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors">
             📞 Call Done
           </button>
-          <button onClick={() => quickLog('Photos shared 📸')} disabled={!!saving}
+          <button onClick={() => quickLog('Photos shared 📸', 'catalogue')} disabled={!!saving}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg text-xs font-medium hover:bg-purple-100 transition-colors">
             📸 Photos Shared
           </button>
