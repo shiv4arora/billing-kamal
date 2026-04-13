@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useLeads } from '../../context/LeadContext';
 import { Button, Input, Badge, Card } from '../../components/ui';
 import { useGlobalToast } from '../../context/ToastContext';
-import { today } from '../../utils/helpers';
+import { today, formatDate } from '../../utils/helpers';
 
 const STAGES = [
   { key: 'lead',      label: 'Lead',           color: 'gray'   },
@@ -24,8 +24,9 @@ const SOURCE_LABELS = {
 function formatDateTime(iso) {
   if (!iso) return '';
   const d = new Date(iso);
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ' ' +
-    d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const date = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+  const time = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  return `${date} ${time}`;
 }
 
 export default function CrmDetail() {
@@ -108,6 +109,12 @@ export default function CrmDetail() {
     setNextFollowUp('');
   };
 
+  // Quick-log buttons
+  const quickLog = async (text) => {
+    const updated = [...notes, { text, createdAt: new Date().toISOString() }];
+    await save({ notes: JSON.stringify(updated) }, `${text} logged`);
+  };
+
   // Mark Won
   const markWon = async () => {
     const updatedNotes = [...notes, { text: 'Marked as Won 🎉', createdAt: new Date().toISOString() }];
@@ -145,7 +152,7 @@ export default function CrmDetail() {
               {lead.place && <span className="text-xs text-gray-400">📍 {lead.place}</span>}
             </div>
             {lead.phone && <p className="text-sm font-mono text-gray-700">{lead.phone}</p>}
-            <p className="text-xs text-gray-400 mt-1">Added {new Date(lead.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+            <p className="text-xs text-gray-400 mt-1">Added {formatDate(lead.createdAt)}</p>
           </div>
 
           {/* Quick call/WA */}
@@ -184,7 +191,7 @@ export default function CrmDetail() {
         <h3 className="font-semibold text-gray-800 mb-3">Follow-up</h3>
         {isOverdue && (
           <div className="mb-3 flex items-center gap-2 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-            🔴 Overdue since {lead.nextFollowUp}
+            🔴 Overdue since {formatDate(lead.nextFollowUp)}
             {lead.noPickupCount > 0 && ` · No pickup ×${lead.noPickupCount}`}
           </div>
         )}
@@ -210,13 +217,23 @@ export default function CrmDetail() {
           <Button size="sm" onClick={saveVisitDate} disabled={!!saving}>Set</Button>
         </div>
         {lead.visitDate && (
-          <p className="text-xs text-gray-500 mt-1.5">📅 Visit on {lead.visitDate}</p>
+          <p className="text-xs text-gray-500 mt-1.5">📅 Visit on {formatDate(lead.visitDate)}</p>
         )}
       </Card>
 
       {/* Notes */}
       <Card>
         <h3 className="font-semibold text-gray-800 mb-3">Call Log / Notes</h3>
+        <div className="flex flex-wrap gap-2 mb-3">
+          <button onClick={() => quickLog('Call done ✅')} disabled={!!saving}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors">
+            📞 Call Done
+          </button>
+          <button onClick={() => quickLog('Photos shared 📸')} disabled={!!saving}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg text-xs font-medium hover:bg-purple-100 transition-colors">
+            📸 Photos Shared
+          </button>
+        </div>
         <div className="flex gap-2 mb-4">
           <input
             value={noteText}

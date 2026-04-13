@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useLeads } from '../../context/LeadContext';
-import { today } from '../../utils/helpers';
+import { today, formatDate } from '../../utils/helpers';
 import { Button, SearchInput, Badge } from '../../components/ui';
 
 const STAGES = [
@@ -156,7 +156,7 @@ export default function CrmList() {
                         {overdue && <span>🔴</span>}
                         {dueToday && <span>🟠</span>}
                         {!overdue && !dueToday && <span>📅</span>}
-                        Follow-up: {lead.nextFollowUp}
+                        Follow-up: {formatDate(lead.nextFollowUp)}
                         {lead.noPickupCount > 0 && (
                           <span className="ml-1 bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">
                             No pickup ×{lead.noPickupCount}

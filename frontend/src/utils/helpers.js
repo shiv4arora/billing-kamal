@@ -14,7 +14,8 @@ export function now() { return new Date().toISOString(); }
 
 export function formatDate(iso) {
   if (!iso) return '-';
-  return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
 }
 
 export function formatCurrency(n = 0) {
