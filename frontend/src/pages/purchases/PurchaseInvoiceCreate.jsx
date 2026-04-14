@@ -11,7 +11,7 @@ import { useGlobalToast } from '../../context/ToastContext';
 import { buildInvoiceTotals, formatCurrency, today } from '../../utils/helpers';
 import { GST_RATES, UNITS } from '../../constants';
 import * as XLSX from 'xlsx';
-import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedChanges';
+import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedChanges.jsx';
 
 /* ─── helpers ────────────────────────────────────────────────────────── */
 function calcSellingPrices(cost, supplierMargin = {}, supplierDiscount = 0) {

@@ -4,7 +4,7 @@ import { useLeads } from '../../context/LeadContext';
 import { Button, Input, Select, Textarea, Card } from '../../components/ui';
 import { useGlobalToast } from '../../context/ToastContext';
 import { today } from '../../utils/helpers';
-import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedChanges';
+import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedChanges.jsx';
 
 const STAGES = [
   { value: 'lead',      label: 'Lead' },

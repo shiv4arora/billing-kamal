@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCustomers } from '../../context/CustomerContext';
 import { Button, Input, Select, Textarea, Card } from '../../components/ui';
-import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedChanges';
+import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedChanges.jsx';
 
 const BLANK = { name: '', place: '', phone: '', type: 'shop', email: '', address: '', gstin: '', creditLimit: '', isActive: true };
 
