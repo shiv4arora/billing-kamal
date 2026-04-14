@@ -56,7 +56,8 @@ export default function ProductList() {
     )
     .sort((a, b) => {
       let va, vb;
-      if (sortKey === 'name')      { va = a.name?.toLowerCase() || ''; vb = b.name?.toLowerCase() || ''; }
+      if (sortKey === 'name')       { va = a.name?.toLowerCase() || ''; vb = b.name?.toLowerCase() || ''; }
+      else if (sortKey === 'sku')   { va = +(a.sku) || 0;               vb = +(b.sku) || 0; }
       else if (sortKey === 'stock') { va = a.currentStock || 0;         vb = b.currentStock || 0; }
       else if (sortKey === 'wholesale') { va = a.pricing?.wholesale || 0; vb = b.pricing?.wholesale || 0; }
       else if (sortKey === 'shop')      { va = a.pricing?.shop || 0;      vb = b.pricing?.shop || 0; }
@@ -125,7 +126,12 @@ export default function ProductList() {
       ),
     },
     {
-      header: <button onClick={() => toggleSort('name')} className="flex items-center font-semibold text-gray-500 text-xs uppercase tracking-wide hover:text-blue-600">Product <SortArrow col="name" /></button>,
+      header: (
+        <div className="flex items-center gap-3">
+          <button onClick={() => toggleSort('name')} className="flex items-center font-semibold text-gray-500 text-xs uppercase tracking-wide hover:text-blue-600">Product <SortArrow col="name" /></button>
+          <button onClick={() => toggleSort('sku')} className="flex items-center font-semibold text-gray-500 text-xs uppercase tracking-wide hover:text-blue-600">SKU <SortArrow col="sku" /></button>
+        </div>
+      ),
       render: p => (
         <div>
           <p className="font-medium text-gray-900">{p.name}</p>

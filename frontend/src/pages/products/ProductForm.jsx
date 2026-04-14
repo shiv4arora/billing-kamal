@@ -111,7 +111,7 @@ export default function ProductForm() {
 
   return (
     <>
-    <UnsavedChangesModal blocker={blocker} />
+    
     <div className="max-w-2xl space-y-5">
       <div className="flex items-center gap-3">
         <button onClick={() => { if (confirmLeave()) navigate('/products'); }} className="text-gray-400 hover:text-gray-600">←</button>

@@ -66,7 +66,7 @@ export default function SupplierForm() {
 
   return (
     <>
-    <UnsavedChangesModal blocker={blocker} />
+    
     <div className="max-w-lg space-y-5">
       <div className="flex items-center gap-3">
         <button onClick={() => { if (confirmLeave()) navigate('/suppliers'); }} className="text-gray-400 hover:text-gray-600">←</button>
