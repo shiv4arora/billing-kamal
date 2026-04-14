@@ -145,6 +145,7 @@ export default function BarcodeLabel() {
 
   const supplier     = suppliers.find(s => s.id === product.supplierId);
   const wCoded       = Math.round((product.pricing?.wholesale || 0) * 2);
+  const pCoded       = Math.round((product.pricing?.shop || 0) * 2);
   const supplierCode = supplier
     ? (supplier.code || supplier.name.replace(/\s+/g, '').slice(0, 4).toUpperCase())
     : '—';
