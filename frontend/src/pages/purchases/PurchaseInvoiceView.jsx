@@ -36,7 +36,7 @@ export default function PurchaseInvoiceView() {
   const totalQty    = (inv.items || []).reduce((s, it) => s + (Number(it.quantity) || 0), 0);
 
   const openLabelModal = () => {
-    setLabelQtys((inv.items || []).map(item => ({ ...item, labelQty: item.quantity || 1 })));
+    setLabelQtys((inv.items || []).map(item => ({ ...item, labelQty: item.quantity || 1, selected: true })));
     setLabelOpen(true);
   };
 
@@ -50,7 +50,7 @@ export default function PurchaseInvoiceView() {
 
   const printLabels = () => {
     const items = labelQtys
-      .filter(item => (item.labelQty || 0) > 0 && item.productId)
+      .filter(item => item.selected && (item.labelQty || 0) > 0 && item.productId)
       .map(item => {
         const product = getProduct(item.productId);
         return { product, qty: item.labelQty, supplier: null };
@@ -262,37 +262,69 @@ export default function PurchaseInvoiceView() {
     {/* Print Labels Modal */}
     <Modal open={labelOpen} onClose={() => setLabelOpen(false)} title={`Print Labels — ${inv.invoiceNumber}`}>
       <div className="space-y-4">
-        <p className="text-sm text-gray-500">Set the number of stickers to print for each item.</p>
-        <div className="space-y-2">
+        {/* Header row with select-all */}
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-500">Set stickers to print for each item.</p>
+          <button
+            onClick={() => {
+              const allSelected = labelQtys.every(i => i.selected);
+              setLabelQtys(prev => prev.map(it => ({ ...it, selected: !allSelected })));
+            }}
+            className="text-xs font-medium text-blue-600 hover:text-blue-800 underline"
+          >
+            {labelQtys.every(i => i.selected) ? 'Deselect All' : 'Select All'}
+          </button>
+        </div>
+
+        <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
           {labelQtys.map((item, idx) => (
-            <div key={idx} className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+            <div key={idx} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${item.selected ? 'bg-white border-blue-200' : 'bg-gray-50 border-gray-100 opacity-50'}`}>
+              {/* Serial number */}
+              <span className="text-xs font-bold text-gray-400 w-5 text-center shrink-0">{idx + 1}</span>
+
+              {/* Checkbox */}
+              <input
+                type="checkbox"
+                checked={item.selected}
+                onChange={e => setLabelQtys(prev => prev.map((it, i) => i === idx ? { ...it, selected: e.target.checked } : it))}
+                className="w-4 h-4 rounded accent-blue-600 cursor-pointer shrink-0"
+              />
+
+              {/* Product info */}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-800 truncate">{item.productName}</p>
                 {item.sku && <p className="text-xs text-blue-500 font-mono mt-0.5">#{item.sku}</p>}
                 <p className="text-xs text-gray-400 mt-0.5">Purchased: {item.quantity} {item.unit}</p>
               </div>
+
+              {/* Qty controls */}
               <div className="flex items-center gap-1.5 shrink-0">
                 <button
+                  disabled={!item.selected}
                   onClick={() => setLabelQtys(prev => prev.map((it, i) => i === idx ? { ...it, labelQty: Math.max(0, it.labelQty - 1) } : it))}
-                  className="w-7 h-7 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 text-base font-bold flex items-center justify-center select-none"
+                  className="w-7 h-7 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 text-base font-bold flex items-center justify-center select-none disabled:opacity-40"
                 >−</button>
                 <input
                   type="number" min="0"
+                  disabled={!item.selected}
                   value={item.labelQty}
                   onChange={e => setLabelQtys(prev => prev.map((it, i) => i === idx ? { ...it, labelQty: Math.max(0, +e.target.value || 0) } : it))}
-                  className="w-14 text-center border border-gray-300 rounded-lg px-1 py-1 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-14 text-center border border-gray-300 rounded-lg px-1 py-1 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-40"
                 />
                 <button
+                  disabled={!item.selected}
                   onClick={() => setLabelQtys(prev => prev.map((it, i) => i === idx ? { ...it, labelQty: it.labelQty + 1 } : it))}
-                  className="w-7 h-7 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 text-base font-bold flex items-center justify-center select-none"
+                  className="w-7 h-7 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 text-base font-bold flex items-center justify-center select-none disabled:opacity-40"
                 >+</button>
               </div>
             </div>
           ))}
         </div>
+
         <div className="flex justify-between items-center pt-2 border-t">
           <p className="text-sm text-gray-500">
-            Total: <strong>{labelQtys.reduce((s, i) => s + (i.labelQty || 0), 0)}</strong> labels
+            <strong>{labelQtys.filter(i => i.selected).length}</strong> item{labelQtys.filter(i => i.selected).length !== 1 ? 's' : ''} ·{' '}
+            <strong>{labelQtys.filter(i => i.selected).reduce((s, i) => s + (i.labelQty || 0), 0)}</strong> labels
           </p>
           <div className="flex gap-2">
             <Button variant="secondary" onClick={() => setLabelOpen(false)}>Cancel</Button>
