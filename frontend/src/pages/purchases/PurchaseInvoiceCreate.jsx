@@ -11,6 +11,7 @@ import { useGlobalToast } from '../../context/ToastContext';
 import { buildInvoiceTotals, formatCurrency, today } from '../../utils/helpers';
 import { GST_RATES, UNITS } from '../../constants';
 import * as XLSX from 'xlsx';
+import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedChanges';
 
 /* ─── helpers ────────────────────────────────────────────────────────── */
 function calcSellingPrices(cost, supplierMargin = {}, supplierDiscount = 0) {
@@ -261,6 +262,9 @@ export default function PurchaseInvoiceCreate() {
 
   const fileInputRef = useRef(null);
 
+  const [isDirty, setIsDirty] = useState(false);
+  const blocker = useUnsavedChanges(isDirty);
+
   const [supplierId, setSupplierId]     = useState('');
   const [supplierInvNo, setSupplierInvNo] = useState('');
   const [date, setDate]                 = useState(today());
@@ -303,6 +307,7 @@ export default function PurchaseInvoiceCreate() {
 
   // When supplier changes, recalc prices for all existing items
   const handleSupplierChange = (sid) => {
+    setIsDirty(true);
     setSupplierId(sid);
     const sup = suppliers.find(s => s.id === sid);
     if (!sup) return;
@@ -313,6 +318,7 @@ export default function PurchaseInvoiceCreate() {
   };
 
   const updateItem = (idx, field, value) => {
+    setIsDirty(true);
     setItems(prev => prev.map((item, i) => {
       if (i !== idx) return item;
       if (field === '_bulk') return { ...item, ...value };
@@ -427,6 +433,7 @@ export default function PurchaseInvoiceCreate() {
     };
 
     try {
+      setIsDirty(false);
       if (isEdit) {
         await updatePurchaseInvoice(id, invData);
         await refreshProducts();
@@ -464,6 +471,7 @@ export default function PurchaseInvoiceCreate() {
 
   return (
     <>
+      <UnsavedChangesModal blocker={blocker} />
       <div className="max-w-4xl space-y-5">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/purchases')} className="text-gray-400 hover:text-gray-600">←</button>

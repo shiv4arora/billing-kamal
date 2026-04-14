@@ -10,6 +10,7 @@ import { useGlobalToast } from '../../context/ToastContext';
 import { buildInvoiceTotals, formatCurrency, getPrice, nextInvoiceNumber, today, formatCustomerDisplay } from '../../utils/helpers';
 import { GST_RATES } from '../../constants';
 import { useInvoiceLock } from '../../hooks/useInvoiceLock';
+import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedChanges';
 
 const BLANK_ITEM = { productId: '', productName: '', sku: '', hsnCode: '', unit: 'Pcs', quantity: 1, unitPrice: 0, discountPct: 0, gstRate: 0 };
 
@@ -36,6 +37,7 @@ export default function SaleInvoiceCreate() {
   const [amountPaid, setAmountPaid] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [saving, setSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
   const [productSearch, setProductSearch] = useState({});
   const [showDropdown, setShowDropdown] = useState({});
   const [skuQuickAdd, setSkuQuickAdd] = useState('');
@@ -61,7 +63,10 @@ export default function SaleInvoiceCreate() {
 
   const customer = customers.find(c => c.id === customerId);
 
+  const blocker = useUnsavedChanges(isDirty);
+
   const handleCustomerChange = (cid) => {
+    setIsDirty(true);
     setCustomerId(cid);
     const c = customers.find(x => x.id === cid);
     if (c) {
@@ -75,6 +80,7 @@ export default function SaleInvoiceCreate() {
   };
 
   const handleProductSelect = (idx, prod) => {
+    setIsDirty(true);
     const price = getPrice(prod, customerType);
     setItems(prev => {
       const updated = prev.map((item, i) => i === idx ? {
@@ -90,6 +96,7 @@ export default function SaleInvoiceCreate() {
   };
 
   const updateItem = (idx, field, value) => {
+    setIsDirty(true);
     setItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
   };
 
@@ -126,6 +133,7 @@ export default function SaleInvoiceCreate() {
 
       const invData = { date, dueDate: dueD, customerId, customerName: customer?.name || '', customerPlace: customer?.place || '', customerType, items: totals.items, ...totals, amountPaid: paid, paymentMethod, paymentStatus: payStatus, paymentDate: paid > 0 ? today() : null, notes, status: 'draft' };
 
+      setIsDirty(false);
       if (isEdit) {
         await updateSaleInvoice(id, { ...invData, status });
         toast.success('Invoice updated');
@@ -133,7 +141,6 @@ export default function SaleInvoiceCreate() {
       } else {
         const saved = await addSaleInvoice(invData);
         if (status === 'issued') {
-          // Server handles stock, ledger, counters — one atomic call
           const issued = await issueSaleInvoice(saved.id);
           toast.success(`Invoice ${issued.invoiceNumber} issued`);
           navigate(`/sales/${saved.id}`);
@@ -189,6 +196,7 @@ export default function SaleInvoiceCreate() {
 
   return (
     <>
+      <UnsavedChangesModal blocker={blocker} />
       <div className="max-w-5xl space-y-5">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/sales')} className="text-gray-400 hover:text-gray-600">←</button>

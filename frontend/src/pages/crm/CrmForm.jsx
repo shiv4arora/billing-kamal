@@ -4,6 +4,7 @@ import { useLeads } from '../../context/LeadContext';
 import { Button, Input, Select, Textarea, Card } from '../../components/ui';
 import { useGlobalToast } from '../../context/ToastContext';
 import { today } from '../../utils/helpers';
+import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedChanges';
 
 const STAGES = [
   { value: 'lead',      label: 'Lead' },
@@ -28,6 +29,8 @@ export default function CrmForm() {
   });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
+  const [isDirty, setIsDirty] = useState(false);
+  const blocker = useUnsavedChanges(isDirty);
 
   useEffect(() => {
     if (isEdit) {
@@ -47,7 +50,7 @@ export default function CrmForm() {
     }
   }, [id]);
 
-  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const set = (k, v) => { setIsDirty(true); setForm(p => ({ ...p, [k]: v })); };
 
   const validate = () => {
     const e = {};
@@ -83,6 +86,7 @@ export default function CrmForm() {
         await addLead(data);
         toast.success('Lead added');
       }
+      setIsDirty(false);
       navigate('/crm');
     } catch (err) {
       toast.error(err.message || 'Failed to save');
@@ -92,6 +96,8 @@ export default function CrmForm() {
   };
 
   return (
+    <>
+    <UnsavedChangesModal blocker={blocker} />
     <div className="max-w-lg space-y-5">
       <div className="flex items-center gap-3">
         <button onClick={() => navigate('/crm')} className="text-gray-400 hover:text-gray-600">←</button>
@@ -142,5 +148,6 @@ export default function CrmForm() {
         </div>
       </form>
     </div>
+    </>
   );
 }

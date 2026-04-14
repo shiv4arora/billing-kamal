@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedChanges';
 import { useProducts } from '../../context/ProductContext';
 import { useSuppliers } from '../../context/SupplierContext';
 import { Button, Input, Select, Card } from '../../components/ui';
@@ -33,7 +34,9 @@ export default function ProductForm() {
   const [form, setForm] = useState(BLANK);
   const [errors, setErrors] = useState({});
   const [previewSku, setPreviewSku] = useState(null);
+  const [isDirty, setIsDirty] = useState(false);
   const isEdit = !!id;
+  const blocker = useUnsavedChanges(isDirty);
 
   useEffect(() => {
     if (isEdit) {
@@ -47,8 +50,8 @@ export default function ProductForm() {
     }
   }, [id]);
 
-  const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
-  const setPrice = (tier, value) => setForm(f => ({ ...f, pricing: { ...f.pricing, [tier]: value } }));
+  const set = (field, value) => { setIsDirty(true); setForm(f => ({ ...f, [field]: value })); };
+  const setPrice = (tier, value) => { setIsDirty(true); setForm(f => ({ ...f, pricing: { ...f.pricing, [tier]: value } })); };
 
   // When cost price changes, auto-fill selling prices from supplier margin
   const handleCostChange = (value) => {
@@ -102,10 +105,13 @@ export default function ProductForm() {
       const { sku: _drop, ...createData } = data;
       await add(createData);
     }
+    setIsDirty(false);
     navigate('/products');
   };
 
   return (
+    <>
+    <UnsavedChangesModal blocker={blocker} />
     <div className="max-w-2xl space-y-5">
       <div className="flex items-center gap-3">
         <button onClick={() => navigate('/products')} className="text-gray-400 hover:text-gray-600">←</button>
@@ -204,5 +210,6 @@ export default function ProductForm() {
         </div>
       </form>
     </div>
+    </>
   );
 }

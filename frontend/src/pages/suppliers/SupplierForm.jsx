@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useSuppliers } from '../../context/SupplierContext';
 import { Button, Input, Textarea, Card } from '../../components/ui';
+import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedChanges';
 
 const BLANK = {
   name: '', code: '', place: '', phone: '', contactPerson: '', email: '',
@@ -23,6 +24,7 @@ export default function SupplierForm() {
   const { add, update, get } = useSuppliers();
   const [form, setForm] = useState(BLANK);
   const [errors, setErrors] = useState({});
+  const [isDirty, setIsDirty] = useState(false);
   const isEdit = !!id;
 
   useEffect(() => {
@@ -32,8 +34,9 @@ export default function SupplierForm() {
     }
   }, [id]);
 
-  const set = (f, v) => setForm(p => ({ ...p, [f]: v }));
-  const setMargin = (tier, v) => setForm(p => ({ ...p, margin: { ...p.margin, [tier]: v } }));
+  const blocker = useUnsavedChanges(isDirty);
+  const set = (f, v) => { setIsDirty(true); setForm(p => ({ ...p, [f]: v })); };
+  const setMargin = (tier, v) => { setIsDirty(true); setForm(p => ({ ...p, margin: { ...p.margin, [tier]: v } })); };
 
   const validate = () => {
     const e = {};
@@ -49,6 +52,7 @@ export default function SupplierForm() {
     if (!validate()) return;
     const data = { ...form, discount: +form.discount || 0, margin: { wholesale: +form.margin.wholesale || 0, shop: +form.margin.shop || 0 } };
     if (isEdit) update(id, data); else add(data);
+    setIsDirty(false);
     navigate('/suppliers');
   };
 
@@ -61,6 +65,8 @@ export default function SupplierForm() {
   };
 
   return (
+    <>
+    <UnsavedChangesModal blocker={blocker} />
     <div className="max-w-lg space-y-5">
       <div className="flex items-center gap-3">
         <button onClick={() => navigate('/suppliers')} className="text-gray-400 hover:text-gray-600">←</button>
@@ -77,10 +83,11 @@ export default function SupplierForm() {
               value={form.name}
               onChange={e => {
                 const name = e.target.value;
-                set('name', name);
-                // Auto-fill code only if user hasn't manually set it
+                setIsDirty(true);
                 if (!form.code || form.code === autoCode(form.name)) {
                   setForm(p => ({ ...p, name, code: autoCode(name) }));
+                } else {
+                  set('name', name);
                 }
               }}
               error={errors.name}
@@ -180,5 +187,6 @@ export default function SupplierForm() {
         </div>
       </form>
     </div>
+    </>
   );
 }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCustomers } from '../../context/CustomerContext';
 import { Button, Input, Select, Textarea, Card } from '../../components/ui';
+import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedChanges';
 
 const BLANK = { name: '', place: '', phone: '', type: 'shop', email: '', address: '', gstin: '', creditLimit: '', isActive: true };
 
@@ -11,11 +12,13 @@ export default function CustomerForm() {
   const { add, update, get } = useCustomers();
   const [form, setForm] = useState(BLANK);
   const [errors, setErrors] = useState({});
+  const [isDirty, setIsDirty] = useState(false);
   const isEdit = !!id;
 
   useEffect(() => { if (isEdit) { const c = get(id); if (c) setForm({ ...BLANK, ...c }); } }, [id]);
 
-  const set = (f, v) => setForm(p => ({ ...p, [f]: v }));
+  const blocker = useUnsavedChanges(isDirty);
+  const set = (f, v) => { setIsDirty(true); setForm(p => ({ ...p, [f]: v })); };
 
   const validate = () => {
     const e = {};
@@ -31,10 +34,13 @@ export default function CustomerForm() {
     if (!validate()) return;
     const data = { ...form, creditLimit: +form.creditLimit || 0 };
     if (isEdit) update(id, data); else add(data);
+    setIsDirty(false);
     navigate('/customers');
   };
 
   return (
+    <>
+    <UnsavedChangesModal blocker={blocker} />
     <div className="max-w-lg space-y-5">
       <div className="flex items-center gap-3">
         <button onClick={() => navigate('/customers')} className="text-gray-400 hover:text-gray-600">←</button>
@@ -75,5 +81,6 @@ export default function CustomerForm() {
         </div>
       </form>
     </div>
+    </>
   );
 }
