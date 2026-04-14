@@ -178,7 +178,11 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
             <input
               type="number" min="0" step="0.01"
               value={item.unitPrice}
-              onChange={e => { onUpdate('unitPrice', +e.target.value); reCalc(e.target.value); }}
+              onChange={e => {
+                const cost = +e.target.value;
+                const pricing = calcSellingPrices(cost, supplier?.margin, supplier?.discount);
+                onUpdate('_bulk', { ...item, unitPrice: cost, pricing });
+              }}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-right font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -321,7 +325,7 @@ export default function PurchaseInvoiceCreate() {
   const addItem    = () => setItems(prev => [...prev, { ...BLANK_ITEM, pricing: calcSellingPrices(0, supplier?.margin, supplier?.discount) }]);
 
   // Build totals only for valid items
-  const validItems = items.filter(i => (i.productId || (i.isNew && i.productName)) && i.quantity > 0);
+  const validItems = items.filter(i => (i.productId || i.productName) && i.quantity > 0);
   const totals     = buildInvoiceTotals(validItems.map(i => ({ ...i, unitPrice: i.unitPrice })), false);
   const totalQty   = items.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
 

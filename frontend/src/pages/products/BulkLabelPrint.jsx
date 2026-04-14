@@ -11,6 +11,8 @@ function StickerLabel({ product, supplier }) {
 
   const wCoded  = Math.round((product.pricing?.wholesale || 0) * 2);
   const wCode   = `D.No.${wCoded}`;
+  const pCoded  = Math.round((product.pricing?.shop || 0) * 2);
+  const pCode   = `P.${pCoded}`;
   const qrValue = String(product.sku || product.id);
 
   return (
@@ -54,21 +56,38 @@ function StickerLabel({ product, supplier }) {
           {product.name}{product.unit ? ` (${product.unit === 'Dozen' ? 'dz' : product.unit.toLowerCase()})` : ''}
         </p>
 
-        {/* W code */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8mm' }}>
-          <span style={{
-            fontSize:     '4pt',
-            fontWeight:   'bold',
-            color:        '#fff',
-            background:   '#1d4ed8',
-            borderRadius: '0.4mm',
-            padding:      '0.15mm 0.7mm',
-            lineHeight:   1.5,
-            flexShrink:   0,
-          }}>W</span>
-          <span style={{ fontSize: '8pt', fontWeight: 'bold', color: '#1d4ed8', lineHeight: 1 }}>
-            {wCode}
-          </span>
+        {/* W + P codes */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2mm' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8mm' }}>
+            <span style={{
+              fontSize:     '4pt',
+              fontWeight:   'bold',
+              color:        '#fff',
+              background:   '#1d4ed8',
+              borderRadius: '0.4mm',
+              padding:      '0.15mm 0.7mm',
+              lineHeight:   1.5,
+              flexShrink:   0,
+            }}>W</span>
+            <span style={{ fontSize: '8pt', fontWeight: 'bold', color: '#1d4ed8', lineHeight: 1 }}>
+              {wCode}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8mm' }}>
+            <span style={{
+              fontSize:     '4pt',
+              fontWeight:   'bold',
+              color:        '#fff',
+              background:   '#7c3aed',
+              borderRadius: '0.4mm',
+              padding:      '0.15mm 0.7mm',
+              lineHeight:   1.5,
+              flexShrink:   0,
+            }}>P</span>
+            <span style={{ fontSize: '8pt', fontWeight: 'bold', color: '#7c3aed', lineHeight: 1 }}>
+              {pCode}
+            </span>
+          </div>
         </div>
 
         {/* SKU · Supplier */}
@@ -226,7 +245,7 @@ export default function BulkLabelPrint() {
       <div className="no-print bg-blue-50 border-b border-blue-100 px-6 py-2 text-xs text-blue-700 flex gap-6 flex-wrap items-center">
         <span>34mm × 20mm · <strong>3 per row</strong> on 102mm sheet</span>
         <span>QR = SKU only</span>
-        <span className="text-gray-400">W price shown as D.No. code · S price shown as P. code</span>
+        <span className="text-gray-500">W → D.No. code &nbsp;·&nbsp; P → P. code</span>
       </div>
 
       {/* ── Screen preview ── */}
