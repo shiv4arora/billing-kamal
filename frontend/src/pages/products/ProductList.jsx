@@ -13,9 +13,15 @@ export default function ProductList() {
   const [search, setSearch]   = useState('');
   const [confirm, setConfirm] = useState(null);
   const [selected, setSelected] = useState(new Set());
-  const [skuModal, setSkuModal]   = useState(null);   // { product }
-  const [skuHistory, setSkuHistory] = useState(null); // { product, movements }
+  const [skuModal, setSkuModal]   = useState(null);
+  const [skuHistory, setSkuHistory] = useState(null);
   const [skuLoading, setSkuLoading] = useState(false);
+  const [filterSupplier, setFilterSupplier] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterStock, setFilterStock] = useState('');   // '' | 'low' | 'out'
+  const [sortKey, setSortKey] = useState('name');       // 'name'|'stock'|'wholesale'|'shop'
+  const [sortDir, setSortDir] = useState('asc');        // 'asc'|'desc'
+  const [showFilters, setShowFilters] = useState(false);
 
   const openSkuModal = async (p, e) => {
     e.stopPropagation();
@@ -29,11 +35,44 @@ export default function ProductList() {
     setSkuLoading(false);
   };
 
-  const filtered = active.filter(p =>
-    p.name?.toLowerCase().includes(search.toLowerCase()) ||
-    p.sku?.toLowerCase().includes(search.toLowerCase()) ||
-    p.category?.toLowerCase().includes(search.toLowerCase())
+  // Unique categories from products
+  const categories = [...new Set(active.map(p => p.category).filter(Boolean))].sort();
+
+  const toggleSort = (key) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('asc'); }
+  };
+
+  const SortArrow = ({ col }) => (
+    <span className={`ml-1 text-[10px] ${sortKey === col ? 'text-blue-600' : 'text-gray-300'}`}>
+      {sortKey === col ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+    </span>
   );
+
+  const filtered = active
+    .filter(p =>
+      (p.name?.toLowerCase().includes(search.toLowerCase()) ||
+       p.sku?.toLowerCase().includes(search.toLowerCase()) ||
+       p.category?.toLowerCase().includes(search.toLowerCase())) &&
+      (!filterSupplier || p.supplierId === filterSupplier) &&
+      (!filterCategory || p.category === filterCategory) &&
+      (filterStock === 'out' ? (p.currentStock || 0) === 0
+       : filterStock === 'low' ? (p.currentStock || 0) > 0 && (p.currentStock || 0) <= (p.lowStockThreshold || 10)
+       : true)
+    )
+    .sort((a, b) => {
+      let va, vb;
+      if (sortKey === 'name')      { va = a.name?.toLowerCase() || ''; vb = b.name?.toLowerCase() || ''; }
+      else if (sortKey === 'stock') { va = a.currentStock || 0;         vb = b.currentStock || 0; }
+      else if (sortKey === 'wholesale') { va = a.pricing?.wholesale || 0; vb = b.pricing?.wholesale || 0; }
+      else if (sortKey === 'shop')      { va = a.pricing?.shop || 0;      vb = b.pricing?.shop || 0; }
+      else { va = a.name?.toLowerCase() || ''; vb = b.name?.toLowerCase() || ''; }
+      if (va < vb) return sortDir === 'asc' ? -1 : 1;
+      if (va > vb) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+  const activeFilters = [filterSupplier, filterCategory, filterStock].filter(Boolean).length;
 
   const allSelected = filtered.length > 0 && filtered.every(p => selected.has(p.id));
   const someSelected = selected.size > 0;
@@ -92,7 +131,8 @@ export default function ProductList() {
       ),
     },
     {
-      header: 'Product', render: p => (
+      header: <button onClick={() => toggleSort('name')} className="flex items-center font-semibold text-gray-500 text-xs uppercase tracking-wide hover:text-blue-600">Product <SortArrow col="name" /></button>,
+      render: p => (
         <div>
           <p className="font-medium text-gray-900">{p.name}</p>
           <button
@@ -112,10 +152,17 @@ export default function ProductList() {
         : <span className="text-xs text-gray-300">—</span>;
     }},
     { header: 'Category', key: 'category' },
-    { header: 'Wholesale', align: 'right', render: p => formatCurrency(p.pricing?.wholesale || 0) },
-    { header: 'Shop', align: 'right', render: p => formatCurrency(p.pricing?.shop || 0) },
     {
-      header: 'Stock', align: 'right', render: p => (
+      header: <button onClick={() => toggleSort('wholesale')} className="flex items-center font-semibold text-gray-500 text-xs uppercase tracking-wide hover:text-blue-600 ml-auto">Wholesale <SortArrow col="wholesale" /></button>,
+      align: 'right', render: p => formatCurrency(p.pricing?.wholesale || 0)
+    },
+    {
+      header: <button onClick={() => toggleSort('shop')} className="flex items-center font-semibold text-gray-500 text-xs uppercase tracking-wide hover:text-blue-600 ml-auto">Shop <SortArrow col="shop" /></button>,
+      align: 'right', render: p => formatCurrency(p.pricing?.shop || 0)
+    },
+    {
+      header: <button onClick={() => toggleSort('stock')} className="flex items-center font-semibold text-gray-500 text-xs uppercase tracking-wide hover:text-blue-600 ml-auto">Stock <SortArrow col="stock" /></button>,
+      align: 'right', render: p => (
         <span className={`font-medium ${(p.currentStock || 0) <= (p.lowStockThreshold || 10) ? 'text-red-600' : 'text-gray-700'}`}>
           {p.currentStock || 0} {p.unit}
         </span>
@@ -156,15 +203,65 @@ export default function ProductList() {
         </div>
       </div>
       <Card padding={false}>
-        <div className="p-4 border-b border-gray-100 flex items-center gap-3">
-          <SearchInput value={search} onChange={setSearch} placeholder="Search by name, SKU ID, category…" />
-          {someSelected && (
+        <div className="p-4 border-b border-gray-100 space-y-3">
+          <div className="flex items-center gap-3">
+            <SearchInput value={search} onChange={setSearch} placeholder="Search by name, SKU ID, category…" />
             <button
-              onClick={() => setSelected(new Set())}
-              className="text-xs text-gray-400 hover:text-gray-600 whitespace-nowrap"
+              onClick={() => setShowFilters(f => !f)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors whitespace-nowrap ${showFilters || activeFilters > 0 ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}`}
             >
-              Clear ({selected.size})
+              ⚙ Filters {activeFilters > 0 && <span className="bg-blue-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">{activeFilters}</span>}
+              <span>{showFilters ? '▲' : '▼'}</span>
             </button>
+            {someSelected && (
+              <button onClick={() => setSelected(new Set())} className="text-xs text-gray-400 hover:text-gray-600 whitespace-nowrap">
+                Clear ({selected.size})
+              </button>
+            )}
+          </div>
+
+          {/* Filter panel */}
+          {showFilters && (
+            <div className="flex flex-wrap gap-3 pt-1">
+              <select
+                value={filterSupplier}
+                onChange={e => setFilterSupplier(e.target.value)}
+                className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              >
+                <option value="">All Suppliers</option>
+                {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+
+              <select
+                value={filterCategory}
+                onChange={e => setFilterCategory(e.target.value)}
+                className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              >
+                <option value="">All Categories</option>
+                {categories.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+
+              <select
+                value={filterStock}
+                onChange={e => setFilterStock(e.target.value)}
+                className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              >
+                <option value="">All Stock</option>
+                <option value="low">Low Stock</option>
+                <option value="out">Out of Stock</option>
+              </select>
+
+              {activeFilters > 0 && (
+                <button
+                  onClick={() => { setFilterSupplier(''); setFilterCategory(''); setFilterStock(''); }}
+                  className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 border border-red-200 rounded-lg hover:bg-red-50"
+                >
+                  ✕ Clear filters
+                </button>
+              )}
+
+              <span className="text-xs text-gray-400 self-center">{filtered.length} of {active.length} products</span>
+            </div>
           )}
         </div>
         <Table columns={columns} data={filtered} onRowClick={p => navigate(`/products/${p.id}/edit`)} emptyMsg="No products found. Add your first product!" />
