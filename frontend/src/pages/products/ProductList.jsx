@@ -17,7 +17,6 @@ export default function ProductList() {
   const [skuHistory, setSkuHistory] = useState(null);
   const [skuLoading, setSkuLoading] = useState(false);
   const [filterSupplier, setFilterSupplier] = useState('');
-  const [filterCategory, setFilterCategory] = useState('');
   const [filterStock, setFilterStock] = useState('');   // '' | 'low' | 'out'
   const [sortKey, setSortKey] = useState('name');       // 'name'|'stock'|'wholesale'|'shop'
   const [sortDir, setSortDir] = useState('asc');        // 'asc'|'desc'
@@ -35,9 +34,6 @@ export default function ProductList() {
     setSkuLoading(false);
   };
 
-  // Unique categories from products
-  const categories = [...new Set(active.map(p => p.category).filter(Boolean))].sort();
-
   const toggleSort = (key) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortKey(key); setSortDir('asc'); }
@@ -52,10 +48,8 @@ export default function ProductList() {
   const filtered = active
     .filter(p =>
       (p.name?.toLowerCase().includes(search.toLowerCase()) ||
-       p.sku?.toLowerCase().includes(search.toLowerCase()) ||
-       p.category?.toLowerCase().includes(search.toLowerCase())) &&
+       p.sku?.toLowerCase().includes(search.toLowerCase())) &&
       (!filterSupplier || p.supplierId === filterSupplier) &&
-      (!filterCategory || p.category === filterCategory) &&
       (filterStock === 'out' ? (p.currentStock || 0) === 0
        : filterStock === 'low' ? (p.currentStock || 0) > 0 && (p.currentStock || 0) <= (p.lowStockThreshold || 10)
        : true)
@@ -72,7 +66,7 @@ export default function ProductList() {
       return 0;
     });
 
-  const activeFilters = [filterSupplier, filterCategory, filterStock].filter(Boolean).length;
+  const activeFilters = [filterSupplier, filterStock].filter(Boolean).length;
 
   const allSelected = filtered.length > 0 && filtered.every(p => selected.has(p.id));
   const someSelected = selected.size > 0;
@@ -151,7 +145,6 @@ export default function ProductList() {
         ? <div><p className="text-sm font-medium text-gray-800">{s.name}</p>{s.phone && <p className="text-xs text-gray-400">{s.phone}</p>}</div>
         : <span className="text-xs text-gray-300">—</span>;
     }},
-    { header: 'Category', key: 'category' },
     {
       header: <button onClick={() => toggleSort('wholesale')} className="flex items-center font-semibold text-gray-500 text-xs uppercase tracking-wide hover:text-blue-600 ml-auto">Wholesale <SortArrow col="wholesale" /></button>,
       align: 'right', render: p => formatCurrency(p.pricing?.wholesale || 0)
@@ -232,16 +225,7 @@ export default function ProductList() {
                 {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
 
-              <select
-                value={filterCategory}
-                onChange={e => setFilterCategory(e.target.value)}
-                className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              >
-                <option value="">All Categories</option>
-                {categories.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-
-              <select
+<select
                 value={filterStock}
                 onChange={e => setFilterStock(e.target.value)}
                 className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -253,7 +237,7 @@ export default function ProductList() {
 
               {activeFilters > 0 && (
                 <button
-                  onClick={() => { setFilterSupplier(''); setFilterCategory(''); setFilterStock(''); }}
+                  onClick={() => { setFilterSupplier(''); setFilterStock(''); }}
                   className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 border border-red-200 rounded-lg hover:bg-red-50"
                 >
                   ✕ Clear filters

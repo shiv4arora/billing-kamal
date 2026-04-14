@@ -28,7 +28,6 @@ const BLANK_ITEM = {
   productId: '',
   productName: '',
   sku: '',
-  category: '',
   unit: 'Pcs',
   hsnCode: '',
   gstRate: 0,
@@ -125,7 +124,6 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
               </div>
               <p className="text-xs text-gray-400 mt-0.5">This SKU ID will be permanently assigned when you save.</p>
             </div>
-            <Input label="Category" value={item.category} onChange={e => onUpdate('category', e.target.value)} placeholder="e.g. Grains" />
             <Select label="Unit" value={item.unit} onChange={e => onUpdate('unit', e.target.value)}>
               {UNITS.map(u => <option key={u}>{u}</option>)}
             </Select>
@@ -149,7 +147,6 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
                     SKU: {item.sku}{supplier ? ` · ${supplier.code || supplier.name.replace(/\s+/g,'').slice(0,4).toUpperCase()}` : ''}
                   </span>
                 )}
-                {item.category && <span className="text-xs text-gray-400">{item.category}</span>}
                 {item.unit && <span className="text-xs text-gray-400">· {item.unit}</span>}
               </div>
             )}

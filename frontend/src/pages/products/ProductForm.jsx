@@ -8,7 +8,7 @@ import { GST_RATES, UNITS } from '../../constants';
 import { api } from '../../hooks/useApi';
 
 const BLANK = {
-  name: '', category: '', unit: 'Pcs', description: '',
+  name: '', unit: 'Pcs', description: '',
   pricing: { wholesale: '', shop: '' },
   costPrice: '', gstRate: 0, hsnCode: '', supplierId: '',
   currentStock: 0, lowStockThreshold: 10, isActive: true,
@@ -143,7 +143,6 @@ export default function ProductForm() {
               </p>
             </div>
 
-            <Input label="Category" value={form.category} onChange={e => set('category', e.target.value)} placeholder="e.g. Grains, Electronics" />
             <Select label="Unit" value={form.unit} onChange={e => set('unit', e.target.value)}>
               {UNITS.map(u => <option key={u}>{u}</option>)}
             </Select>
