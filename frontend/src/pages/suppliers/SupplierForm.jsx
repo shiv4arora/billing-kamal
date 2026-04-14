@@ -34,7 +34,7 @@ export default function SupplierForm() {
     }
   }, [id]);
 
-  const blocker = useUnsavedChanges(isDirty);
+  const confirmLeave = useUnsavedChanges(isDirty);
   const set = (f, v) => { setIsDirty(true); setForm(p => ({ ...p, [f]: v })); };
   const setMargin = (tier, v) => { setIsDirty(true); setForm(p => ({ ...p, margin: { ...p.margin, [tier]: v } })); };
 
@@ -69,7 +69,7 @@ export default function SupplierForm() {
     <UnsavedChangesModal blocker={blocker} />
     <div className="max-w-lg space-y-5">
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/suppliers')} className="text-gray-400 hover:text-gray-600">←</button>
+        <button onClick={() => { if (confirmLeave()) navigate('/suppliers'); }} className="text-gray-400 hover:text-gray-600">←</button>
         <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Supplier' : 'Add Supplier'}</h1>
       </div>
 
@@ -182,7 +182,7 @@ export default function SupplierForm() {
         </Card>
 
         <div className="flex justify-end gap-3">
-          <Button variant="secondary" type="button" onClick={() => navigate('/suppliers')}>Cancel</Button>
+          <Button variant="secondary" type="button" onClick={() => { if (confirmLeave()) navigate('/suppliers'); }}>Cancel</Button>
           <Button type="submit">{isEdit ? 'Update Supplier' : 'Add Supplier'}</Button>
         </div>
       </form>

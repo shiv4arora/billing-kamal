@@ -36,7 +36,7 @@ export default function ProductForm() {
   const [previewSku, setPreviewSku] = useState(null);
   const [isDirty, setIsDirty] = useState(false);
   const isEdit = !!id;
-  const blocker = useUnsavedChanges(isDirty);
+  const confirmLeave = useUnsavedChanges(isDirty);
 
   useEffect(() => {
     if (isEdit) {
@@ -114,7 +114,7 @@ export default function ProductForm() {
     <UnsavedChangesModal blocker={blocker} />
     <div className="max-w-2xl space-y-5">
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/products')} className="text-gray-400 hover:text-gray-600">←</button>
+        <button onClick={() => { if (confirmLeave()) navigate('/products'); }} className="text-gray-400 hover:text-gray-600">←</button>
         <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Product' : 'Add Product'}</h1>
       </div>
 
@@ -204,7 +204,7 @@ export default function ProductForm() {
         </Card>
 
         <div className="flex justify-end gap-3">
-          <Button variant="secondary" type="button" onClick={() => navigate('/products')}>Cancel</Button>
+          <Button variant="secondary" type="button" onClick={() => { if (confirmLeave()) navigate('/products'); }}>Cancel</Button>
           <Button type="submit">{isEdit ? 'Update Product' : 'Add Product'}</Button>
         </div>
       </form>

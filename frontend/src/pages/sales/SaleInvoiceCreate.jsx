@@ -63,7 +63,7 @@ export default function SaleInvoiceCreate() {
 
   const customer = customers.find(c => c.id === customerId);
 
-  const blocker = useUnsavedChanges(isDirty);
+  const confirmLeave = useUnsavedChanges(isDirty);
 
   const handleCustomerChange = (cid) => {
     setIsDirty(true);
@@ -196,10 +196,9 @@ export default function SaleInvoiceCreate() {
 
   return (
     <>
-      <UnsavedChangesModal blocker={blocker} />
       <div className="max-w-5xl space-y-5">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/sales')} className="text-gray-400 hover:text-gray-600">←</button>
+          <button onClick={() => { if (confirmLeave()) navigate('/sales'); }} className="text-gray-400 hover:text-gray-600">←</button>
           <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Sale Invoice' : 'New Sale Invoice'}</h1>
         </div>
 
@@ -379,7 +378,7 @@ export default function SaleInvoiceCreate() {
         </Card>
 
         <div className="flex justify-end gap-3">
-          <Button variant="secondary" type="button" onClick={() => navigate('/sales')}>Cancel</Button>
+          <Button variant="secondary" type="button" onClick={() => { if (confirmLeave()) navigate('/sales'); }}>Cancel</Button>
           <Button variant="outline" onClick={() => handleSave('draft')} disabled={saving}>Save as Draft</Button>
           <Button variant="success" onClick={() => handleSave('issued')} disabled={saving}>Issue Invoice</Button>
         </div>

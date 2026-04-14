@@ -260,7 +260,7 @@ export default function PurchaseInvoiceCreate() {
   const fileInputRef = useRef(null);
 
   const [isDirty, setIsDirty] = useState(false);
-  const blocker = useUnsavedChanges(isDirty);
+  const confirmLeave = useUnsavedChanges(isDirty);
 
   const [supplierId, setSupplierId]     = useState('');
   const [supplierInvNo, setSupplierInvNo] = useState('');
@@ -468,10 +468,9 @@ export default function PurchaseInvoiceCreate() {
 
   return (
     <>
-      <UnsavedChangesModal blocker={blocker} />
       <div className="max-w-4xl space-y-5">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/purchases')} className="text-gray-400 hover:text-gray-600">←</button>
+          <button onClick={() => { if (confirmLeave()) navigate('/purchases'); }} className="text-gray-400 hover:text-gray-600">←</button>
           <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Purchase' : 'New Purchase Invoice'}</h1>
         </div>
 
@@ -672,7 +671,7 @@ export default function PurchaseInvoiceCreate() {
         <Card><Textarea label="Notes" value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Any remarks…" /></Card>
 
         <div className="flex justify-end gap-3 pb-10">
-          <Button variant="secondary" onClick={() => navigate('/purchases')}>Cancel</Button>
+          <Button variant="secondary" onClick={() => { if (confirmLeave()) navigate('/purchases'); }}>Cancel</Button>
           <Button variant="success" onClick={() => handleSave('issued')}>
             Save & Add to Stock
           </Button>

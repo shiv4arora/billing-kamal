@@ -17,7 +17,7 @@ export default function CustomerForm() {
 
   useEffect(() => { if (isEdit) { const c = get(id); if (c) setForm({ ...BLANK, ...c }); } }, [id]);
 
-  const blocker = useUnsavedChanges(isDirty);
+  const confirmLeave = useUnsavedChanges(isDirty);
   const set = (f, v) => { setIsDirty(true); setForm(p => ({ ...p, [f]: v })); };
 
   const validate = () => {
@@ -43,7 +43,7 @@ export default function CustomerForm() {
     <UnsavedChangesModal blocker={blocker} />
     <div className="max-w-lg space-y-5">
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/customers')} className="text-gray-400 hover:text-gray-600">←</button>
+        <button onClick={() => { if (confirmLeave()) navigate('/customers'); }} className="text-gray-400 hover:text-gray-600">←</button>
         <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Customer' : 'Add Customer'}</h1>
       </div>
 
@@ -76,7 +76,7 @@ export default function CustomerForm() {
         </Card>
 
         <div className="flex justify-end gap-3">
-          <Button variant="secondary" type="button" onClick={() => navigate('/customers')}>Cancel</Button>
+          <Button variant="secondary" type="button" onClick={() => { if (confirmLeave()) navigate('/customers'); }}>Cancel</Button>
           <Button type="submit">{isEdit ? 'Update Customer' : 'Add Customer'}</Button>
         </div>
       </form>

@@ -30,7 +30,7 @@ export default function CrmForm() {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [isDirty, setIsDirty] = useState(false);
-  const blocker = useUnsavedChanges(isDirty);
+  const confirmLeave = useUnsavedChanges(isDirty);
 
   useEffect(() => {
     if (isEdit) {
@@ -100,7 +100,7 @@ export default function CrmForm() {
     <UnsavedChangesModal blocker={blocker} />
     <div className="max-w-lg space-y-5">
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/crm')} className="text-gray-400 hover:text-gray-600">←</button>
+        <button onClick={() => { if (confirmLeave()) navigate('/crm'); }} className="text-gray-400 hover:text-gray-600">←</button>
         <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Lead' : 'New Lead'}</h1>
       </div>
 
@@ -143,7 +143,7 @@ export default function CrmForm() {
         </Card>
 
         <div className="flex justify-end gap-3">
-          <Button variant="secondary" type="button" onClick={() => navigate('/crm')}>Cancel</Button>
+          <Button variant="secondary" type="button" onClick={() => { if (confirmLeave()) navigate('/crm'); }}>Cancel</Button>
           <Button type="submit" disabled={saving}>{isEdit ? 'Save Changes' : 'Add Lead'}</Button>
         </div>
       </form>
