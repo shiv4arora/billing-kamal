@@ -3,12 +3,17 @@ import { useProducts } from '../../context/ProductContext';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useReminderLog } from '../../context/ReminderContext';
+import { useLeads } from '../../context/LeadContext';
+import { today } from '../../utils/helpers';
 
 export default function Sidebar({ isOpen, onClose }) {
   const { active } = useProducts();
   const { settings } = useSettings();
   const { currentUser, isAdmin, logout, can } = useAuth();
   const { pendingCount } = useReminderLog();
+  const { leads } = useLeads();
+  const todayStr = today();
+  const crmDueCount = leads.filter(l => l.nextFollowUp && l.nextFollowUp <= todayStr && l.stage !== 'won').length;
   const navigate = useNavigate();
 
   const lowStockCount = active.filter(p => (p.currentStock || 0) <= (p.lowStockThreshold ?? settings.lowStockThreshold)).length;
@@ -124,6 +129,11 @@ export default function Sidebar({ isOpen, onClose }) {
                 {item.to === '/reminders' && pendingCount > 0 && (
                   <span className="bg-orange-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
                     {pendingCount}
+                  </span>
+                )}
+                {item.to === '/crm' && crmDueCount > 0 && (
+                  <span className="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
+                    {crmDueCount}
                   </span>
                 )}
               </NavLink>
