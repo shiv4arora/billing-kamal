@@ -422,7 +422,7 @@ export default function PurchaseInvoiceCreate() {
     const invData = {
       supplierInvoiceNumber: supplierInvNo,
       date, supplierId, supplierName: supplier?.name || '',
-      items: validItems,
+      items: totals.items,
       amountPaid: paid, paymentMethod, notes,
       billDiscount: +billDiscount || 0,
       otherCharges: +otherCharges || 0,
