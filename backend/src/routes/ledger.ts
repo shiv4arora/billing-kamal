@@ -153,4 +153,87 @@ router.post('/supplier/:id/adjustment', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+const EDITABLE_TYPES = ['payment_in', 'payment_out', 'sale_return', 'purchase_return', 'adjustment'];
+
+// Edit a ledger entry (amount, date, narration) — payment/return/adjustment only
+router.put('/entry/:id', async (req, res, next) => {
+  try {
+    const { amount, date, narration } = req.body;
+    const entry = await prisma.ledgerEntry.findUniqueOrThrow({ where: { id: req.params.id } });
+
+    if (!EDITABLE_TYPES.includes(entry.type)) {
+      return res.status(400).json({ error: 'Invoice entries cannot be edited here. Edit the invoice instead.' });
+    }
+
+    const newAmount = Number(amount);
+    const oldDebit  = Number(entry.debit)  || 0;
+    const oldCredit = Number(entry.credit) || 0;
+
+    // Preserve which field (debit or credit) holds the amount for this entry type
+    let newDebit  = oldDebit;
+    let newCredit = oldCredit;
+    if (oldCredit > 0) { newCredit = newAmount; newDebit = 0; }
+    else if (oldDebit > 0) { newDebit = newAmount; newCredit = 0; }
+    else {
+      // both zero (edge case) — infer from party type
+      if (entry.partyType === 'customer') newCredit = newAmount;
+      else newDebit = newAmount;
+    }
+
+    // customer.balance = Σ(debit - credit); supplier.balance = Σ(credit - debit)
+    const balanceDelta = entry.partyType === 'customer'
+      ? (newDebit - newCredit) - (oldDebit - oldCredit)
+      : (newCredit - newDebit) - (oldCredit - oldDebit);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.ledgerEntry.update({
+        where: { id: req.params.id },
+        data: {
+          debit: newDebit, credit: newCredit,
+          ...(date      && { date }),
+          ...(narration && { narration }),
+        },
+      });
+      if (Math.abs(balanceDelta) > 0.001) {
+        if (entry.partyType === 'customer') {
+          await tx.customer.update({ where: { id: entry.partyId }, data: { balance: { increment: balanceDelta } } });
+        } else {
+          await tx.supplier.update({ where: { id: entry.partyId }, data: { balance: { increment: balanceDelta } } });
+        }
+      }
+    });
+
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+// Delete a ledger entry and reverse its balance effect — payment/return/adjustment only
+router.delete('/entry/:id', async (req, res, next) => {
+  try {
+    const entry = await prisma.ledgerEntry.findUniqueOrThrow({ where: { id: req.params.id } });
+
+    if (!EDITABLE_TYPES.includes(entry.type)) {
+      return res.status(400).json({ error: 'Invoice entries cannot be deleted here.' });
+    }
+
+    const debit  = Number(entry.debit)  || 0;
+    const credit = Number(entry.credit) || 0;
+    // Reverse the entry's contribution to balance
+    const balanceDelta = entry.partyType === 'customer' ? credit - debit : debit - credit;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.ledgerEntry.delete({ where: { id: req.params.id } });
+      if (Math.abs(balanceDelta) > 0.001) {
+        if (entry.partyType === 'customer') {
+          await tx.customer.update({ where: { id: entry.partyId }, data: { balance: { increment: balanceDelta } } });
+        } else {
+          await tx.supplier.update({ where: { id: entry.partyId }, data: { balance: { increment: balanceDelta } } });
+        }
+      }
+    });
+
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
 export default router;

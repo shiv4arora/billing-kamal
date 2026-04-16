@@ -101,6 +101,24 @@ export function LedgerProvider({ children }) {
     }).catch(console.error);
   };
 
+  const editEntry = async (entryId, data) => {
+    if (!isApiAvailable()) {
+      // Offline: update local storage (simplified — no balance reversal in offline mode)
+      const all = lsGet();
+      lsSave(all.map(e => e.id === entryId ? { ...e, ...data } : e));
+      return;
+    }
+    await api(`/ledger/entry/${entryId}`, { method: 'PUT', body: data });
+  };
+
+  const deleteEntry = async (entryId) => {
+    if (!isApiAvailable()) {
+      lsSave(lsGet().filter(e => e.id !== entryId));
+      return;
+    }
+    await api(`/ledger/entry/${entryId}`, { method: 'DELETE' });
+  };
+
   // Kept for components that still call these synchronously (will be async)
   const entries = [];
 
@@ -110,7 +128,7 @@ export function LedgerProvider({ children }) {
       getEntriesByParty, getBalance,
       addSaleEntry, addPaymentIn, addSaleReturn,
       addPurchaseEntry, addPaymentOut, addPurchaseReturn,
-      addAdjustment,
+      addAdjustment, editEntry, deleteEntry,
     }}>
       {children}
     </Ctx.Provider>

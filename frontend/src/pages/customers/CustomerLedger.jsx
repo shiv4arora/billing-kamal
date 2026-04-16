@@ -6,32 +6,36 @@ import { Card, Badge, Button, Modal, Input, Select, useToast, Toast } from '../.
 import { formatCurrency, formatDate, formatCustomerDisplay, today } from '../../utils/helpers';
 
 const TYPE_META = {
-  sale_invoice:     { label: 'Sale Invoice',       color: 'blue'   },
-  payment_in:       { label: 'Payment Received',    color: 'green'  },
-  sale_return:      { label: 'Sale Return',          color: 'yellow' },
-  adjustment:       { label: 'Adjustment',           color: 'gray'   },
+  sale_invoice: { label: 'Sale Invoice',      color: 'blue'   },
+  payment_in:   { label: 'Payment Received',  color: 'green'  },
+  sale_return:  { label: 'Sale Return',        color: 'yellow' },
+  adjustment:   { label: 'Adjustment',         color: 'gray'   },
 };
+const EDITABLE_TYPES = ['payment_in', 'sale_return', 'adjustment'];
+
+function entryAmount(e) { return e.credit > 0 ? e.credit : e.debit; }
 
 export default function CustomerLedger() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
   const { get } = useCustomers();
-  const { addPaymentIn, addSaleReturn, addAdjustment, getEntriesByParty, getBalance } = useLedger();
+  const { addPaymentIn, addSaleReturn, addAdjustment, editEntry, deleteEntry, getEntriesByParty, getBalance } = useLedger();
 
   const customer = get(id);
 
   const [rawEntries, setRawEntries] = useState([]);
   const [balance, setBalance]       = useState(0);
 
-  /* modals */
   const [payOpen, setPayOpen]  = useState(false);
   const [retOpen, setRetOpen]  = useState(false);
   const [adjOpen, setAdjOpen]  = useState(false);
+  const [editEntryData, setEditEntryData] = useState(null);
 
   const [payForm, setPayForm] = useState({ date: today(), amount: '', method: 'cash', notes: '' });
   const [retForm, setRetForm] = useState({ date: today(), amount: '', invoiceNo: '', notes: '' });
   const [adjForm, setAdjForm] = useState({ date: today(), adjType: 'credit', amount: '', notes: '' });
+  const [editForm, setEditForm] = useState({ amount: '', date: '', narration: '' });
 
   const refresh = async () => {
     const data = await getEntriesByParty('customer', id).catch(() => []);
@@ -41,7 +45,6 @@ export default function CustomerLedger() {
   };
   useEffect(() => { refresh(); }, [id]);
 
-  /* running balance */
   const entries = rawEntries.reduce((acc, e) => {
     const prev = acc.length ? acc[acc.length - 1].runBal : 0;
     return [...acc, { ...e, runBal: prev + (e.debit || 0) - (e.credit || 0) }];
@@ -90,6 +93,30 @@ export default function CustomerLedger() {
       setAdjForm({ date: today(), adjType: 'credit', amount: '', notes: '' });
       refresh();
     } catch (e) { toast.error(e.message); }
+  };
+
+  const openEdit = (e) => {
+    setEditEntryData(e);
+    setEditForm({ amount: String(entryAmount(e)), date: e.date, narration: e.narration });
+  };
+
+  const handleEditSave = async () => {
+    if (!editForm.amount || +editForm.amount <= 0) { toast.error('Enter a valid amount'); return; }
+    try {
+      await editEntry(editEntryData.id, { amount: +editForm.amount, date: editForm.date, narration: editForm.narration });
+      toast.success('Entry updated');
+      setEditEntryData(null);
+      refresh();
+    } catch (e) { toast.error(e.message); }
+  };
+
+  const handleDelete = async (e) => {
+    if (!window.confirm(`Delete this ${TYPE_META[e.type]?.label || e.type} entry of ${formatCurrency(entryAmount(e))}?`)) return;
+    try {
+      await deleteEntry(e.id);
+      toast.success('Entry deleted');
+      refresh();
+    } catch (err) { toast.error(err.message); }
   };
 
   if (!customer) return <div className="p-8 text-center text-gray-400">Customer not found.</div>;
@@ -154,11 +181,12 @@ export default function CustomerLedger() {
                   <th className="px-4 py-3 text-right w-32">Debit (Dr)</th>
                   <th className="px-4 py-3 text-right w-32">Credit (Cr)</th>
                   <th className="px-4 py-3 text-right w-36">Balance</th>
+                  <th className="px-4 py-3 w-16"></th>
                 </tr>
               </thead>
               <tbody>
                 {entries.length === 0 ? (
-                  <tr><td colSpan="6" className="text-center py-12 text-gray-400">No transactions yet. Issue a sale invoice to auto-populate.</td></tr>
+                  <tr><td colSpan="7" className="text-center py-12 text-gray-400">No transactions yet. Issue a sale invoice to auto-populate.</td></tr>
                 ) : entries.map(e => (
                   <tr key={e.id} className={`border-b hover:bg-gray-50 ${e.type === 'payment_in' ? 'bg-green-50/30' : e.type === 'sale_return' ? 'bg-yellow-50/30' : ''}`}>
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(e.date)}</td>
@@ -188,6 +216,14 @@ export default function CustomerLedger() {
                         <>{formatCurrency(Math.abs(e.runBal))} <span className="text-xs font-normal">{e.runBal > 0 ? 'Dr' : 'Cr'}</span></>
                       ) : <span className="text-gray-400 font-normal">Nil</span>}
                     </td>
+                    <td className="px-4 py-3">
+                      {EDITABLE_TYPES.includes(e.type) && (
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => openEdit(e)} title="Edit" className="text-blue-400 hover:text-blue-600 p-1 rounded hover:bg-blue-50">✏</button>
+                          <button onClick={() => handleDelete(e)} title="Delete" className="text-red-300 hover:text-red-500 p-1 rounded hover:bg-red-50">🗑</button>
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -202,6 +238,7 @@ export default function CustomerLedger() {
                         ? <>{formatCurrency(Math.abs(balance))} <span className="text-xs font-normal">{balance > 0 ? 'Dr' : 'Cr'}</span></>
                         : 'Settled'}
                     </td>
+                    <td />
                   </tr>
                 </tfoot>
               )}
@@ -262,6 +299,25 @@ export default function CustomerLedger() {
               <Button onClick={handleAdj}>Save Adjustment</Button>
             </div>
           </div>
+        </Modal>
+
+        {/* ── Edit Entry Modal ── */}
+        <Modal open={!!editEntryData} onClose={() => setEditEntryData(null)} title="Edit Entry">
+          {editEntryData && (
+            <div className="space-y-4">
+              <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-600">
+                <span className="font-medium">{TYPE_META[editEntryData.type]?.label || editEntryData.type}</span>
+                {' · '}current amount: <strong>{formatCurrency(entryAmount(editEntryData))}</strong>
+              </div>
+              <Input label="Amount (₹) *" type="number" min="0.01" step="0.01" value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))} />
+              <Input label="Date *" type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} />
+              <Input label="Narration" value={editForm.narration} onChange={e => setEditForm(f => ({ ...f, narration: e.target.value }))} />
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <Button variant="secondary" onClick={() => setEditEntryData(null)}>Cancel</Button>
+                <Button onClick={handleEditSave}>Save Changes</Button>
+              </div>
+            </div>
+          )}
         </Modal>
       </div>
     </>
