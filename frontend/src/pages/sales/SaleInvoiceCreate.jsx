@@ -80,6 +80,7 @@ export default function SaleInvoiceCreate() {
   };
 
   const qtyRefs = useRef({});
+  const skuInputRef = useRef(null);
 
   const handleProductSelect = (idx, prod) => {
     setIsDirty(true);
@@ -165,16 +166,19 @@ export default function SaleInvoiceCreate() {
     const trimmed = code.trim();
     if (!trimmed) return;
     const prod = products.find(p => p.sku === trimmed || p.sku?.toLowerCase() === trimmed.toLowerCase());
-    if (!prod) { toast.error(`No product with code "${trimmed}"`); return; }
+    if (!prod) { toast.error(`No product with code "${trimmed}"`); setSkuQuickAdd(''); return; }
     const price = getPrice(prod, customerType);
-    setItems(prev => [...prev, {
-      ...BLANK_ITEM,
-      productId: prod.id, productName: prod.name, sku: prod.sku || '',
-      hsnCode: prod.hsnCode || '', unit: prod.unit,
-      unitPrice: price, gstRate: prod.gstRate || 0,
-    }]);
+    // Find if last item is blank — reuse it; otherwise append
+    const lastIdx = items.length - 1;
+    const lastIsBlank = !items[lastIdx]?.productId;
+    const newIdx = lastIsBlank ? lastIdx : items.length;
+    setItems(prev => {
+      const newItem = { ...BLANK_ITEM, productId: prod.id, productName: prod.name, sku: prod.sku || '', hsnCode: prod.hsnCode || '', unit: prod.unit, unitPrice: price, gstRate: prod.gstRate || 0 };
+      if (lastIsBlank) return prev.map((item, i) => i === lastIdx ? newItem : item);
+      return [...prev, newItem];
+    });
     setSkuQuickAdd('');
-    toast.success(`Added: ${prod.name} (${prod.sku})`);
+    setTimeout(() => { qtyRefs.current[newIdx]?.focus(); qtyRefs.current[newIdx]?.select(); }, 50);
   };
 
   // If locked by someone else, show read-only warning banner
@@ -268,6 +272,7 @@ export default function SaleInvoiceCreate() {
             <div className="flex items-center gap-2 flex-1 max-w-xs">
               <div className="relative flex-1">
                 <input
+                  ref={skuInputRef}
                   value={skuQuickAdd}
                   onChange={e => setSkuQuickAdd(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addProductBySku(skuQuickAdd); } }}
@@ -289,6 +294,7 @@ export default function SaleInvoiceCreate() {
               <thead><tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
                 <th className="px-3 py-2 text-center w-8">#</th>
                 <th className="px-3 py-2 text-left">Product</th>
+                <th className="px-3 py-2 text-left w-20">SKU</th>
                 <th className="px-3 py-2 text-right w-20">Qty</th>
                 <th className="px-3 py-2 text-right w-28">Rate (₹)</th>
                 <th className="px-3 py-2 text-right w-20">Disc%</th>
@@ -327,7 +333,14 @@ export default function SaleInvoiceCreate() {
                           </div>
                         )}
                       </td>
-                      <td className="px-3 py-2"><input ref={el => qtyRefs.current[idx] = el} type="number" min="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', +e.target.value)} onWheel={e => e.target.blur()} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
+                      <td className="px-3 py-2">
+                        {item.sku ? (
+                          <span className="text-xs font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{item.sku}</span>
+                        ) : (
+                          <span className="text-xs text-gray-300">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2"><input ref={el => qtyRefs.current[idx] = el} type="number" min="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', +e.target.value)} onWheel={e => e.target.blur()} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); skuInputRef.current?.focus(); skuInputRef.current?.select(); } }} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
                       <td className="px-3 py-2"><input type="number" min="0" step="0.01" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', +e.target.value)} onWheel={e => e.target.blur()} className="w-24 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
                       <td className="px-3 py-2"><input type="number" min="0" max="100" value={item.discountPct} onChange={e => updateItem(idx, 'discountPct', +e.target.value)} onWheel={e => e.target.blur()} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
                       <td className="px-3 py-2">
