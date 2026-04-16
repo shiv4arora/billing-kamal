@@ -88,4 +88,59 @@ router.post('/import', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── SYNC LEDGER ───────────────────────────────────────────────────────────────
+// Updates every sale_invoice / purchase_invoice ledger entry to match the
+// invoice's current grandTotal, then recalculates all party balances from scratch.
+router.post('/sync-ledger', async (_req, res, next) => {
+  try {
+    let salesFixed = 0, purchasesFixed = 0, customersFixed = 0, suppliersFixed = 0;
+
+    // 1. Sync sale invoice ledger entries
+    const saleInvoices = await prisma.saleInvoice.findMany({
+      where: { status: { not: 'draft' } },
+      select: { id: true, grandTotal: true },
+    });
+    for (const inv of saleInvoices) {
+      const updated = await prisma.ledgerEntry.updateMany({
+        where: { referenceId: inv.id, type: 'sale_invoice' },
+        data:  { debit: Number(inv.grandTotal) || 0 },
+      });
+      if (updated.count > 0) salesFixed++;
+    }
+
+    // 2. Sync purchase invoice ledger entries
+    const purchaseInvoices = await prisma.purchaseInvoice.findMany({
+      where: { status: { not: 'draft' } },
+      select: { id: true, grandTotal: true },
+    });
+    for (const inv of purchaseInvoices) {
+      const updated = await prisma.ledgerEntry.updateMany({
+        where: { referenceId: inv.id, type: 'purchase_invoice' },
+        data:  { credit: Number(inv.grandTotal) || 0 },
+      });
+      if (updated.count > 0) purchasesFixed++;
+    }
+
+    // 3. Recalculate all customer balances from ledger entries
+    const customers = await prisma.customer.findMany({ select: { id: true } });
+    for (const c of customers) {
+      const entries = await prisma.ledgerEntry.findMany({ where: { partyType: 'customer', partyId: c.id } });
+      const balance = entries.reduce((s, e) => s + (Number(e.debit) || 0) - (Number(e.credit) || 0), 0);
+      await prisma.customer.update({ where: { id: c.id }, data: { balance } });
+      customersFixed++;
+    }
+
+    // 4. Recalculate all supplier balances from ledger entries
+    const suppliers = await prisma.supplier.findMany({ select: { id: true } });
+    for (const s of suppliers) {
+      const entries = await prisma.ledgerEntry.findMany({ where: { partyType: 'supplier', partyId: s.id } });
+      const balance = entries.reduce((s, e) => s + (Number(e.credit) || 0) - (Number(e.debit) || 0), 0);
+      await prisma.supplier.update({ where: { id: s.id }, data: { balance } });
+      suppliersFixed++;
+    }
+
+    res.json({ ok: true, salesFixed, purchasesFixed, customersFixed, suppliersFixed });
+  } catch (err) { next(err); }
+});
+
 export default router;

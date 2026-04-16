@@ -61,6 +61,17 @@ export default function Settings() {
     } catch (e) { toast.error('Export failed: ' + e.message); }
   };
 
+  const [syncing, setSyncing] = useState(false);
+  const syncLedger = async () => {
+    if (!window.confirm('This will update all invoice amounts in their ledger entries and recalculate all customer/supplier balances. Continue?')) return;
+    setSyncing(true);
+    try {
+      const result = await api('/admin/sync-ledger', { method: 'POST' });
+      toast.success(`Ledger synced — ${result.salesFixed} sale entries, ${result.purchasesFixed} purchase entries updated. ${result.customersFixed} customers + ${result.suppliersFixed} suppliers recalculated.`);
+    } catch (e) { toast.error('Sync failed: ' + e.message); }
+    finally { setSyncing(false); }
+  };
+
   const importData = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -171,13 +182,21 @@ export default function Settings() {
 
         <Card>
           <h3 className="font-semibold text-gray-800 mb-4">Data Management</h3>
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <Button variant="secondary" onClick={exportData}>⬇ Export Backup</Button>
             <label className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-200">
               ⬆ Import Backup <input type="file" accept=".json" onChange={importData} className="hidden" />
             </label>
           </div>
           <p className="text-xs text-gray-400 mt-2">Backup exports all data as JSON. Import will overwrite existing data.</p>
+
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <p className="text-sm font-medium text-gray-700 mb-1">Sync Ledger Amounts</p>
+            <p className="text-xs text-gray-400 mb-3">Updates all invoice amounts in customer/supplier ledger entries and recalculates outstanding balances from scratch.</p>
+            <Button variant="outline" onClick={syncLedger} disabled={syncing}>
+              {syncing ? '⏳ Syncing…' : '🔄 Sync All Ledger Amounts'}
+            </Button>
+          </div>
         </Card>
 
         <div className="flex justify-end">
