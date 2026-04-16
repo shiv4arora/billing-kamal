@@ -13,6 +13,7 @@ export default function SaleInvoicePrint() {
   const { company, invoice: invSettings } = settings;
   const items = inv.items || [];
   const hasDiscount = items.some(item => (item.discountPct || 0) > 0);
+  const totalQty = items.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
 
   return (
     <div className="min-h-screen bg-white">
@@ -35,7 +36,6 @@ export default function SaleInvoicePrint() {
             <p className="text-2xl font-bold text-gray-900">TAX INVOICE</p>
             <p className="text-gray-700 mt-1"><span className="font-semibold">Invoice No:</span> {inv.invoiceNumber}</p>
             <p className="text-gray-700"><span className="font-semibold">Date:</span> {formatDate(inv.date)}</p>
-            {inv.dueDate && <p className="text-gray-700"><span className="font-semibold">Due:</span> {formatDate(inv.dueDate)}</p>}
           </div>
         </div>
 
@@ -76,7 +76,9 @@ export default function SaleInvoicePrint() {
           </tbody>
           <tfoot>
             <tr className="bg-gray-50 font-semibold">
-              <td colSpan={hasDiscount ? 4 : 3} className="border border-gray-300 px-2 py-1.5 text-right">Total</td>
+              <td colSpan={hasDiscount ? 2 : 2} className="border border-gray-300 px-2 py-1.5 text-right">Total</td>
+              <td className="border border-gray-300 px-2 py-1.5 text-right">{totalQty}</td>
+              <td className="border border-gray-300 px-2 py-1.5"></td>
               {hasDiscount && <td className="border border-gray-300 px-2 py-1.5"></td>}
               <td className="border border-gray-300 px-2 py-1.5 text-right">{formatCurrency(inv.grandTotal)}</td>
             </tr>

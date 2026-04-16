@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma';
 const router = Router();
 
 const DEFAULT_SETTINGS = {
-  company: { name: 'My Trading Co.', address: '', phone: '', email: '', gstin: '', state: 'Maharashtra', stateCode: '27', logo: null },
+  company: { name: 'Kamal Jewellers', address: 'Sadar Bazar, New Delhi- 110006', phone: '', email: '', gstin: '07AHDPR6884P1ZC', state: 'Delhi', stateCode: '07', logo: null },
   invoice: { salePrefix: 'SI', purchasePrefix: 'PI', defaultDueDays: 14, showHSN: true, bankDetails: '', terms: 'Goods once sold will not be returned.' },
   tax: { defaultGSTRate: 0, intraState: true },
   lowStockThreshold: 10,
@@ -16,6 +16,16 @@ router.get('/', async (_req, res, next) => {
     let s = await prisma.settings.findUnique({ where: { id: 'singleton' } });
     if (!s) {
       s = await prisma.settings.create({ data: { id: 'singleton', data: DEFAULT_SETTINGS } });
+    } else {
+      // Migrate: update company info if still set to the old placeholder default
+      const d = s.data as any;
+      if (!d?.company?.name || d.company.name === 'My Trading Co.') {
+        const updated = {
+          ...d,
+          company: { ...d.company, name: 'Kamal Jewellers', address: 'Sadar Bazar, New Delhi- 110006', gstin: '07AHDPR6884P1ZC', state: 'Delhi', stateCode: '07' },
+        };
+        s = await prisma.settings.update({ where: { id: 'singleton' }, data: { data: updated } });
+      }
     }
     res.json(s.data);
   } catch (err) { next(err); }
