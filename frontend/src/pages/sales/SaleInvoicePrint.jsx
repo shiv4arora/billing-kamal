@@ -11,6 +11,8 @@ export default function SaleInvoicePrint() {
 
   if (!inv) return <div className="p-8 text-center">Invoice not found.</div>;
   const { company, invoice: invSettings } = settings;
+  const items = inv.items || [];
+  const hasDiscount = items.some(item => (item.discountPct || 0) > 0);
 
   return (
     <div className="min-h-screen bg-white">
@@ -51,41 +53,31 @@ export default function SaleInvoicePrint() {
             <tr className="bg-gray-100">
               <th className="border border-gray-300 px-2 py-1.5 text-left">#</th>
               <th className="border border-gray-300 px-2 py-1.5 text-left">Description</th>
-              {invSettings.showHSN && <th className="border border-gray-300 px-2 py-1.5 text-left">HSN</th>}
               <th className="border border-gray-300 px-2 py-1.5 text-right">Qty</th>
               <th className="border border-gray-300 px-2 py-1.5 text-right">Rate</th>
-              <th className="border border-gray-300 px-2 py-1.5 text-right">Disc%</th>
-              <th className="border border-gray-300 px-2 py-1.5 text-right">Taxable</th>
-              <th className="border border-gray-300 px-2 py-1.5 text-right">GST%</th>
-              <th className="border border-gray-300 px-2 py-1.5 text-right">GST Amt</th>
+              {hasDiscount && <th className="border border-gray-300 px-2 py-1.5 text-right">Disc%</th>}
               <th className="border border-gray-300 px-2 py-1.5 text-right">Total</th>
             </tr>
           </thead>
           <tbody>
-            {(inv.items || []).map((item, i) => (
+            {items.map((item, i) => (
               <tr key={i}>
                 <td className="border border-gray-300 px-2 py-1">{i + 1}</td>
                 <td className="border border-gray-300 px-2 py-1">
                   {item.productName}
                   {item.sku && <span className="ml-1 text-[10px] text-gray-400 font-mono">[#{item.sku}]</span>}
                 </td>
-                {invSettings.showHSN && <td className="border border-gray-300 px-2 py-1">{item.hsnCode || '-'}</td>}
                 <td className="border border-gray-300 px-2 py-1 text-right">{item.quantity} {item.unit}</td>
                 <td className="border border-gray-300 px-2 py-1 text-right">{formatCurrency(item.unitPrice)}</td>
-                <td className="border border-gray-300 px-2 py-1 text-right">{item.discountPct || 0}%</td>
-                <td className="border border-gray-300 px-2 py-1 text-right">{formatCurrency(item.taxableAmount)}</td>
-                <td className="border border-gray-300 px-2 py-1 text-right">{item.gstRate}%</td>
-                <td className="border border-gray-300 px-2 py-1 text-right">{formatCurrency((item.cgst || 0) + (item.sgst || 0) + (item.igst || 0))}</td>
+                {hasDiscount && <td className="border border-gray-300 px-2 py-1 text-right">{item.discountPct || 0}%</td>}
                 <td className="border border-gray-300 px-2 py-1 text-right font-semibold">{formatCurrency(item.lineTotal)}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr className="bg-gray-50 font-semibold">
-              <td colSpan={invSettings.showHSN ? 6 : 5} className="border border-gray-300 px-2 py-1.5 text-right">Total</td>
-              <td className="border border-gray-300 px-2 py-1.5 text-right">{formatCurrency(inv.totalTaxable)}</td>
-              <td className="border border-gray-300 px-2 py-1.5"></td>
-              <td className="border border-gray-300 px-2 py-1.5 text-right">{formatCurrency(inv.totalGST)}</td>
+              <td colSpan={hasDiscount ? 4 : 3} className="border border-gray-300 px-2 py-1.5 text-right">Total</td>
+              {hasDiscount && <td className="border border-gray-300 px-2 py-1.5"></td>}
               <td className="border border-gray-300 px-2 py-1.5 text-right">{formatCurrency(inv.grandTotal)}</td>
             </tr>
           </tfoot>
