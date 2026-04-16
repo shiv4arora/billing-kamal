@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useInvoices } from '../../context/InvoiceContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -10,6 +11,8 @@ export default function SaleInvoicePrint() {
   const { settings } = useSettings();
   const { get: getCustomer } = useCustomers();
   const inv = getSaleInvoice(id);
+  const invoiceRef = useRef(null);
+  const [sharing, setSharing] = useState(false);
 
   if (!inv) return <div className="p-8 text-center">Invoice not found.</div>;
   const { company, invoice: invSettings } = settings;
@@ -27,13 +30,11 @@ export default function SaleInvoicePrint() {
   const totalTaxable = items.reduce((s, i) => s + (Number(i.taxableAmount) || Number(i.lineTotal) || 0), 0);
   const balanceDue  = (inv.grandTotal || 0) - (inv.amountPaid || 0);
 
-  const sendWhatsApp = () => {
-    const phone = customerPhone.replace(/\D/g, '');
+  const buildMessage = () => {
     const lines = [
       `Dear ${inv.customerName || 'Customer'},`,
       '',
-      `Please find your invoice details below:`,
-      '',
+      `Please find your invoice details:`,
       `Invoice No : ${inv.invoiceNumber}`,
       `Date       : ${formatDate(inv.date)}`,
       `Amount     : ${formatCurrency(inv.grandTotal)}`,
@@ -42,23 +43,87 @@ export default function SaleInvoicePrint() {
       `${company.name || 'Kamal Jewellers'}`,
       company.address || 'Sadar Bazar, New Delhi- 110006',
     ];
-    const text = encodeURIComponent(lines.join('\n'));
-    const url  = phone
-      ? `https://wa.me/91${phone}?text=${text}`
-      : `https://wa.me/?text=${text}`;
+    return lines.join('\n');
+  };
+
+  const generatePdfBlob = async () => {
+    const html2canvas = (await import('html2canvas')).default;
+    const { jsPDF } = await import('jspdf');
+
+    const el = invoiceRef.current;
+    const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const imgH = (canvas.height * pageW) / canvas.width;
+    let y = 0;
+    while (y < imgH) {
+      pdf.addImage(imgData, 'PNG', 0, -y, pageW, imgH);
+      y += pageH;
+      if (y < imgH) pdf.addPage();
+    }
+    return pdf.output('blob');
+  };
+
+  const shareWhatsApp = async () => {
+    const phone = customerPhone.replace(/\D/g, '');
+    const text  = buildMessage();
+
+    // Try Web Share API with PDF file (works on mobile)
+    if (navigator.canShare) {
+      try {
+        setSharing(true);
+        const blob = await generatePdfBlob();
+        const file = new File([blob], `Invoice-${inv.invoiceNumber || id}.pdf`, { type: 'application/pdf' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], text });
+          return;
+        }
+      } catch (err) {
+        console.warn('Share with file failed, trying text-only:', err);
+      } finally {
+        setSharing(false);
+      }
+    }
+
+    // Fallback: open WhatsApp with text only
+    const encoded = encodeURIComponent(text);
+    const url = phone
+      ? `https://wa.me/91${phone}?text=${encoded}`
+      : `https://wa.me/?text=${encoded}`;
     window.open(url, '_blank');
+  };
+
+  const downloadPdf = async () => {
+    try {
+      setSharing(true);
+      const blob = await generatePdfBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Invoice-${inv.invoiceNumber || id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setSharing(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="no-print p-4 bg-gray-100 flex gap-3 flex-wrap">
+      <div className="no-print p-4 bg-gray-100 flex gap-3 flex-wrap items-center">
         <button onClick={() => window.print()}
           className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium">
-          🖨 Print / Save PDF
+          🖨 Print
         </button>
-        <button onClick={sendWhatsApp}
-          className="bg-green-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-green-600">
-          💬 Send on WhatsApp
+        <button onClick={downloadPdf} disabled={sharing}
+          className="bg-blue-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-600 disabled:opacity-60">
+          {sharing ? '⏳ Generating…' : '📄 Download PDF'}
+        </button>
+        <button onClick={shareWhatsApp} disabled={sharing}
+          className="bg-green-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-green-600 disabled:opacity-60">
+          {sharing ? '⏳ Generating…' : '💬 Send on WhatsApp'}
         </button>
         <button onClick={() => window.history.back()}
           className="bg-gray-200 px-4 py-2 rounded text-sm">
@@ -66,7 +131,7 @@ export default function SaleInvoicePrint() {
         </button>
       </div>
 
-      <div className="p-8 max-w-[210mm] mx-auto text-[13px]">
+      <div ref={invoiceRef} className="p-8 max-w-[210mm] mx-auto text-[13px]">
         {/* Header */}
         <div className="flex justify-between items-start mb-6 pb-4 border-b-2 border-gray-800">
           <div>
