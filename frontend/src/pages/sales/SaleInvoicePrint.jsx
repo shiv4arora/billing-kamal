@@ -15,21 +15,55 @@ export default function SaleInvoicePrint() {
   const { company, invoice: invSettings } = settings;
 
   // Customer address/GSTIN: stored on invoice (new) OR looked up from context (legacy)
-  const custFromCtx = inv.customerId ? getCustomer(inv.customerId) : null;
+  const custFromCtx    = inv.customerId ? getCustomer(inv.customerId) : null;
   const customerAddress = inv.customerAddress || custFromCtx?.address || '';
   const customerGstin   = inv.customerGstin   || custFromCtx?.gstin   || '';
-  const customerPhone   = custFromCtx?.phone || '';
+  const customerPhone   = custFromCtx?.phone   || '';
 
-  const items = inv.items || [];
+  const items       = inv.items || [];
   const hasDiscount = items.some(item => (item.discountPct || 0) > 0);
-  const totalQty  = items.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
-  const totalTax  = (inv.totalCGST || 0) + (inv.totalSGST || 0) + (inv.totalIGST || 0);
+  const totalQty    = items.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
+  const totalTax    = (inv.totalCGST || 0) + (inv.totalSGST || 0) + (inv.totalIGST || 0);
+  const totalTaxable = items.reduce((s, i) => s + (Number(i.taxableAmount) || Number(i.lineTotal) || 0), 0);
+  const balanceDue  = (inv.grandTotal || 0) - (inv.amountPaid || 0);
+
+  const sendWhatsApp = () => {
+    const phone = customerPhone.replace(/\D/g, '');
+    const lines = [
+      `Dear ${inv.customerName || 'Customer'},`,
+      '',
+      `Please find your invoice details below:`,
+      '',
+      `Invoice No : ${inv.invoiceNumber}`,
+      `Date       : ${formatDate(inv.date)}`,
+      `Amount     : ${formatCurrency(inv.grandTotal)}`,
+      ...(balanceDue > 0.01 ? [`Balance Due: ${formatCurrency(balanceDue)}`] : [`Status     : Paid`]),
+      '',
+      `${company.name || 'Kamal Jewellers'}`,
+      company.address || 'Sadar Bazar, New Delhi- 110006',
+    ];
+    const text = encodeURIComponent(lines.join('\n'));
+    const url  = phone
+      ? `https://wa.me/91${phone}?text=${text}`
+      : `https://wa.me/?text=${text}`;
+    window.open(url, '_blank');
+  };
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="no-print p-4 bg-gray-100 flex gap-3">
-        <button onClick={() => window.print()} className="bg-blue-600 text-white px-4 py-2 rounded text-sm">🖨 Print / Save PDF</button>
-        <button onClick={() => window.history.back()} className="bg-gray-200 px-4 py-2 rounded text-sm">← Back</button>
+      <div className="no-print p-4 bg-gray-100 flex gap-3 flex-wrap">
+        <button onClick={() => window.print()}
+          className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium">
+          🖨 Print / Save PDF
+        </button>
+        <button onClick={sendWhatsApp}
+          className="bg-green-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-green-600">
+          💬 Send on WhatsApp
+        </button>
+        <button onClick={() => window.history.back()}
+          className="bg-gray-200 px-4 py-2 rounded text-sm">
+          ← Back
+        </button>
       </div>
 
       <div className="p-8 max-w-[210mm] mx-auto text-[13px]">
@@ -37,15 +71,21 @@ export default function SaleInvoicePrint() {
         <div className="flex justify-between items-start mb-6 pb-4 border-b-2 border-gray-800">
           <div>
             {company.logo && <img src={company.logo} alt="logo" className="h-12 mb-2" />}
-            <h1 className="text-xl font-bold text-gray-900">{company.name}</h1>
-            <p className="text-gray-600 whitespace-pre-line">{company.address}</p>
+            <h1 className="text-xl font-bold text-gray-900">{company.name || 'Kamal Jewellers'}</h1>
+            <p className="text-gray-600 whitespace-pre-line">{company.address || 'Sadar Bazar, New Delhi- 110006'}</p>
             {company.phone && <p className="text-gray-600">Ph: {company.phone}</p>}
-            {company.gstin && <p className="text-gray-600">GSTIN: {company.gstin}</p>}
+            <p className="text-gray-600">GSTIN: {company.gstin || '07AHDPR6884P1ZC'}</p>
           </div>
           <div className="text-right">
             <p className="text-2xl font-bold text-gray-900">TAX INVOICE</p>
-            <p className="text-gray-700 mt-1"><span className="font-semibold">Invoice No:</span> {inv.invoiceNumber}</p>
-            <p className="text-gray-700"><span className="font-semibold">Date:</span> {formatDate(inv.date)}</p>
+            <p className="text-gray-700 mt-1">
+              <span className="font-semibold">Invoice No: </span>
+              <strong>{inv.invoiceNumber}</strong>
+            </p>
+            <p className="text-gray-700">
+              <span className="font-semibold">Date: </span>
+              <strong>{formatDate(inv.date)}</strong>
+            </p>
           </div>
         </div>
 
@@ -69,13 +109,12 @@ export default function SaleInvoicePrint() {
               <th className="border border-gray-300 px-2 py-1.5 text-right">Qty</th>
               <th className="border border-gray-300 px-2 py-1.5 text-right">Rate</th>
               {hasDiscount && <th className="border border-gray-300 px-2 py-1.5 text-right">Disc%</th>}
-              <th className="border border-gray-300 px-2 py-1.5 text-right">Tax</th>
               <th className="border border-gray-300 px-2 py-1.5 text-right">Total</th>
             </tr>
           </thead>
           <tbody>
             {items.map((item, i) => {
-              const itemTax = (item.cgst || 0) + (item.sgst || 0) + (item.igst || 0);
+              const taxable = item.taxableAmount ?? item.lineTotal;
               return (
                 <tr key={i}>
                   <td className="border border-gray-300 px-2 py-1">{i + 1}</td>
@@ -86,8 +125,7 @@ export default function SaleInvoicePrint() {
                   <td className="border border-gray-300 px-2 py-1 text-right">{item.quantity} {item.unit}</td>
                   <td className="border border-gray-300 px-2 py-1 text-right">{formatCurrency(item.unitPrice)}</td>
                   {hasDiscount && <td className="border border-gray-300 px-2 py-1 text-right">{item.discountPct || 0}%</td>}
-                  <td className="border border-gray-300 px-2 py-1 text-right">{itemTax > 0 ? formatCurrency(itemTax) : <span className="text-gray-300">—</span>}</td>
-                  <td className="border border-gray-300 px-2 py-1 text-right font-semibold">{formatCurrency(item.lineTotal)}</td>
+                  <td className="border border-gray-300 px-2 py-1 text-right font-semibold">{formatCurrency(taxable)}</td>
                 </tr>
               );
             })}
@@ -98,8 +136,7 @@ export default function SaleInvoicePrint() {
               <td className="border border-gray-300 px-2 py-1.5 text-right">{totalQty}</td>
               <td className="border border-gray-300 px-2 py-1.5"></td>
               {hasDiscount && <td className="border border-gray-300 px-2 py-1.5"></td>}
-              <td className="border border-gray-300 px-2 py-1.5 text-right">{totalTax > 0 ? formatCurrency(totalTax) : '—'}</td>
-              <td className="border border-gray-300 px-2 py-1.5 text-right">{formatCurrency(inv.grandTotal)}</td>
+              <td className="border border-gray-300 px-2 py-1.5 text-right">{formatCurrency(totalTaxable)}</td>
             </tr>
           </tfoot>
         </table>
@@ -110,7 +147,10 @@ export default function SaleInvoicePrint() {
             <p className="text-xs font-semibold text-gray-700 mb-1">Amount in Words:</p>
             <p className="text-xs text-gray-600 italic">{amountInWords(inv.grandTotal)}</p>
             {invSettings.bankDetails && (
-              <div className="mt-3"><p className="text-xs font-semibold text-gray-700 mb-1">Bank Details:</p><p className="text-xs text-gray-600 whitespace-pre-line">{invSettings.bankDetails}</p></div>
+              <div className="mt-3">
+                <p className="text-xs font-semibold text-gray-700 mb-1">Bank Details:</p>
+                <p className="text-xs text-gray-600 whitespace-pre-line">{invSettings.bankDetails}</p>
+              </div>
             )}
           </div>
           <div className="w-52 text-xs">
@@ -123,18 +163,33 @@ export default function SaleInvoicePrint() {
                 <span>Total Tax</span><span>{formatCurrency(totalTax)}</span>
               </div>
             )}
-            <div className="flex justify-between font-bold text-sm border-t border-gray-400 mt-1 pt-1"><span>Grand Total</span><span>{formatCurrency(inv.grandTotal)}</span></div>
+            <div className="flex justify-between font-bold text-sm border-t border-gray-400 mt-1 pt-1">
+              <span>Grand Total</span><span>{formatCurrency(inv.grandTotal)}</span>
+            </div>
             {(inv.amountPaid || 0) > 0 && (
-              <div className="flex justify-between py-0.5 text-green-700"><span>Amount Paid ({inv.paymentMethod})</span><span>{formatCurrency(inv.amountPaid)}</span></div>
+              <div className="flex justify-between py-0.5 text-green-700">
+                <span>Amount Paid ({inv.paymentMethod})</span><span>{formatCurrency(inv.amountPaid)}</span>
+              </div>
             )}
-            {(inv.grandTotal - (inv.amountPaid || 0)) > 0.01 && (
-              <div className="flex justify-between py-0.5 font-semibold text-red-700"><span>Balance Due</span><span>{formatCurrency(inv.grandTotal - (inv.amountPaid || 0))}</span></div>
+            {balanceDue > 0.01 && (
+              <div className="flex justify-between py-0.5 font-semibold text-red-700">
+                <span>Balance Due</span><span>{formatCurrency(balanceDue)}</span>
+              </div>
             )}
           </div>
         </div>
 
-        {invSettings.terms && <div className="mt-6 pt-4 border-t text-xs text-gray-500"><span className="font-semibold">Terms: </span>{invSettings.terms}</div>}
-        <div className="mt-8 flex justify-end"><div className="text-center text-xs text-gray-600"><div className="w-36 border-b border-gray-400 mb-1"></div>Authorised Signatory</div></div>
+        {invSettings.terms && (
+          <div className="mt-6 pt-4 border-t text-xs text-gray-500">
+            <span className="font-semibold">Terms: </span>{invSettings.terms}
+          </div>
+        )}
+        <div className="mt-8 flex justify-end">
+          <div className="text-center text-xs text-gray-600">
+            <div className="w-36 border-b border-gray-400 mb-1"></div>
+            Authorised Signatory
+          </div>
+        </div>
       </div>
     </div>
   );
