@@ -296,7 +296,7 @@ export default function SaleInvoiceCreate() {
                 <th className="px-3 py-2 text-left">Product</th>
                 <th className="px-3 py-2 text-left w-20">SKU</th>
                 <th className="px-3 py-2 text-right w-20">Qty</th>
-                <th className="px-3 py-2 text-right w-28">Rate (₹)</th>
+                <th className="px-3 py-2 text-right w-28">Rate (₹) 🔒</th>
                 <th className="px-3 py-2 text-right w-20">Disc%</th>
                 <th className="px-3 py-2 text-right w-20">GST%</th>
                 <th className="px-3 py-2 text-right w-28">Total</th>
@@ -341,7 +341,9 @@ export default function SaleInvoiceCreate() {
                         )}
                       </td>
                       <td className="px-3 py-2"><input ref={el => qtyRefs.current[idx] = el} type="number" min="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', +e.target.value)} onWheel={e => e.target.blur()} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); skuInputRef.current?.focus(); skuInputRef.current?.select(); } }} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
-                      <td className="px-3 py-2"><input type="number" min="0" step="0.01" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', +e.target.value)} onWheel={e => e.target.blur()} className="w-24 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
+                      <td className="px-3 py-2 text-right">
+                        <span className="text-sm font-medium text-gray-700 w-24 inline-block">{item.unitPrice ? formatCurrency(item.unitPrice) : '—'}</span>
+                      </td>
                       <td className="px-3 py-2"><input type="number" min="0" max="100" value={item.discountPct} onChange={e => updateItem(idx, 'discountPct', +e.target.value)} onWheel={e => e.target.blur()} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
                       <td className="px-3 py-2">
                         <select value={item.gstRate} onChange={e => updateItem(idx, 'gstRate', +e.target.value)} className="w-16 border border-gray-200 rounded px-1 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white">

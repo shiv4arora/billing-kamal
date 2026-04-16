@@ -75,7 +75,26 @@ router.post('/', async (req, res, next) => {
 
 router.put('/:id', async (req, res, next) => {
   try {
+    const oldInv = await prisma.saleInvoice.findUniqueOrThrow({ where: { id: req.params.id } });
     const inv = await prisma.saleInvoice.update({ where: { id: req.params.id }, data: pickSaleData(req.body) });
+
+    // Sync ledger + customer balance if invoice was already issued
+    if (oldInv.status !== 'draft' && inv.customerId) {
+      const oldTotal = Number(oldInv.grandTotal) || 0;
+      const newTotal = Number(inv.grandTotal) || 0;
+      const delta = newTotal - oldTotal;
+      if (Math.abs(delta) > 0.001) {
+        await prisma.ledgerEntry.updateMany({
+          where: { referenceId: inv.id, type: 'sale_invoice' },
+          data: { debit: newTotal },
+        });
+        await prisma.customer.update({
+          where: { id: inv.customerId },
+          data: { balance: { increment: delta } },
+        });
+      }
+    }
+
     res.json(inv);
   } catch (err) { next(err); }
 });

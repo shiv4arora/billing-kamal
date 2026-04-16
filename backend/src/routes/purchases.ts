@@ -286,6 +286,23 @@ router.put('/:id', async (req, res, next) => {
       data: pickPurchaseData(body),
     });
 
+    // Sync ledger + supplier balance if invoice was already issued
+    if (oldInv.status !== 'draft' && inv.supplierId) {
+      const oldTotal = Number(oldInv.grandTotal) || 0;
+      const newTotal = Number(inv.grandTotal) || 0;
+      const delta = newTotal - oldTotal;
+      if (Math.abs(delta) > 0.001) {
+        await prisma.ledgerEntry.updateMany({
+          where: { referenceId: inv.id, type: 'purchase_invoice' },
+          data: { credit: newTotal },
+        });
+        await prisma.supplier.update({
+          where: { id: inv.supplierId },
+          data: { balance: { increment: delta } },
+        });
+      }
+    }
+
     res.json(inv);
   } catch (err) { next(err); }
 });
