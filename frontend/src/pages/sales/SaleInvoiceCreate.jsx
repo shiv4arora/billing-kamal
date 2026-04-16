@@ -79,6 +79,8 @@ export default function SaleInvoiceCreate() {
     }
   };
 
+  const qtyRefs = useRef({});
+
   const handleProductSelect = (idx, prod) => {
     setIsDirty(true);
     const price = getPrice(prod, customerType);
@@ -93,6 +95,7 @@ export default function SaleInvoiceCreate() {
     });
     setProductSearch(p => ({ ...p, [idx]: prod.name }));
     setShowDropdown(p => ({ ...p, [idx]: false }));
+    setTimeout(() => { qtyRefs.current[idx]?.focus(); qtyRefs.current[idx]?.select(); }, 50);
   };
 
   const updateItem = (idx, field, value) => {
@@ -324,7 +327,7 @@ export default function SaleInvoiceCreate() {
                           </div>
                         )}
                       </td>
-                      <td className="px-3 py-2"><input type="number" min="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', +e.target.value)} onWheel={e => e.target.blur()} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
+                      <td className="px-3 py-2"><input ref={el => qtyRefs.current[idx] = el} type="number" min="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', +e.target.value)} onWheel={e => e.target.blur()} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
                       <td className="px-3 py-2"><input type="number" min="0" step="0.01" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', +e.target.value)} onWheel={e => e.target.blur()} className="w-24 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
                       <td className="px-3 py-2"><input type="number" min="0" max="100" value={item.discountPct} onChange={e => updateItem(idx, 'discountPct', +e.target.value)} onWheel={e => e.target.blur()} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
                       <td className="px-3 py-2">
