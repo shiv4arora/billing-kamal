@@ -87,9 +87,11 @@ model SaleInvoice {
   date          String
   dueDate       String   @default("")
   customerId    String?
-  customerName  String   @default("")
-  customerPlace String   @default("")
-  customerType  String   @default("shop")
+  customerName    String   @default("")
+  customerPlace   String   @default("")
+  customerType    String   @default("shop")
+  customerAddress String   @default("")
+  customerGstin   String   @default("")
   items         String   @default("[]")  // JSON string
   subtotal      Float    @default(0)
   totalDiscount Float    @default(0)

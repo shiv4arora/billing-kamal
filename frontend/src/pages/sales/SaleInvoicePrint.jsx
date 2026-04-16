@@ -1,19 +1,29 @@
 import { useParams } from 'react-router-dom';
 import { useInvoices } from '../../context/InvoiceContext';
 import { useSettings } from '../../context/SettingsContext';
+import { useCustomers } from '../../context/CustomerContext';
 import { formatCurrency, formatDate, amountInWords, formatCustomerDisplay } from '../../utils/helpers';
 
 export default function SaleInvoicePrint() {
   const { id } = useParams();
   const { getSaleInvoice } = useInvoices();
   const { settings } = useSettings();
+  const { get: getCustomer } = useCustomers();
   const inv = getSaleInvoice(id);
 
   if (!inv) return <div className="p-8 text-center">Invoice not found.</div>;
   const { company, invoice: invSettings } = settings;
+
+  // Customer address/GSTIN: stored on invoice (new) OR looked up from context (legacy)
+  const custFromCtx = inv.customerId ? getCustomer(inv.customerId) : null;
+  const customerAddress = inv.customerAddress || custFromCtx?.address || '';
+  const customerGstin   = inv.customerGstin   || custFromCtx?.gstin   || '';
+  const customerPhone   = custFromCtx?.phone || '';
+
   const items = inv.items || [];
   const hasDiscount = items.some(item => (item.discountPct || 0) > 0);
-  const totalQty = items.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
+  const totalQty  = items.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
+  const totalTax  = (inv.totalCGST || 0) + (inv.totalSGST || 0) + (inv.totalIGST || 0);
 
   return (
     <div className="min-h-screen bg-white">
@@ -45,6 +55,9 @@ export default function SaleInvoicePrint() {
           <p className="font-semibold text-gray-900">
             {formatCustomerDisplay(inv.customerName, inv.customerPlace, inv.customerType)}
           </p>
+          {customerAddress && <p className="text-gray-600 text-xs mt-0.5">{customerAddress}</p>}
+          {customerPhone   && <p className="text-gray-600 text-xs mt-0.5">Ph: {customerPhone}</p>}
+          {customerGstin   && <p className="text-gray-600 text-xs mt-0.5 font-mono">GSTIN: {customerGstin}</p>}
         </div>
 
         {/* Items Table */}
@@ -56,30 +69,36 @@ export default function SaleInvoicePrint() {
               <th className="border border-gray-300 px-2 py-1.5 text-right">Qty</th>
               <th className="border border-gray-300 px-2 py-1.5 text-right">Rate</th>
               {hasDiscount && <th className="border border-gray-300 px-2 py-1.5 text-right">Disc%</th>}
+              <th className="border border-gray-300 px-2 py-1.5 text-right">Tax</th>
               <th className="border border-gray-300 px-2 py-1.5 text-right">Total</th>
             </tr>
           </thead>
           <tbody>
-            {items.map((item, i) => (
-              <tr key={i}>
-                <td className="border border-gray-300 px-2 py-1">{i + 1}</td>
-                <td className="border border-gray-300 px-2 py-1">
-                  {item.productName}
-                  {item.sku && <span className="ml-1 text-[10px] text-gray-400 font-mono">[#{item.sku}]</span>}
-                </td>
-                <td className="border border-gray-300 px-2 py-1 text-right">{item.quantity} {item.unit}</td>
-                <td className="border border-gray-300 px-2 py-1 text-right">{formatCurrency(item.unitPrice)}</td>
-                {hasDiscount && <td className="border border-gray-300 px-2 py-1 text-right">{item.discountPct || 0}%</td>}
-                <td className="border border-gray-300 px-2 py-1 text-right font-semibold">{formatCurrency(item.lineTotal)}</td>
-              </tr>
-            ))}
+            {items.map((item, i) => {
+              const itemTax = (item.cgst || 0) + (item.sgst || 0) + (item.igst || 0);
+              return (
+                <tr key={i}>
+                  <td className="border border-gray-300 px-2 py-1">{i + 1}</td>
+                  <td className="border border-gray-300 px-2 py-1">
+                    {item.productName}
+                    {item.sku && <span className="ml-1 text-[10px] text-gray-400 font-mono">[#{item.sku}]</span>}
+                  </td>
+                  <td className="border border-gray-300 px-2 py-1 text-right">{item.quantity} {item.unit}</td>
+                  <td className="border border-gray-300 px-2 py-1 text-right">{formatCurrency(item.unitPrice)}</td>
+                  {hasDiscount && <td className="border border-gray-300 px-2 py-1 text-right">{item.discountPct || 0}%</td>}
+                  <td className="border border-gray-300 px-2 py-1 text-right">{itemTax > 0 ? formatCurrency(itemTax) : <span className="text-gray-300">—</span>}</td>
+                  <td className="border border-gray-300 px-2 py-1 text-right font-semibold">{formatCurrency(item.lineTotal)}</td>
+                </tr>
+              );
+            })}
           </tbody>
           <tfoot>
             <tr className="bg-gray-50 font-semibold">
-              <td colSpan={hasDiscount ? 2 : 2} className="border border-gray-300 px-2 py-1.5 text-right">Total</td>
+              <td colSpan={2} className="border border-gray-300 px-2 py-1.5 text-right">Total</td>
               <td className="border border-gray-300 px-2 py-1.5 text-right">{totalQty}</td>
               <td className="border border-gray-300 px-2 py-1.5"></td>
               {hasDiscount && <td className="border border-gray-300 px-2 py-1.5"></td>}
+              <td className="border border-gray-300 px-2 py-1.5 text-right">{totalTax > 0 ? formatCurrency(totalTax) : '—'}</td>
               <td className="border border-gray-300 px-2 py-1.5 text-right">{formatCurrency(inv.grandTotal)}</td>
             </tr>
           </tfoot>
@@ -99,6 +118,11 @@ export default function SaleInvoicePrint() {
             {inv.totalCGST > 0 && <div className="flex justify-between py-0.5"><span>CGST</span><span>{formatCurrency(inv.totalCGST)}</span></div>}
             {inv.totalSGST > 0 && <div className="flex justify-between py-0.5"><span>SGST</span><span>{formatCurrency(inv.totalSGST)}</span></div>}
             {inv.totalIGST > 0 && <div className="flex justify-between py-0.5"><span>IGST</span><span>{formatCurrency(inv.totalIGST)}</span></div>}
+            {totalTax > 0 && (
+              <div className="flex justify-between py-0.5 font-semibold border-t border-gray-200 mt-0.5 pt-0.5">
+                <span>Total Tax</span><span>{formatCurrency(totalTax)}</span>
+              </div>
+            )}
             <div className="flex justify-between font-bold text-sm border-t border-gray-400 mt-1 pt-1"><span>Grand Total</span><span>{formatCurrency(inv.grandTotal)}</span></div>
             {(inv.amountPaid || 0) > 0 && (
               <div className="flex justify-between py-0.5 text-green-700"><span>Amount Paid ({inv.paymentMethod})</span><span>{formatCurrency(inv.amountPaid)}</span></div>

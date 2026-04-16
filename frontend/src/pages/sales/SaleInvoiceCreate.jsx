@@ -135,7 +135,7 @@ export default function SaleInvoiceCreate() {
       const payStatus = paid >= totals.grandTotal ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
       const dueD = dueDate || (() => { const d = new Date(date); d.setDate(d.getDate() + (settings.invoice?.defaultDueDays || 14)); return d.toISOString().slice(0,10); })();
 
-      const invData = { date, dueDate: dueD, customerId, customerName: customer?.name || '', customerPlace: customer?.place || '', customerType, items: totals.items, ...totals, amountPaid: paid, paymentMethod, paymentStatus: payStatus, paymentDate: paid > 0 ? today() : null, notes, status: 'draft' };
+      const invData = { date, dueDate: dueD, customerId, customerName: customer?.name || '', customerPlace: customer?.place || '', customerType, customerAddress: customer?.address || '', customerGstin: customer?.gstin || '', items: totals.items, ...totals, amountPaid: paid, paymentMethod, paymentStatus: payStatus, paymentDate: paid > 0 ? today() : null, notes, status: 'draft' };
 
       setIsDirty(false);
       if (isEdit) {
