@@ -236,7 +236,23 @@ router.patch('/:id/mark-paid', async (req, res, next) => {
 // ── VOID ─────────────────────────────────────────────────────────────────────
 router.patch('/:id/void', async (req, res, next) => {
   try {
-    const inv = await prisma.saleInvoice.update({ where: { id: req.params.id }, data: { status: 'void' } });
+    const inv = await prisma.$transaction(async (tx) => {
+      const existing = await tx.saleInvoice.findUniqueOrThrow({ where: { id: req.params.id } });
+
+      // Remove ledger entries and reverse customer balance
+      if (existing.status !== 'void' && existing.customerId) {
+        await tx.ledgerEntry.deleteMany({ where: { referenceId: existing.id } });
+        const netOwed = Number(existing.grandTotal) - Number(existing.amountPaid || 0);
+        if (netOwed !== 0) {
+          await tx.customer.update({
+            where: { id: existing.customerId },
+            data: { balance: { decrement: netOwed } },
+          });
+        }
+      }
+
+      return tx.saleInvoice.update({ where: { id: req.params.id }, data: { status: 'void' } });
+    });
     res.json(inv);
   } catch (err) { next(err); }
 });

@@ -14,7 +14,7 @@ export default function SaleInvoiceView() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const { getSaleInvoice, updateSaleInvoiceLocal, deleteSaleInvoice } = useInvoices();
+  const { getSaleInvoice, updateSaleInvoiceLocal } = useInvoices();
   const { settings } = useSettings();
   const { get: getCustomer } = useCustomers();
   const inv = getSaleInvoice(id);
@@ -22,7 +22,6 @@ export default function SaleInvoiceView() {
   const [payOpen, setPayOpen] = useState(false);
   const [retOpen, setRetOpen] = useState(false);
   const [waOpen, setWaOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [payForm, setPayForm] = useState({ date: today(), amount: '', method: 'cash', notes: '' });
   const [retForm, setRetForm] = useState({ date: today(), amount: '', notes: '' });
 
@@ -34,14 +33,6 @@ export default function SaleInvoiceView() {
     try {
       const updated = await api(`/sales/${id}/mark-paid`, { method: 'PATCH' });
       updateSaleInvoiceLocal(id, updated);
-    } catch (e) { toast.error(e.message); }
-  };
-
-  const handleDelete = async () => {
-    try {
-      await deleteSaleInvoice(id);
-      toast.success('Invoice deleted · Stock & ledger reversed');
-      setTimeout(() => navigate('/sales'), 400);
     } catch (e) { toast.error(e.message); }
   };
 
@@ -127,7 +118,6 @@ export default function SaleInvoiceView() {
           {inv.status !== 'void' && <Button variant="outline" onClick={() => setRetOpen(true)}>↩ Return</Button>}
           {inv.paymentStatus !== 'paid' && inv.status !== 'void' && <Button variant="success" onClick={markPaid}>✓ Mark Paid</Button>}
           {inv.status !== 'void' && <Button variant="danger" onClick={voidInv}>Void</Button>}
-          <Button variant="danger" onClick={() => setDeleteOpen(true)}>🗑 Delete</Button>
         </div>
       </div>
 
@@ -294,29 +284,6 @@ export default function SaleInvoiceView() {
       </div>
     </Modal>
 
-    {/* Delete Confirm Modal */}
-    <Modal open={deleteOpen} onClose={() => setDeleteOpen(false)} title="Delete Invoice">
-      <div className="space-y-4">
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-          <p className="font-semibold">This will permanently delete <strong>{inv.invoiceNumber}</strong> and:</p>
-          <ul className="mt-2 list-disc list-inside space-y-1 text-red-600">
-            <li>Reverse stock for all {(inv.items || []).length} item(s)</li>
-            <li>Remove all ledger entries for this invoice</li>
-            <li>Reverse customer balance</li>
-          </ul>
-        </div>
-        <p className="text-sm text-gray-500">This action cannot be undone.</p>
-        <div className="flex justify-end gap-2 pt-2 border-t">
-          <Button variant="secondary" onClick={() => setDeleteOpen(false)}>Cancel</Button>
-          <button
-            onClick={handleDelete}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
-          >
-            Yes, Delete Invoice
-          </button>
-        </div>
-      </div>
-    </Modal>
     </>
   );
 }
