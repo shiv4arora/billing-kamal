@@ -41,6 +41,7 @@ export default function SaleInvoiceCreate() {
   const [productSearch, setProductSearch] = useState({});
   const [showDropdown, setShowDropdown] = useState({});
   const [skuQuickAdd, setSkuQuickAdd] = useState('');
+  const [bulkDiscount, setBulkDiscount] = useState('');
   const dropdownRefs = useRef({});
 
   useEffect(() => {
@@ -117,6 +118,13 @@ export default function SaleInvoiceCreate() {
     setShowDropdown(p => ({ ...p, [idx]: false }));
     setPendingDelete(null);
   };
+  const applyBulkDiscount = () => {
+    const pct = parseFloat(bulkDiscount);
+    if (isNaN(pct) || pct < 0 || pct > 100) return;
+    setItems(prev => prev.map(item => ({ ...item, discountPct: pct })));
+    setIsDirty(true);
+  };
+
   const addItem = () => setItems(prev => [...prev, { ...BLANK_ITEM }]);
   const insertAfter = (idx) => {
     setItems(prev => [...prev.slice(0, idx + 1), { ...BLANK_ITEM }, ...prev.slice(idx + 1)]);
@@ -268,24 +276,23 @@ export default function SaleInvoiceCreate() {
         <Card padding={false}>
           <div className="p-4 border-b flex items-center justify-between gap-3 flex-wrap">
             <h3 className="font-semibold text-gray-800">Items</h3>
-            {/* SKU Quick-Add */}
-            <div className="flex items-center gap-2 flex-1 max-w-xs">
-              <div className="relative flex-1">
-                <input
-                  ref={skuInputRef}
-                  value={skuQuickAdd}
-                  onChange={e => setSkuQuickAdd(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addProductBySku(skuQuickAdd); } }}
-                  placeholder="Scan / type SKU code + ↵"
-                  className="w-full border border-blue-200 bg-blue-50 rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder:text-blue-300"
-                />
-              </div>
+            {/* Bulk discount */}
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-gray-500 whitespace-nowrap">Disc% all:</span>
+              <input
+                type="number" min="0" max="100"
+                value={bulkDiscount}
+                onChange={e => setBulkDiscount(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyBulkDiscount(); } }}
+                placeholder="0"
+                className="w-16 border border-gray-200 rounded px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-blue-400 text-sm"
+              />
               <button
                 type="button"
-                onClick={() => addProductBySku(skuQuickAdd)}
-                className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 font-medium"
+                onClick={applyBulkDiscount}
+                className="px-3 py-1 bg-amber-500 text-white text-sm rounded hover:bg-amber-600 font-medium"
               >
-                Add
+                Apply
               </button>
             </div>
           </div>
@@ -367,12 +374,31 @@ export default function SaleInvoiceCreate() {
                 })}
               </tbody>
             </table>
-            <button
-              onClick={addItem}
-              className="w-full py-3 border-2 border-dashed border-gray-200 text-gray-400 hover:border-blue-400 hover:text-blue-500 text-sm font-medium transition-colors"
-            >
-              + Add Item
-            </button>
+            <div className="flex items-center gap-2 p-2 border-t border-dashed border-gray-200">
+              <button
+                onClick={addItem}
+                className="flex-shrink-0 px-4 py-2 border-2 border-dashed border-gray-300 text-gray-400 hover:border-blue-400 hover:text-blue-500 text-sm font-medium transition-colors rounded"
+              >
+                + Add Item
+              </button>
+              <div className="flex items-center gap-1 flex-1">
+                <input
+                  ref={skuInputRef}
+                  value={skuQuickAdd}
+                  onChange={e => setSkuQuickAdd(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addProductBySku(skuQuickAdd); } }}
+                  placeholder="📷 Scan / type SKU + ↵"
+                  className="flex-1 border border-blue-200 bg-blue-50 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder:text-blue-300"
+                />
+                <button
+                  type="button"
+                  onClick={() => addProductBySku(skuQuickAdd)}
+                  className="px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 font-medium"
+                >
+                  Add SKU
+                </button>
+              </div>
+            </div>
           </div>
           {/* Totals */}
           <div className="flex justify-end p-5 border-t">
