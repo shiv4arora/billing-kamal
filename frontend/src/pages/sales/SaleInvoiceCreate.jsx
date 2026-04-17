@@ -258,6 +258,23 @@ export default function SaleInvoiceCreate() {
                 {customer.gstin && <p className="text-blue-500 text-xs mt-0.5">GSTIN: {customer.gstin}</p>}
               </div>
             )}
+            <div className="mt-3">
+              <label className="text-sm font-medium text-gray-700 block mb-1">Discount % (all items)</label>
+              <div className="flex gap-2">
+                <input
+                  type="number" min="0" max="100"
+                  value={bulkDiscount}
+                  onChange={e => setBulkDiscount(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyBulkDiscount(); } }}
+                  placeholder="e.g. 10"
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button type="button" onClick={applyBulkDiscount}
+                  className="px-4 py-2 bg-amber-500 text-white text-sm rounded-lg hover:bg-amber-600 font-medium">
+                  Apply to all
+                </button>
+              </div>
+            </div>
           </Card>
           <Card>
             <h3 className="font-semibold text-gray-800 mb-4">Invoice Details</h3>
@@ -268,26 +285,6 @@ export default function SaleInvoiceCreate() {
                 <option value="cash">Cash</option><option value="upi">UPI</option><option value="bank">Bank Transfer</option><option value="credit">Credit</option>
               </Select>
               <Input label="Amount Paid (₹)" type="number" min="0" value={amountPaid} onChange={e => setAmountPaid(e.target.value)} placeholder="0" />
-              <div className="col-span-2">
-                <label className="text-sm font-medium text-gray-700 block mb-1">Discount % (all items)</label>
-                <div className="flex gap-2">
-                  <input
-                    type="number" min="0" max="100"
-                    value={bulkDiscount}
-                    onChange={e => setBulkDiscount(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyBulkDiscount(); } }}
-                    placeholder="e.g. 10"
-                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={applyBulkDiscount}
-                    className="px-4 py-2 bg-amber-500 text-white text-sm rounded-lg hover:bg-amber-600 font-medium"
-                  >
-                    Apply to all
-                  </button>
-                </div>
-              </div>
             </div>
           </Card>
         </div>
@@ -375,11 +372,11 @@ export default function SaleInvoiceCreate() {
                 })}
               </tbody>
             </table>
-            <div className="grid grid-cols-2 divide-x border-t border-gray-200">
+            <div className="grid grid-cols-2 border-t border-gray-200" style={{minHeight:'52px'}}>
               {/* Left half: Add Item */}
               <button
                 onClick={addItem}
-                className="py-3 border-2 border-dashed border-transparent text-gray-400 hover:text-blue-500 hover:border-blue-300 text-sm font-medium transition-colors m-1.5 rounded"
+                className="w-full h-full py-3 text-gray-400 hover:text-blue-500 hover:bg-blue-50 text-sm font-medium transition-colors border-r border-dashed border-gray-200"
               >
                 + Add Item
               </button>
