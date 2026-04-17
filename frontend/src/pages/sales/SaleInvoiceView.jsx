@@ -119,7 +119,7 @@ export default function SaleInvoiceView() {
           <Link to={`/customers/${inv.customerId}/ledger`}><Button variant="secondary">📒 Ledger</Button></Link>
           <Button variant="outline" onClick={() => setWaOpen(true)}>📱 WhatsApp</Button>
           <Link to={`/sales/${id}/print`}><Button variant="outline">🖨 Print</Button></Link>
-          <Link to={`/sales/${id}/edit`}><Button variant="secondary">Edit</Button></Link>
+          {inv.status !== 'void' && <Link to={`/sales/${id}/edit`}><Button variant="secondary">Edit</Button></Link>}
           {inv.status !== 'void' && remaining > 0.01 && (
             <Button variant="success" onClick={() => { setPayForm(f => ({ ...f, amount: remaining.toFixed(2) })); setPayOpen(true); }}>
               + Record Payment
@@ -128,7 +128,7 @@ export default function SaleInvoiceView() {
           {inv.status !== 'void' && <Button variant="outline" onClick={() => setRetOpen(true)}>↩ Return</Button>}
           {inv.paymentStatus !== 'paid' && inv.status !== 'void' && <Button variant="success" onClick={markPaid}>✓ Mark Paid</Button>}
           {inv.status !== 'void' && <Button variant="danger" onClick={voidInv}>Void</Button>}
-          {inv.status === 'void' && <Button variant="outline" onClick={unvoidInv}>↩ Restore Invoice</Button>}
+          {inv.status === 'void' && <Button variant="success" onClick={unvoidInv}>↩ Restore Invoice</Button>}
         </div>
       </div>
 
