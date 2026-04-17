@@ -37,10 +37,20 @@ export default function SaleInvoiceView() {
   };
 
   const voidInv = async () => {
-    if (!confirm('Void this invoice?')) return;
+    if (!confirm('Void this invoice? This will remove it from the ledger.')) return;
     try {
       const updated = await api(`/sales/${id}/void`, { method: 'PATCH' });
       updateSaleInvoiceLocal(id, updated);
+      toast.success('Invoice voided · removed from ledger');
+    } catch (e) { toast.error(e.message); }
+  };
+
+  const unvoidInv = async () => {
+    if (!confirm('Restore this invoice? It will reappear in the ledger.')) return;
+    try {
+      const updated = await api(`/sales/${id}/unvoid`, { method: 'PATCH' });
+      updateSaleInvoiceLocal(id, updated);
+      toast.success('Invoice restored · ledger updated');
     } catch (e) { toast.error(e.message); }
   };
 
@@ -118,6 +128,7 @@ export default function SaleInvoiceView() {
           {inv.status !== 'void' && <Button variant="outline" onClick={() => setRetOpen(true)}>↩ Return</Button>}
           {inv.paymentStatus !== 'paid' && inv.status !== 'void' && <Button variant="success" onClick={markPaid}>✓ Mark Paid</Button>}
           {inv.status !== 'void' && <Button variant="danger" onClick={voidInv}>Void</Button>}
+          {inv.status === 'void' && <Button variant="outline" onClick={unvoidInv}>↩ Restore Invoice</Button>}
         </div>
       </div>
 

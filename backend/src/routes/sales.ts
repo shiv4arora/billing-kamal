@@ -257,6 +257,44 @@ router.patch('/:id/void', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── UNVOID ────────────────────────────────────────────────────────────────────
+router.patch('/:id/unvoid', async (req, res, next) => {
+  try {
+    const inv = await prisma.$transaction(async (tx) => {
+      const existing = await tx.saleInvoice.findUniqueOrThrow({ where: { id: req.params.id } });
+      if (existing.status !== 'void') throw new Error('Invoice is not voided');
+
+      // Determine restored status
+      const amountPaid = Number(existing.amountPaid || 0);
+      const grandTotal = Number(existing.grandTotal);
+      const restoredStatus = amountPaid >= grandTotal - 0.01 ? 'paid' : amountPaid > 0 ? 'issued' : 'issued';
+      const paymentStatus = amountPaid >= grandTotal - 0.01 ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid';
+
+      // Re-create ledger entries
+      if (existing.customerId) {
+        await postSaleInvoice(tx, {
+          customerId: existing.customerId, customerName: existing.customerName,
+          date: existing.date, invoiceId: existing.id, invoiceNo: existing.invoiceNumber, amount: grandTotal,
+        });
+        if (amountPaid > 0) {
+          await postPaymentIn(tx, {
+            customerId: existing.customerId, customerName: existing.customerName,
+            date: existing.date, amount: amountPaid, method: existing.paymentMethod,
+            referenceId: existing.id, referenceNo: existing.invoiceNumber,
+            narration: `Payment received against ${existing.invoiceNumber} (${existing.paymentMethod})`,
+          });
+        }
+      }
+
+      return tx.saleInvoice.update({
+        where: { id: req.params.id },
+        data: { status: restoredStatus, paymentStatus },
+      });
+    });
+    res.json(inv);
+  } catch (err) { next(err); }
+});
+
 // ── SALE RETURN ──────────────────────────────────────────────────────────────
 router.post('/:id/return', async (req, res, next) => {
   try {
