@@ -68,6 +68,7 @@ export default function SupplierList() {
       render: s => (
         <div className="flex gap-2" onClick={e => e.stopPropagation()}>
           <Button size="sm" variant="ghost" onClick={() => navigate(`/suppliers/${s.id}/ledger`)}>📗 Ledger</Button>
+          <Button size="sm" variant="ghost" onClick={() => navigate(`/products/opening-stock?supplierId=${s.id}&supplierName=${encodeURIComponent(s.name)}`)}>📦 Add Stock</Button>
           <Button size="sm" variant="ghost" onClick={() => navigate(`/suppliers/${s.id}/edit`)}>Edit</Button>
           <Button size="sm" variant="ghost" onClick={() => setConfirm(s.id)}>🗑</Button>
         </div>

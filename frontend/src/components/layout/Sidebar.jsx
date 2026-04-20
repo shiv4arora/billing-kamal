@@ -43,7 +43,6 @@ export default function Sidebar({ isOpen, onClose }) {
       section: 'Master',
       items: [
         ...(can('products_view')   ? [{ to: '/products',  label: 'Products',   icon: '🏷️' }] : []),
-        ...(can('products_view')   ? [{ to: '/products/opening-stock', label: 'Opening Stock', icon: '📦' }] : []),
         ...(can('inventory_view')  ? [{ to: '/inventory', label: 'Inventory',  icon: '🗃️' }] : []),
         ...(can('customers_view')  ? [{ to: '/customers', label: 'Customers',  icon: '👥' }] : []),
         ...(can('suppliers_view')  ? [{ to: '/suppliers', label: 'Suppliers',  icon: '🏭' }] : []),

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useProducts } from '../../context/ProductContext';
 import { useSuppliers } from '../../context/SupplierContext';
 import { useGlobalToast } from '../../context/ToastContext';
@@ -16,11 +16,16 @@ const estimateCost = (wholesale, marginPct) => {
 
 export default function OpeningStock() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { refresh } = useProducts();
   const { active: suppliers } = useSuppliers();
   const toast = useGlobalToast();
 
-  const [supplierId, setSupplierId] = useState('');
+  // Pre-select supplier from URL if coming from supplier list
+  const urlSupplierId = searchParams.get('supplierId') || '';
+  const urlSupplierName = searchParams.get('supplierName') || '';
+
+  const [supplierId, setSupplierId] = useState(urlSupplierId);
   const [marginPct, setMarginPct] = useState(15); // default 15% margin → cost = 85% of wholesale
   const [rows, setRows] = useState([BLANK_ROW()]);
   const [saving, setSaving] = useState(false);
@@ -129,9 +134,11 @@ export default function OpeningStock() {
   return (
     <div className="max-w-5xl space-y-5">
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/products')} className="text-gray-400 hover:text-gray-600">←</button>
+        <button onClick={() => navigate(urlSupplierId ? '/suppliers' : '/products')} className="text-gray-400 hover:text-gray-600">←</button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Opening Stock Entry</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {urlSupplierName ? `Add Stock — ${urlSupplierName}` : 'Opening Stock Entry'}
+          </h1>
           <p className="text-sm text-gray-500 mt-0.5">Add multiple products at once — SKU auto-assigned to each</p>
         </div>
       </div>
@@ -139,17 +146,23 @@ export default function OpeningStock() {
       {/* Config row */}
       <div className="bg-white border border-gray-200 rounded-xl p-4 flex flex-wrap gap-6 items-end">
         <div>
-          <label className="text-sm font-medium text-gray-700 block mb-1">Supplier (optional)</label>
-          <select
-            value={supplierId}
-            onChange={e => setSupplierId(e.target.value)}
-            className="w-56 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-          >
-            <option value="">— No supplier —</option>
-            {suppliers.map(s => (
-              <option key={s.id} value={s.id}>{s.name}{s.place ? ` (${s.place})` : ''}</option>
-            ))}
-          </select>
+          <label className="text-sm font-medium text-gray-700 block mb-1">Supplier</label>
+          {urlSupplierId ? (
+            <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm font-medium text-blue-800 w-56">
+              🏭 {urlSupplierName}
+            </div>
+          ) : (
+            <select
+              value={supplierId}
+              onChange={e => setSupplierId(e.target.value)}
+              className="w-56 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="">— No supplier —</option>
+              {suppliers.map(s => (
+                <option key={s.id} value={s.id}>{s.name}{s.place ? ` (${s.place})` : ''}</option>
+              ))}
+            </select>
+          )}
         </div>
         <div>
           <label className="text-sm font-medium text-gray-700 block mb-1">
