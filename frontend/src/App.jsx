@@ -8,6 +8,7 @@ import ProductList from './pages/products/ProductList';
 import ProductForm from './pages/products/ProductForm';
 import BarcodeLabel from './pages/products/BarcodeLabel';
 import BulkLabelPrint from './pages/products/BulkLabelPrint';
+import OpeningStock from './pages/products/OpeningStock';
 import CustomerList from './pages/customers/CustomerList';
 import CustomerForm from './pages/customers/CustomerForm';
 import CustomerLedger from './pages/customers/CustomerLedger';
@@ -60,6 +61,7 @@ function LayoutRoutes() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/products" element={<ProductList />} />
           <Route path="/products/new" element={<ProductForm />} />
+          <Route path="/products/opening-stock" element={<OpeningStock />} />
           <Route path="/products/:id/edit" element={<ProductForm />} />
           <Route path="/customers" element={<CustomerList />} />
           <Route path="/customers/new" element={<CustomerForm />} />

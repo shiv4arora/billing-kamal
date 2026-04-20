@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
+import { allocateSkuNumbers } from '../services/counters';
 
 const router = Router();
 
@@ -44,6 +45,45 @@ router.post('/', async (req, res, next) => {
     const { sku: _ignored, ...rest } = serializePricing(req.body);
     const p = await prisma.product.create({ data: { ...rest, sku: null } });
     res.status(201).json(parseProduct(p));
+  } catch (err) { next(err); }
+});
+
+// Batch create products with SKU assignment + opening stock ledger entries
+router.post('/batch-opening-stock', async (req, res, next) => {
+  try {
+    const rows: Array<{ name: string; wholesale?: number; shop?: number; qty?: number; unit?: string; supplierId?: string }> = req.body.items || [];
+    const results = await prisma.$transaction(async (tx) => {
+      const created = [];
+      for (const row of rows) {
+        const sku = String(await allocateSkuNumbers(1, tx));
+        const qty = Number(row.qty) || 0;
+        const product = await tx.product.create({
+          data: {
+            sku,
+            name: row.name,
+            unit: row.unit || 'Pcs',
+            pricing: JSON.stringify({ wholesale: Number(row.wholesale) || 0, shop: Number(row.shop) || 0 }),
+            costPrice: Number(row.costPrice) || 0,
+            currentStock: qty,
+            ...(row.supplierId ? { supplierId: row.supplierId } : {}),
+          },
+        });
+        if (qty > 0) {
+          await tx.stockLedger.create({
+            data: {
+              productId: product.id,
+              date: new Date().toISOString().slice(0, 10),
+              movementType: 'adjustment',
+              quantity: qty,
+              referenceNo: 'Opening Stock',
+            },
+          });
+        }
+        created.push(parseProduct(product));
+      }
+      return created;
+    });
+    res.status(201).json({ ok: true, created: results });
   } catch (err) { next(err); }
 });
 
