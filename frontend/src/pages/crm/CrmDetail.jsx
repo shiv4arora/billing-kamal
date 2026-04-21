@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useLeads } from '../../context/LeadContext';
 import { Button, Input, Badge } from '../../components/ui';
 import { useGlobalToast } from '../../context/ToastContext';
 import { today, formatDate } from '../../utils/helpers';
+import { useVoiceCommand, parseVoiceDate } from '../../hooks/useVoiceCommand';
 
 const STAGES = [
   { key: 'lead',      label: 'Lead',            color: 'gray'   },
@@ -123,6 +124,46 @@ export default function CrmDetail() {
     navigate('/crm');
   };
 
+  const handleVoiceCommand = useCallback((text) => {
+    toast.success(`🎤 "${text}"`, { duration: 2000 });
+
+    if (/call done|called|spoke/.test(text))                            return quickLog('Call done ✅', 'contacted');
+    if (/no pickup|not pick|didn.t pick|no answer/.test(text))          return noPickup();
+    if (/follow.?up done|followup done|f\.?u\.? done|done/.test(text))  return markDone();
+    if (/catalogue|catalog|sent cat/.test(text))                        return quickLog('Sent catalogue 📸', 'catalogue');
+    if (/mark won|won|converted|became (customer|buyer)/.test(text))    return markWon();
+
+    // "follow up tomorrow / in 3 days / next week"
+    if (/follow.?up|schedule/.test(text)) {
+      const date = parseVoiceDate(text);
+      if (date) {
+        setNextFollowUp(date);
+        save({ nextFollowUp: date }, `Follow-up set → ${formatDate(date)}`);
+        return;
+      }
+    }
+
+    // "note [some text]" — add free-text note
+    const noteMatch = text.match(/^(?:add\s+)?note\s+(.+)/);
+    if (noteMatch) {
+      const noteContent = noteMatch[1];
+      save({ notes: JSON.stringify([...notes, { text: noteContent, createdAt: new Date().toISOString() }]) }, 'Note added');
+      return;
+    }
+
+    // Stage change: "stage contacted / lead / won …"
+    const stageMatch = text.match(/stage\s+(\w+)/);
+    if (stageMatch) {
+      const s = STAGES.find(st => st.key === stageMatch[1] || st.label.toLowerCase().includes(stageMatch[1]));
+      if (s) return changeStage(s.key);
+    }
+
+    toast.error(`Command not recognised: "${text}"`);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notes, lead]);
+
+  const { listening, transcript, error: voiceError, supported: voiceSupported, start: startVoice } = useVoiceCommand(handleVoiceCommand);
+
   return (
     <div className="max-w-lg space-y-3">
       {/* Header */}
@@ -132,8 +173,40 @@ export default function CrmDetail() {
           <h1 className="text-xl font-bold text-gray-900 truncate">{lead.name}</h1>
           {lead.place && <p className="text-xs text-gray-400">{lead.place}</p>}
         </div>
-        <Link to={`/crm/${id}/edit`} className="text-sm text-blue-600 hover:underline flex-shrink-0">Edit</Link>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {voiceSupported && (
+            <button
+              onClick={startVoice}
+              title="Voice command"
+              className={`flex items-center justify-center w-9 h-9 rounded-full border text-base transition-colors ${
+                listening
+                  ? 'bg-red-500 text-white border-red-500 animate-pulse'
+                  : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200'
+              }`}
+            >
+              🎤
+            </button>
+          )}
+          <Link to={`/crm/${id}/edit`} className="text-sm text-blue-600 hover:underline">Edit</Link>
+        </div>
       </div>
+
+      {/* Voice feedback */}
+      {listening && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 font-medium">
+          <span className="animate-pulse">🔴</span> Listening… say a command
+        </div>
+      )}
+      {voiceError && (
+        <div className="px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-xl text-xs text-yellow-700">
+          ⚠️ {voiceError}
+        </div>
+      )}
+      {!listening && transcript && (
+        <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700">
+          🎤 Heard: "{transcript}"
+        </div>
+      )}
 
       {/* Overdue alert */}
       {(isOverdue || isDueToday) && (
@@ -199,6 +272,15 @@ export default function CrmDetail() {
           </button>
         </div>
       </div>
+
+      {/* Voice command hint */}
+      {voiceSupported && (
+        <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-500 leading-relaxed">
+          🎤 <span className="font-medium">Voice commands:</span>{' '}
+          "call done" · "no pickup" · "sent catalogue" · "follow-up done" · "mark won" ·
+          "follow up tomorrow" · "follow up in 3 days" · "note [your text]"
+        </div>
+      )}
 
       {/* Schedule: Follow-up + Visit */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
