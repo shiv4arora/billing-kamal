@@ -26,13 +26,15 @@ export function useVoiceCommand(onCommand) {
     rec.maxAlternatives = 1;
     recRef.current = rec;
 
+    rec.interimResults = true; // show live text while speaking
     rec.onstart  = () => setListening(true);
     rec.onend    = () => setListening(false);
     rec.onerror  = (e) => { setListening(false); setError(e.error === 'no-speech' ? 'No speech detected' : e.error); };
     rec.onresult = (e) => {
-      const text = e.results[0][0].transcript.trim().toLowerCase();
+      const result = e.results[e.results.length - 1];
+      const text   = result[0].transcript.trim().toLowerCase();
       setTranscript(text);
-      onCommand(text);
+      if (result.isFinal) onCommand(text);
     };
 
     rec.start();

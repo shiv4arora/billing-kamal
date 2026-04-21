@@ -3,7 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useLeads } from '../../context/LeadContext';
 import { today, formatDate } from '../../utils/helpers';
 import { Button, SearchInput, Badge } from '../../components/ui';
-import { useVoiceCommand } from '../../hooks/useVoiceCommand';
+import { useVoiceCommand, parseVoiceDate } from '../../hooks/useVoiceCommand';
+import { useGlobalToast } from '../../context/ToastContext';
 
 const STAGES = [
   { key: 'lead',       label: 'Lead',            color: 'gray'   },
@@ -22,50 +23,115 @@ function isTomorrow(date) {
   return date === tom.toISOString().slice(0, 10);
 }
 
-export default function CrmList() {
-  const { leads } = useLeads();
-  const navigate = useNavigate();
-  const [tab, setTab] = useState('today');
-  const [search, setSearch] = useState('');
-  const [voiceMatches, setVoiceMatches] = useState(null); // null | lead[]
-  const [voiceHeard, setVoiceHeard] = useState('');
+// Action patterns: each has a regex to detect it and a key
+const ACTION_PATTERNS = [
+  { key: 'callDone',     regex: /call done|baat ho gayi|baat hui|called|spoke|call kar liya|call kiya/    },
+  { key: 'noPickup',     regex: /no pickup|nahi utha|nahin utha|phone nahi|pickup nahi|no answer|busy tha|not pick/ },
+  { key: 'catalogue',    regex: /catalogue|catalog|cat bheja|catalogue bheja|photo bheja|photos bheje/   },
+  { key: 'followupDone', regex: /follow.?up done|ho gaya|done kar diya|nipta diya|khatam/               },
+  { key: 'won',          regex: /won|deal pakki|pakka|converted|order aa gaya|customer ban gaya/         },
+  { key: 'followup',     regex: /follow.?up|kal|parso|din mein|din baad|next|agli baar/                 },
+];
 
-  // Find best matching leads by name (fuzzy)
-  const findLeadsByName = useCallback((text) => {
-    const q = text.toLowerCase().replace(/^(open|dikhao|kholo|call|show|batao)\s+/i, '').trim();
+// Strip action keywords from text to isolate the name part
+function extractName(text, actionRegex) {
+  return text.replace(actionRegex, '').replace(/\s{2,}/g, ' ').trim();
+}
+
+export default function CrmList() {
+  const { leads, updateLead } = useLeads();
+  const navigate  = useNavigate();
+  const toast     = useGlobalToast();
+  const [tab,          setTab]          = useState('today');
+  const [search,       setSearch]       = useState('');
+  const [voiceMatches, setVoiceMatches] = useState(null);
+  const [pendingAction, setPendingAction] = useState(null); // { actionKey, date? }
+  const [voiceHeard,   setVoiceHeard]   = useState('');
+
+  // Fuzzy find leads by a name string
+  const findLeadsByName = useCallback((nameStr) => {
+    const q = nameStr.toLowerCase().trim();
     if (!q) return [];
+    // Exact substring match first
+    const exact = leads.filter(l => l.name?.toLowerCase().includes(q));
+    if (exact.length) return exact;
+    // Word-level match
     return leads.filter(l =>
-      l.name?.toLowerCase().includes(q) ||
       q.split(' ').some(word => word.length > 2 && l.name?.toLowerCase().includes(word))
     );
   }, [leads]);
 
+  // Execute an action directly on a lead (no navigation)
+  const executeAction = useCallback(async (lead, actionKey, followupDate) => {
+    const notes = (() => { try { return JSON.parse(lead.notes || '[]'); } catch { return []; } })();
+    const addNote = (text) => JSON.stringify([...notes, { text, createdAt: new Date().toISOString() }]);
+
+    const updates = {
+      callDone:     { notes: addNote('Call done ✅'), stage: 'contacted' },
+      noPickup: (() => {
+        const now = new Date(), s = new Date(now);
+        if (now.getHours() < 14) s.setTime(now.getTime() + 4 * 60 * 60 * 1000);
+        else s.setDate(s.getDate() + 1);
+        const snooze = s.toISOString().slice(0, 10);
+        return { noPickupCount: (lead.noPickupCount || 0) + 1, nextFollowUp: snooze, notes: addNote('No pickup') };
+      })(),
+      catalogue:    { notes: addNote('Sent catalogue 📸'), stage: 'catalogue' },
+      followupDone: { nextFollowUp: null, notes: addNote('Follow-up done ✓') },
+      won:          { stage: 'won', notes: addNote('Marked as Won 🎉') },
+      followup:     followupDate ? { nextFollowUp: followupDate, notes: addNote(`Follow-up set → ${followupDate}`) } : null,
+    }[actionKey];
+
+    if (!updates) { toast.error('Action nahi samjha'); return; }
+
+    try {
+      await updateLead(lead.id, updates);
+      const label = { callDone: 'Call done', noPickup: 'No pickup', catalogue: 'Catalogue sent',
+        followupDone: 'Follow-up done', won: 'Won!', followup: `Follow-up → ${followupDate}` }[actionKey];
+      toast.success(`${lead.name}: ${label}`);
+    } catch (e) { toast.error(e.message); }
+  }, [leads, updateLead, toast]);
+
   const handleVoiceCommand = useCallback((text) => {
     setVoiceHeard(text);
+    setVoiceMatches(null);
+    setPendingAction(null);
 
     // "new lead" / "naya lead"
-    if (/new lead|naya lead|add lead|nayi entry/.test(text)) {
-      navigate('/crm/new');
+    if (/new lead|naya lead|add lead|nayi entry/.test(text)) { navigate('/crm/new'); return; }
+
+    // Detect action in text
+    const actionMatch = ACTION_PATTERNS.find(p => p.regex.test(text));
+
+    if (actionMatch) {
+      const followupDate = actionMatch.key === 'followup' ? parseVoiceDate(text) : null;
+      const nameStr = extractName(text, actionMatch.regex);
+      const matches = nameStr ? findLeadsByName(nameStr) : [];
+
+      if (matches.length === 1) {
+        // Perfect — execute immediately
+        executeAction(matches[0], actionMatch.key, followupDate);
+        return;
+      }
+      if (matches.length > 1) {
+        // Multiple matches — show picker with action pending
+        setPendingAction({ key: actionMatch.key, followupDate });
+        setVoiceMatches(matches);
+        return;
+      }
+      toast.error(`Lead nahi mila: "${nameStr}"`);
       return;
     }
 
-    // Try to find leads by name
-    const matches = findLeadsByName(text);
-    if (matches.length === 1) {
-      navigate(`/crm/${matches[0].id}`);
-      return;
-    }
-    if (matches.length > 1) {
-      setVoiceMatches(matches); // show picker
-      return;
-    }
+    // No action — just find lead by name and navigate
+    const matches = findLeadsByName(text.replace(/^(open|dikhao|kholo|show|batao)\s+/i, ''));
+    if (matches.length === 1)  { navigate(`/crm/${matches[0].id}`); return; }
+    if (matches.length > 1)    { setVoiceMatches(matches); return; }
 
-    // No match — put text into search box so user can see filtered results
+    // Fallback — fill search
     setSearch(text.replace(/^(open|dikhao|kholo|show|batao)\s+/i, '').trim());
-    setVoiceMatches(null);
-  }, [leads, navigate, findLeadsByName]);
+  }, [leads, navigate, findLeadsByName, executeAction]);
 
-  const { listening, transcript, start: startVoice } = useVoiceCommand(handleVoiceCommand);
+  const { listening, transcript: liveText, start: startVoice } = useVoiceCommand(handleVoiceCommand);
 
   const todayStr = today();
 
@@ -123,7 +189,11 @@ export default function CrmList() {
       {/* Voice listening indicator */}
       {listening && (
         <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 font-medium">
-          <span className="animate-pulse">🔴</span> Bol do — customer ka naam ya command…
+          <span className="animate-pulse">🔴</span>
+          {liveText
+            ? <span>"{liveText}"<span className="animate-pulse">…</span></span>
+            : <span>Bol do — naam + kaam ek saath (e.g. "Ramesh call done")</span>
+          }
         </div>
       )}
 
@@ -135,7 +205,14 @@ export default function CrmList() {
             <button onClick={() => setVoiceMatches(null)} className="text-blue-400 hover:text-blue-600 text-sm">✕</button>
           </div>
           {voiceMatches.map(l => (
-            <button key={l.id} onClick={() => { navigate(`/crm/${l.id}`); setVoiceMatches(null); }}
+            <button key={l.id} onClick={() => {
+              if (pendingAction) {
+                executeAction(l, pendingAction.key, pendingAction.followupDate);
+              } else {
+                navigate(`/crm/${l.id}`);
+              }
+              setVoiceMatches(null); setPendingAction(null);
+            }}
               className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-100 last:border-0">
               <p className="font-semibold text-gray-800">{l.name}</p>
               <p className="text-xs text-gray-400">{l.place}{l.phone ? ` · ${l.phone}` : ''}</p>

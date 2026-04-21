@@ -176,7 +176,7 @@ export default function CrmDetail() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notes, lead]);
 
-  const { listening, transcript, error: voiceError, supported: voiceSupported, start: startVoice } = useVoiceCommand(handleVoiceCommand);
+  const { listening, transcript: liveText, error: voiceError, start: startVoice } = useVoiceCommand(handleVoiceCommand);
 
   return (
     <div className="max-w-lg space-y-3">
@@ -206,17 +206,16 @@ export default function CrmDetail() {
       {/* Voice feedback */}
       {listening && (
         <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 font-medium">
-          <span className="animate-pulse">🔴</span> Listening… say a command
+          <span className="animate-pulse">🔴</span>
+          {liveText
+            ? <span>"{liveText}"<span className="animate-pulse">…</span></span>
+            : <span>Bol do command…</span>
+          }
         </div>
       )}
       {voiceError && (
         <div className="px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-xl text-xs text-yellow-700">
           ⚠️ {voiceError}
-        </div>
-      )}
-      {!listening && transcript && (
-        <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700">
-          🎤 Heard: "{transcript}"
         </div>
       )}
 
