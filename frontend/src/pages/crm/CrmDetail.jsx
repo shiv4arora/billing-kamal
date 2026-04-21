@@ -127,14 +127,28 @@ export default function CrmDetail() {
   const handleVoiceCommand = useCallback((text) => {
     toast.success(`🎤 "${text}"`, { duration: 2000 });
 
-    if (/call done|called|spoke/.test(text))                            return quickLog('Call done ✅', 'contacted');
-    if (/no pickup|not pick|didn.t pick|no answer/.test(text))          return noPickup();
-    if (/follow.?up done|followup done|f\.?u\.? done|done/.test(text))  return markDone();
-    if (/catalogue|catalog|sent cat/.test(text))                        return quickLog('Sent catalogue 📸', 'catalogue');
-    if (/mark won|won|converted|became (customer|buyer)/.test(text))    return markWon();
+    // ── Call done ──────────────────────────────────────────────────────
+    if (/call done|called|spoke|baat hui|baat ho gayi|call ho gayi|call kiya|call kar liya/.test(text))
+      return quickLog('Call done ✅', 'contacted');
 
-    // "follow up tomorrow / in 3 days / next week"
-    if (/follow.?up|schedule/.test(text)) {
+    // ── No pickup ──────────────────────────────────────────────────────
+    if (/no pickup|not pick|didn.t pick|no answer|nahi utha|nahin utha|phone nahi utha|pickup nahi|busy tha|out of reach/.test(text))
+      return noPickup();
+
+    // ── Follow-up done ─────────────────────────────────────────────────
+    if (/follow.?up done|followup done|ho gaya|kaam ho gaya|done kar diya|nipta diya|solve ho gaya/.test(text))
+      return markDone();
+
+    // ── Sent catalogue ─────────────────────────────────────────────────
+    if (/catalogue|catalog|sent cat|catalogue bheja|catalog bhej diya|photo bheja|photos bheje|catalogue de diya/.test(text))
+      return quickLog('Sent catalogue 📸', 'catalogue');
+
+    // ── Mark won ───────────────────────────────────────────────────────
+    if (/mark won|won|converted|became (customer|buyer)|customer ban gaya|order de diya|order aa gaya|deal pakki|pakka ho gaya/.test(text))
+      return markWon();
+
+    // ── Follow-up scheduling ───────────────────────────────────────────
+    if (/follow.?up|schedule|kal|parso|agli baar|next|baad mein|din mein/.test(text)) {
       const date = parseVoiceDate(text);
       if (date) {
         setNextFollowUp(date);
@@ -143,22 +157,22 @@ export default function CrmDetail() {
       }
     }
 
-    // "note [some text]" — add free-text note
-    const noteMatch = text.match(/^(?:add\s+)?note\s+(.+)/);
+    // ── Free-text note ─────────────────────────────────────────────────
+    const noteMatch = text.match(/^(?:add\s+)?(?:note|nazar|likh|likho|note karo|note kar)\s+(.+)/);
     if (noteMatch) {
       const noteContent = noteMatch[1];
       save({ notes: JSON.stringify([...notes, { text: noteContent, createdAt: new Date().toISOString() }]) }, 'Note added');
       return;
     }
 
-    // Stage change: "stage contacted / lead / won …"
+    // ── Stage change ───────────────────────────────────────────────────
     const stageMatch = text.match(/stage\s+(\w+)/);
     if (stageMatch) {
       const s = STAGES.find(st => st.key === stageMatch[1] || st.label.toLowerCase().includes(stageMatch[1]));
       if (s) return changeStage(s.key);
     }
 
-    toast.error(`Command not recognised: "${text}"`);
+    toast.error(`Samajh nahi aaya: "${text}"`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notes, lead]);
 
@@ -174,19 +188,17 @@ export default function CrmDetail() {
           {lead.place && <p className="text-xs text-gray-400">{lead.place}</p>}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          {voiceSupported && (
-            <button
-              onClick={startVoice}
-              title="Voice command"
-              className={`flex items-center justify-center w-9 h-9 rounded-full border text-base transition-colors ${
-                listening
-                  ? 'bg-red-500 text-white border-red-500 animate-pulse'
-                  : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200'
-              }`}
-            >
-              🎤
-            </button>
-          )}
+          <button
+            onClick={startVoice}
+            title="Voice command"
+            className={`flex items-center justify-center w-9 h-9 rounded-full border text-base transition-colors ${
+              listening
+                ? 'bg-red-500 text-white border-red-500 animate-pulse'
+                : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200'
+            }`}
+          >
+            🎤
+          </button>
           <Link to={`/crm/${id}/edit`} className="text-sm text-blue-600 hover:underline">Edit</Link>
         </div>
       </div>
@@ -274,13 +286,12 @@ export default function CrmDetail() {
       </div>
 
       {/* Voice command hint */}
-      {voiceSupported && (
-        <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-500 leading-relaxed">
-          🎤 <span className="font-medium">Voice commands:</span>{' '}
-          "call done" · "no pickup" · "sent catalogue" · "follow-up done" · "mark won" ·
-          "follow up tomorrow" · "follow up in 3 days" · "note [your text]"
-        </div>
-      )}
+      <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-500 leading-relaxed">
+        🎤 <span className="font-medium">Voice commands (Hindi / English / Hinglish):</span><br />
+        "call done" · "baat ho gayi" · "nahi utha" · "no pickup" · "catalogue bheja" ·
+        "follow-up done" · "ho gaya" · "deal pakki" · "kal follow up" · "3 din mein" ·
+        "note [kuch bhi]"
+      </div>
 
       {/* Schedule: Follow-up + Visit */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
