@@ -160,7 +160,6 @@ export default function PurchaseInvoiceView() {
             <th className="px-4 py-3 text-right">Qty</th>
             <th className="px-4 py-3 text-right">Cost</th>
             <th className="px-4 py-3 text-right">Wholesale</th>
-            <th className="px-4 py-3 text-right">Shop</th>
             <th className="px-4 py-3 text-right">GST</th>
             <th className="px-4 py-3 text-right">Total</th>
           </tr></thead>
@@ -178,7 +177,6 @@ export default function PurchaseInvoiceView() {
               <td className="px-4 py-3 text-right">{item.quantity} {item.unit}</td>
               <td className="px-4 py-3 text-right">{formatCurrency(item.unitPrice)}</td>
               <td className="px-4 py-3 text-right text-blue-700">{item.pricing?.wholesale ? formatCurrency(item.pricing.wholesale) : <span className="text-gray-300">—</span>}</td>
-              <td className="px-4 py-3 text-right text-green-700">{item.pricing?.shop ? formatCurrency(item.pricing.shop) : <span className="text-gray-300">—</span>}</td>
               <td className="px-4 py-3 text-right text-gray-500">{item.gstRate}%</td>
               <td className="px-4 py-3 text-right font-medium">{formatCurrency(item.lineTotal)}</td>
             </tr>
