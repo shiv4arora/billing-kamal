@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useInvoices } from '../../context/InvoiceContext';
+import { useSuppliers } from '../../context/SupplierContext';
 import { Card, Button, Badge } from '../../components/ui';
 import { formatCurrency, formatDate, dateRangeFilter, exportToCSV, thisMonthStart, today } from '../../utils/helpers';
 
@@ -7,10 +8,18 @@ const payColor = { paid: 'green', partial: 'yellow', unpaid: 'red' };
 
 export default function PurchasesReport() {
   const { purchaseInvoices } = useInvoices();
-  const [start, setStart] = useState(thisMonthStart());
-  const [end, setEnd] = useState(today());
+  const { active: suppliers } = useSuppliers();
+  const [start,      setStart]      = useState(thisMonthStart());
+  const [end,        setEnd]        = useState(today());
+  const [suppFilter, setSuppFilter] = useState('');
+  const [payFilter,  setPayFilter]  = useState('');
 
-  const filtered = useMemo(() => dateRangeFilter(purchaseInvoices.filter(i => i.status !== 'void'), 'date', start, end), [purchaseInvoices, start, end]);
+  const filtered = useMemo(() => {
+    let list = dateRangeFilter(purchaseInvoices.filter(i => i.status !== 'void'), 'date', start, end);
+    if (suppFilter) list = list.filter(i => i.supplierId === suppFilter);
+    if (payFilter)  list = list.filter(i => i.paymentStatus === payFilter);
+    return list;
+  }, [purchaseInvoices, start, end, suppFilter, payFilter]);
   const total = filtered.reduce((s, i) => s + (i.grandTotal || 0), 0);
   const totalGST = filtered.reduce((s, i) => s + (i.totalGST || 0), 0);
   const unpaid = filtered.filter(i => i.paymentStatus !== 'paid').reduce((s, i) => s + (i.grandTotal || 0), 0);
@@ -27,9 +36,26 @@ export default function PurchasesReport() {
         <Button variant="secondary" onClick={handleExport}>⬇ Export CSV</Button>
       </div>
       <Card>
-        <div className="flex gap-4 items-end">
+        <div className="flex flex-wrap gap-3 items-end">
           <div className="flex flex-col gap-1"><label className="text-xs font-medium text-gray-500">From</label><input type="date" value={start} onChange={e => setStart(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm" /></div>
           <div className="flex flex-col gap-1"><label className="text-xs font-medium text-gray-500">To</label><input type="date" value={end} onChange={e => setEnd(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm" /></div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">Supplier</label>
+            <select value={suppFilter} onChange={e => setSuppFilter(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white min-w-[160px]">
+              <option value="">All Suppliers</option>
+              {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">Payment</label>
+            <select value={payFilter} onChange={e => setPayFilter(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+              <option value="">All</option>
+              <option value="paid">Paid</option>
+              <option value="partial">Partial</option>
+              <option value="unpaid">Unpaid</option>
+            </select>
+          </div>
+          {(suppFilter || payFilter) && <button onClick={() => { setSuppFilter(''); setPayFilter(''); }} className="text-xs text-gray-400 hover:text-gray-600 mt-4">✕ Clear filters</button>}
         </div>
       </Card>
       <div className="grid grid-cols-3 gap-4">

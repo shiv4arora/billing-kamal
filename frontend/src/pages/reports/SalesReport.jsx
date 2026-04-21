@@ -8,11 +8,20 @@ const payColor = { paid: 'green', partial: 'yellow', unpaid: 'red' };
 
 export default function SalesReport() {
   const { saleInvoices } = useInvoices();
-  const [start, setStart] = useState(thisMonthStart());
-  const [end, setEnd] = useState(today());
-  const [groupBy, setGroupBy] = useState('day');
+  const [start,       setStart]       = useState(thisMonthStart());
+  const [end,         setEnd]         = useState(today());
+  const [groupBy,     setGroupBy]     = useState('day');
+  const [custSearch,  setCustSearch]  = useState('');
+  const [payFilter,   setPayFilter]   = useState('');
+  const [custType,    setCustType]    = useState('');
 
-  const filtered = useMemo(() => dateRangeFilter(saleInvoices.filter(i => i.status !== 'void'), 'date', start, end), [saleInvoices, start, end]);
+  const filtered = useMemo(() => {
+    let list = dateRangeFilter(saleInvoices.filter(i => i.status !== 'void'), 'date', start, end);
+    if (custSearch) list = list.filter(i => (i.customerName || '').toLowerCase().includes(custSearch.toLowerCase()));
+    if (payFilter)  list = list.filter(i => i.paymentStatus === payFilter);
+    if (custType)   list = list.filter(i => i.customerType === custType);
+    return list;
+  }, [saleInvoices, start, end, custSearch, payFilter, custType]);
 
   const totals = useMemo(() => ({
     revenue: filtered.reduce((s, i) => s + (i.grandTotal || 0), 0),
@@ -46,12 +55,37 @@ export default function SalesReport() {
       </div>
 
       <Card>
-        <div className="flex flex-wrap gap-4 items-end">
+        <div className="flex flex-wrap gap-3 items-end">
           <div className="flex flex-col gap-1"><label className="text-xs font-medium text-gray-500">From</label><input type="date" value={start} onChange={e => setStart(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm" /></div>
           <div className="flex flex-col gap-1"><label className="text-xs font-medium text-gray-500">To</label><input type="date" value={end} onChange={e => setEnd(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm" /></div>
-          <select value={groupBy} onChange={e => setGroupBy(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
-            <option value="day">Group by Day</option><option value="month">Group by Month</option>
-          </select>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">Customer</label>
+            <input type="text" value={custSearch} onChange={e => setCustSearch(e.target.value)} placeholder="Search name…" className="border border-gray-300 rounded-lg px-3 py-2 text-sm min-w-[150px]" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">Customer Type</label>
+            <select value={custType} onChange={e => setCustType(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+              <option value="">All Types</option>
+              <option value="wholesale">Wholesale</option>
+              <option value="shop">Shop</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">Payment</label>
+            <select value={payFilter} onChange={e => setPayFilter(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+              <option value="">All</option>
+              <option value="paid">Paid</option>
+              <option value="partial">Partial</option>
+              <option value="unpaid">Unpaid</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">Chart</label>
+            <select value={groupBy} onChange={e => setGroupBy(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+              <option value="day">Group by Day</option><option value="month">Group by Month</option>
+            </select>
+          </div>
+          {(custSearch || payFilter || custType) && <button onClick={() => { setCustSearch(''); setPayFilter(''); setCustType(''); }} className="text-xs text-gray-400 hover:text-gray-600 mt-4">✕ Clear filters</button>}
         </div>
       </Card>
 
