@@ -216,7 +216,7 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
             { tier: 'shop',      label: 'S', color: 'purple', margin: supplier?.margin?.shop },
           ].map(({ tier, label, color, margin }) => (
             <div key={tier} className={`flex items-center gap-1 bg-${color}-50 border border-${color}-100 rounded-lg px-2 py-1 flex-1 min-w-0`}>
-              <span className={`text-[10px] font-bold text-${color}-500 shrink-0`}>
+              <span className={`text-xs font-bold text-${color}-500 shrink-0`}>
                 {label} ₹{margin != null ? <span className="font-normal text-gray-400 ml-0.5">{margin}%</span> : ''}
               </span>
               <input
