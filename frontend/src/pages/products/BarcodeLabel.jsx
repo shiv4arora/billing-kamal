@@ -58,7 +58,7 @@ function StickerLabel({ product, supplier }) {
           {product.name}{product.unit ? ` (${product.unit === 'Dozen' ? 'dz' : product.unit.toLowerCase()})` : ''}
         </p>
 
-        {/* W + P prices — actual ₹ values */}
+        {/* W + P codes */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '2mm' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8mm' }}>
             <span style={{
@@ -72,7 +72,7 @@ function StickerLabel({ product, supplier }) {
               flexShrink:   0,
             }}>W</span>
             <span style={{ fontSize: '8pt', fontWeight: 'bold', color: '#1d4ed8', lineHeight: 1 }}>
-              ₹{product.pricing?.wholesale || 0}
+              {wCode}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8mm' }}>
@@ -87,7 +87,7 @@ function StickerLabel({ product, supplier }) {
               flexShrink:   0,
             }}>P</span>
             <span style={{ fontSize: '8pt', fontWeight: 'bold', color: '#7c3aed', lineHeight: 1 }}>
-              ₹{product.pricing?.shop || 0}
+              {pCode}
             </span>
           </div>
         </div>
@@ -217,11 +217,10 @@ export default function BarcodeLabel() {
       {/* ── Info bar ── */}
       <div className="no-print bg-blue-50 border-b border-blue-100 px-6 py-2 text-xs text-blue-700 flex gap-6 flex-wrap items-center">
         <span>34mm × 20mm · <strong>3 per row</strong> on 102mm sheet</span>
-        <span className="font-mono font-bold text-blue-800">W ₹{product.pricing?.wholesale || 0}</span>
-        <span className="font-mono font-bold text-purple-700">P ₹{product.pricing?.shop || 0}</span>
-        <span>SKU: <strong>{product.sku}</strong></span>
-        {supplier && <span>Supplier: <strong>{supplierCode}</strong></span>}
-        <span>QR = SKU</span>
+        <span className="font-mono font-bold text-blue-800">W → D.No.{wCoded}</span>
+        <span className="font-mono font-bold text-purple-700">P → P.{pCoded}</span>
+        <span>Supplier: <strong>{supplierCode}</strong></span>
+        <span>QR = SKU only</span>
       </div>
 
       {/* ── Screen preview ── */}
