@@ -92,7 +92,9 @@ export default function ProductionEdit() {
     // Fill output pricing from live product data
     const outProd = products.find(p => p.id === entry.outputProductId);
     if (outProd) {
-      const pricing = (() => { try { return JSON.parse(outProd.pricing || '{}'); } catch { return {}; } })();
+      const pricing = (typeof outProd.pricing === 'object' && outProd.pricing !== null)
+        ? outProd.pricing
+        : (() => { try { return JSON.parse(outProd.pricing || '{}'); } catch { return {}; } })();
       setOutputWholesale(pricing.wholesale || '');
       setOutputShop(pricing.shop || '');
     }
