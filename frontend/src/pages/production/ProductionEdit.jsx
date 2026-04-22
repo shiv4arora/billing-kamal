@@ -66,31 +66,42 @@ export default function ProductionEdit() {
   const [outputShop, setOutputShop] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Effect 1: fetch the entry
   useEffect(() => {
     api(`/production/${id}`)
       .then(e => {
         setEntry(e);
         setDate(e.date);
         setNotes(e.notes || '');
+        setOutputQuantity(e.outputQuantity);
         setComponents((Array.isArray(e.components) ? e.components : []).map(c => ({
           productId: c.productId,
           productName: c.productName,
           sku: c.sku || '',
-          currentStock: products.find(p => p.id === c.productId)?.currentStock ?? 0,
+          currentStock: 0, // filled by effect 2 once products load
           quantity: c.quantity,
         })));
-        setOutputQuantity(e.outputQuantity);
-        // Load current pricing from product
-        const outProd = products.find(p => p.id === e.outputProductId);
-        if (outProd) {
-          const pricing = (() => { try { return JSON.parse(outProd.pricing || '{}'); } catch { return {}; } })();
-          setOutputWholesale(pricing.wholesale || '');
-          setOutputShop(pricing.shop || '');
-        }
       })
       .catch(() => toast.error('Could not load entry'))
       .finally(() => setLoading(false));
-  }, [id, products.length]);
+  }, [id]);
+
+  // Effect 2: fill pricing + stock once both entry and products are ready
+  useEffect(() => {
+    if (!entry || !products.length) return;
+    // Fill output pricing from live product data
+    const outProd = products.find(p => p.id === entry.outputProductId);
+    if (outProd) {
+      const pricing = (() => { try { return JSON.parse(outProd.pricing || '{}'); } catch { return {}; } })();
+      setOutputWholesale(pricing.wholesale || '');
+      setOutputShop(pricing.shop || '');
+    }
+    // Fill component current stock
+    setComponents(prev => prev.map(c => ({
+      ...c,
+      currentStock: products.find(p => p.id === c.productId)?.currentStock ?? 0,
+    })));
+  }, [entry?.id, products.length]);
 
   const updateComp = (i, field, value) =>
     setComponents(prev => prev.map((c, idx) => idx === i ? { ...c, [field]: value } : c));
