@@ -43,15 +43,16 @@ export default function ProductionList() {
                 <th className="px-4 py-3 text-left">Entry #</th>
                 <th className="px-4 py-3 text-left">Date</th>
                 <th className="px-4 py-3 text-left">Output Product</th>
-                <th className="px-4 py-3 text-right">Qty Produced</th>
-                <th className="px-4 py-3 text-left">Components Used</th>
+                <th className="px-4 py-3 text-right">Qty</th>
+                <th className="px-4 py-3 text-left">Components</th>
+                <th className="px-4 py-3 text-center w-28">Actions</th>
               </tr>
             </thead>
             <tbody>
               {entries.map(e => (
                 <tr key={e.id} className="border-b last:border-0 hover:bg-gray-50">
                   <td className="px-4 py-3 font-mono font-semibold text-blue-600">{e.entryNumber}</td>
-                  <td className="px-4 py-3 text-gray-600">{formatDate(e.date)}</td>
+                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatDate(e.date)}</td>
                   <td className="px-4 py-3 font-medium text-gray-800">{e.outputProductName}</td>
                   <td className="px-4 py-3 text-right font-semibold">{e.outputQuantity}</td>
                   <td className="px-4 py-3">
@@ -63,6 +64,24 @@ export default function ProductionList() {
                       ))}
                     </div>
                     {e.notes && <p className="text-xs text-gray-400 italic mt-0.5">{e.notes}</p>}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button
+                        onClick={() => navigate(`/production/${e.id}/edit`)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        title="Edit entry"
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button
+                        onClick={() => navigate(`/products/${e.outputProductId}/label`)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                        title="Print labels for output product"
+                      >
+                        🏷 Label
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

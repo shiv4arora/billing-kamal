@@ -172,4 +172,151 @@ router.post('/', async (req, res, next) => {
   }
 });
 
+/* ── GET /production/:id — single entry ── */
+router.get('/:id', async (req, res, next) => {
+  try {
+    const entry = await prisma.productionEntry.findUnique({ where: { id: req.params.id } });
+    if (!entry) return res.status(404).json({ error: 'Not found' });
+    res.json({
+      ...entry,
+      components: (() => { try { return JSON.parse(entry.components); } catch { return []; } })(),
+    });
+  } catch (err) { next(err); }
+});
+
+/* ── PUT /production/:id — edit entry, adjust stock by delta ── */
+router.put('/:id', async (req, res, next) => {
+  try {
+    const existing = await prisma.productionEntry.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: 'Not found' });
+
+    const {
+      date,
+      components,    // new component list [{productId, productName, sku, quantity}]
+      outputQuantity,
+      outputPricing,
+      notes,
+    } = req.body;
+
+    const oldComponents: any[] = (() => { try { return JSON.parse(existing.components); } catch { return []; } })();
+    const newComponents: any[] = components || [];
+    const newOutputQty = Number(outputQuantity);
+    const oldOutputQty = Number(existing.outputQuantity);
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const today = date || existing.date;
+
+      /* ── Reverse old component deductions, apply new ones ── */
+      // Build maps for easy delta calculation
+      const oldMap: Record<string, number> = {};
+      for (const c of oldComponents) oldMap[c.productId] = Number(c.quantity);
+
+      const newMap: Record<string, number> = {};
+      for (const c of newComponents) newMap[c.productId] = Number(c.quantity);
+
+      // All product IDs involved
+      const allIds = new Set([...Object.keys(oldMap), ...Object.keys(newMap)]);
+
+      for (const productId of allIds) {
+        const oldQty = oldMap[productId] || 0;
+        const newQty = newMap[productId] || 0;
+        const delta  = newQty - oldQty; // positive = more consumed, negative = less consumed
+
+        if (delta === 0) continue;
+
+        if (delta > 0) {
+          // Consuming more — check stock
+          const prod = await tx.product.findUnique({ where: { id: productId } });
+          if (!prod) throw new Error(`Product not found: ${productId}`);
+          if (prod.currentStock < delta) {
+            throw new Error(`Insufficient stock for "${prod.name}" — have ${prod.currentStock}, need ${delta} more`);
+          }
+        }
+        // Apply delta (negative delta = returning stock)
+        await tx.product.update({
+          where: { id: productId },
+          data: { currentStock: { decrement: delta } },
+        });
+        await tx.stockLedger.create({
+          data: {
+            productId,
+            date: today,
+            movementType: delta > 0 ? 'production_out' : 'production_out_reversal',
+            quantity: -delta,
+            referenceId: existing.id,
+            referenceNo: existing.entryNumber,
+          },
+        });
+      }
+
+      /* ── Adjust output stock by delta ── */
+      const outputDelta = newOutputQty - oldOutputQty;
+      if (outputDelta !== 0) {
+        if (outputDelta < 0) {
+          // Reducing output — check we have enough to take back
+          const outProd = await tx.product.findUnique({ where: { id: existing.outputProductId } });
+          if (outProd && outProd.currentStock + outputDelta < 0) {
+            throw new Error(`Cannot reduce output: only ${outProd.currentStock} in stock`);
+          }
+        }
+        await tx.product.update({
+          where: { id: existing.outputProductId },
+          data: { currentStock: { increment: outputDelta } },
+        });
+        await tx.stockLedger.create({
+          data: {
+            productId: existing.outputProductId,
+            date: today,
+            movementType: outputDelta > 0 ? 'production_in' : 'production_in_reversal',
+            quantity: outputDelta,
+            referenceId: existing.id,
+            referenceNo: existing.entryNumber,
+          },
+        });
+      }
+
+      /* ── Update output pricing if provided ── */
+      if (outputPricing) {
+        await tx.product.update({
+          where: { id: existing.outputProductId },
+          data: {
+            pricing: JSON.stringify({
+              wholesale: Number(outputPricing.wholesale) || 0,
+              shop:      Number(outputPricing.shop)      || 0,
+            }),
+          },
+        });
+      }
+
+      /* ── Resolve component names ── */
+      const resolvedComponents = await Promise.all(
+        newComponents.map(async (c: any) => {
+          const prod = await tx.product.findUnique({ where: { id: c.productId } });
+          return { productId: c.productId, productName: prod?.name || c.productName, sku: prod?.sku || c.sku || '', quantity: Number(c.quantity) };
+        })
+      );
+
+      return tx.productionEntry.update({
+        where: { id: existing.id },
+        data: {
+          date: today,
+          components: JSON.stringify(resolvedComponents),
+          outputQuantity: newOutputQty,
+          notes: notes ?? existing.notes,
+        },
+      });
+    });
+
+    res.json({
+      ...updated,
+      components: (() => { try { return JSON.parse(updated.components); } catch { return []; } })(),
+    });
+  } catch (err: any) {
+    if (err.message?.startsWith('Insufficient') || err.message?.startsWith('Cannot reduce')) {
+      return res.status(400).json({ error: err.message });
+    }
+    next(err);
+  }
+});
+
 export default router;
