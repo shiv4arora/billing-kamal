@@ -61,6 +61,8 @@ export default function ProductionEdit() {
   const [date, setDate] = useState('');
   const [notes, setNotes] = useState('');
   const [components, setComponents] = useState([]);
+  const [outputProductId, setOutputProductId] = useState('');
+  const [outputProductName, setOutputProductName] = useState('');
   const [outputQuantity, setOutputQuantity] = useState('');
   const [outputWholesale, setOutputWholesale] = useState('');
   const [outputShop, setOutputShop] = useState('');
@@ -73,6 +75,8 @@ export default function ProductionEdit() {
         setEntry(e);
         setDate(e.date);
         setNotes(e.notes || '');
+        setOutputProductId(e.outputProductId);
+        setOutputProductName(e.outputProductName);
         setOutputQuantity(e.outputQuantity);
         setComponents((Array.isArray(e.components) ? e.components : []).map(c => ({
           productId: c.productId,
@@ -105,6 +109,16 @@ export default function ProductionEdit() {
     })));
   }, [entry?.id, products.length]);
 
+  const selectOutputProduct = (prod) => {
+    setOutputProductId(prod.id);
+    setOutputProductName(prod.name);
+    const pricing = (typeof prod.pricing === 'object' && prod.pricing !== null)
+      ? prod.pricing
+      : (() => { try { return JSON.parse(prod.pricing || '{}'); } catch { return {}; } })();
+    setOutputWholesale(pricing.wholesale || '');
+    setOutputShop(pricing.shop || '');
+  };
+
   const updateComp = (i, field, value) =>
     setComponents(prev => prev.map((c, idx) => idx === i ? { ...c, [field]: value } : c));
 
@@ -131,11 +145,13 @@ export default function ProductionEdit() {
 
     setSaving(true);
     try {
+      if (!outputProductId) { toast.error('Select a finished product'); return; }
       await api(`/production/${id}`, {
         method: 'PUT',
         body: {
           date,
           components: validComps.map(c => ({ productId: c.productId, productName: c.productName, sku: c.sku, quantity: Number(c.quantity) })),
+          outputProductId,
           outputQuantity: Number(outputQuantity),
           outputPricing: { wholesale: Number(outputWholesale) || 0, shop: Number(outputShop) || 0 },
           notes,
@@ -155,7 +171,7 @@ export default function ProductionEdit() {
   if (!entry) return <div className="text-center py-16 text-gray-400">Entry not found</div>;
 
   const usedProductIds = components.filter(c => c.productId).map(c => c.productId);
-  const outProd = products.find(p => p.id === entry.outputProductId);
+  const outProd = products.find(p => p.id === outputProductId);
 
   return (
     <div className="max-w-3xl space-y-5">
@@ -232,9 +248,19 @@ export default function ProductionEdit() {
           <p className="text-xs font-bold text-blue-600 uppercase tracking-widest">Finished Product</p>
         </div>
         <div className="p-4 space-y-3">
-          <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
-            <span className="text-sm font-semibold text-blue-800">{entry.outputProductName}</span>
-            {outProd?.sku && <span className="text-xs font-mono text-blue-500">· {outProd.sku}</span>}
+          <div>
+            <ProductSearch
+              value={outputProductName}
+              products={products}
+              exclude={usedProductIds}
+              onSelect={selectOutputProduct}
+              placeholder="Search finished product…"
+            />
+            {outProd && (
+              <p className="text-xs text-blue-500 mt-0.5 font-mono">
+                SKU: {outProd.sku}{outProd.currentStock != null ? ` · Stock: ${outProd.currentStock}` : ''}
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>

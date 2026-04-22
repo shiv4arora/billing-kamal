@@ -59,7 +59,11 @@ export default function ProductionList() {
                     <p className="font-medium text-gray-800">{e.outputProductName}</p>
                     {(() => {
                       const p = products.find(p => p.id === e.outputProductId);
-                      const pricing = p ? (() => { try { return JSON.parse(p.pricing || '{}'); } catch { return {}; } })() : null;
+                      const pricing = p ? (
+                        (typeof p.pricing === 'object' && p.pricing !== null)
+                          ? p.pricing
+                          : (() => { try { return JSON.parse(p.pricing || '{}'); } catch { return {}; } })()
+                      ) : null;
                       return p ? (
                         <div className="flex items-center gap-2 mt-0.5">
                           {p.sku && <span className="text-xs font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{p.sku}</span>}

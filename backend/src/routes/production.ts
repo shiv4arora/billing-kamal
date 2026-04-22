@@ -193,6 +193,7 @@ router.put('/:id', async (req, res, next) => {
     const {
       date,
       components,    // new component list [{productId, productName, sku, quantity}]
+      outputProductId: newOutputProductId,
       outputQuantity,
       outputPricing,
       notes,
@@ -202,6 +203,8 @@ router.put('/:id', async (req, res, next) => {
     const newComponents: any[] = components || [];
     const newOutputQty = Number(outputQuantity);
     const oldOutputQty = Number(existing.outputQuantity);
+    const outputProductChanged = newOutputProductId && newOutputProductId !== existing.outputProductId;
+    const effectiveOutputProductId = newOutputProductId || existing.outputProductId;
 
     const updated = await prisma.$transaction(async (tx) => {
       const today = date || existing.date;
@@ -249,36 +252,72 @@ router.put('/:id', async (req, res, next) => {
         });
       }
 
-      /* ── Adjust output stock by delta ── */
-      const outputDelta = newOutputQty - oldOutputQty;
-      if (outputDelta !== 0) {
-        if (outputDelta < 0) {
-          // Reducing output — check we have enough to take back
-          const outProd = await tx.product.findUnique({ where: { id: existing.outputProductId } });
-          if (outProd && outProd.currentStock + outputDelta < 0) {
-            throw new Error(`Cannot reduce output: only ${outProd.currentStock} in stock`);
-          }
+      /* ── Adjust output stock ── */
+      if (outputProductChanged) {
+        // Reverse all stock from old output product
+        const oldOutProd = await tx.product.findUnique({ where: { id: existing.outputProductId } });
+        if (oldOutProd && oldOutProd.currentStock - oldOutputQty < 0) {
+          throw new Error(`Cannot change output product: only ${oldOutProd.currentStock} of "${oldOutProd.name}" in stock`);
         }
         await tx.product.update({
           where: { id: existing.outputProductId },
-          data: { currentStock: { increment: outputDelta } },
+          data: { currentStock: { decrement: oldOutputQty } },
         });
         await tx.stockLedger.create({
           data: {
             productId: existing.outputProductId,
             date: today,
-            movementType: outputDelta > 0 ? 'production_in' : 'production_in_reversal',
-            quantity: outputDelta,
+            movementType: 'production_in_reversal',
+            quantity: -oldOutputQty,
             referenceId: existing.id,
             referenceNo: existing.entryNumber,
           },
         });
+        // Add new qty to new output product
+        await tx.product.update({
+          where: { id: effectiveOutputProductId },
+          data: { currentStock: { increment: newOutputQty } },
+        });
+        await tx.stockLedger.create({
+          data: {
+            productId: effectiveOutputProductId,
+            date: today,
+            movementType: 'production_in',
+            quantity: newOutputQty,
+            referenceId: existing.id,
+            referenceNo: existing.entryNumber,
+          },
+        });
+      } else {
+        const outputDelta = newOutputQty - oldOutputQty;
+        if (outputDelta !== 0) {
+          if (outputDelta < 0) {
+            const outProd = await tx.product.findUnique({ where: { id: existing.outputProductId } });
+            if (outProd && outProd.currentStock + outputDelta < 0) {
+              throw new Error(`Cannot reduce output: only ${outProd.currentStock} in stock`);
+            }
+          }
+          await tx.product.update({
+            where: { id: existing.outputProductId },
+            data: { currentStock: { increment: outputDelta } },
+          });
+          await tx.stockLedger.create({
+            data: {
+              productId: existing.outputProductId,
+              date: today,
+              movementType: outputDelta > 0 ? 'production_in' : 'production_in_reversal',
+              quantity: outputDelta,
+              referenceId: existing.id,
+              referenceNo: existing.entryNumber,
+            },
+          });
+        }
       }
 
       /* ── Update output pricing if provided ── */
       if (outputPricing) {
         await tx.product.update({
-          where: { id: existing.outputProductId },
+          where: { id: effectiveOutputProductId },
           data: {
             pricing: JSON.stringify({
               wholesale: Number(outputPricing.wholesale) || 0,
@@ -296,11 +335,14 @@ router.put('/:id', async (req, res, next) => {
         })
       );
 
+      const newOutProd = await tx.product.findUnique({ where: { id: effectiveOutputProductId } });
       return tx.productionEntry.update({
         where: { id: existing.id },
         data: {
           date: today,
           components: JSON.stringify(resolvedComponents),
+          outputProductId: effectiveOutputProductId,
+          outputProductName: newOutProd?.name || existing.outputProductName,
           outputQuantity: newOutputQty,
           notes: notes ?? existing.notes,
         },
@@ -312,7 +354,7 @@ router.put('/:id', async (req, res, next) => {
       components: (() => { try { return JSON.parse(updated.components); } catch { return []; } })(),
     });
   } catch (err: any) {
-    if (err.message?.startsWith('Insufficient') || err.message?.startsWith('Cannot reduce')) {
+    if (err.message?.startsWith('Insufficient') || err.message?.startsWith('Cannot reduce') || err.message?.startsWith('Cannot change')) {
       return res.status(400).json({ error: err.message });
     }
     next(err);
