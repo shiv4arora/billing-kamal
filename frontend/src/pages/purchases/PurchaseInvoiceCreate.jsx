@@ -81,67 +81,73 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
   const lineTotal = taxable + gstAmt;
 
   return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden">
-      {/* ── row header ── */}
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-100">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Item {idx + 1}</span>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={toggleNew}
-            className={`text-xs px-2 py-1 rounded-full font-medium border transition-colors ${item.isNew ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-500 border-gray-300 hover:border-blue-400 hover:text-blue-600'}`}
-          >
-            {item.isNew ? '✦ New Product' : '+ New Product'}
-          </button>
-          <button type="button" onClick={onRemove} className="text-gray-300 hover:text-red-500 text-lg leading-none">✕</button>
-        </div>
+    <div className={`border rounded-xl overflow-hidden ${item.isNew ? 'border-blue-200' : 'border-gray-200'}`}>
+      {/* ── Slim inline header ── */}
+      <div className={`flex items-center gap-2 px-3 py-1.5 border-b ${item.isNew ? 'bg-blue-50 border-blue-100' : 'bg-gray-50 border-gray-100'}`}>
+        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">{idx + 1}</span>
+        <button
+          type="button"
+          onClick={toggleNew}
+          className={`text-[11px] px-2 py-0.5 rounded-full font-medium border transition-colors ${item.isNew ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-500 border-gray-300 hover:border-blue-400 hover:text-blue-600'}`}
+        >
+          {item.isNew ? '✦ New Product' : '+ New Product'}
+        </button>
+        <div className="flex-1" />
+        <button type="button" onClick={onRemove} className="text-gray-300 hover:text-red-500 text-base leading-none">✕</button>
       </div>
 
-      <div className="p-4 space-y-4">
-        {/* ── Product search / name ── */}
+      <div className="p-3 space-y-2">
         {item.isNew ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input
-              label="Product Name *"
-              value={item.productName}
-              onChange={e => onUpdate('productName', e.target.value)}
-              placeholder="e.g. Basmati Rice 5kg"
-              className="col-span-2"
-            />
-            {/* SKU ID — read-only preview of what will be assigned on save */}
+          /* ── New product: Name + Unit + SKU in one row ── */
+          <div className="grid gap-2" style={{ gridTemplateColumns: '2.5fr 0.7fr 1.1fr' }}>
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">SKU ID</label>
-              <div className="flex items-center gap-2 w-full border border-blue-200 bg-blue-50 rounded-lg px-3 py-2">
-                <span className="text-xs bg-blue-600 text-white font-semibold px-2 py-0.5 rounded-full">AUTO</span>
-                <span className="text-base font-mono font-bold text-blue-800 tracking-widest">
+              <label className="text-[11px] font-medium text-gray-500 block mb-1">Product Name *</label>
+              <input
+                value={item.productName}
+                onChange={e => onUpdate('productName', e.target.value)}
+                placeholder="e.g. Basmati Rice 5kg"
+                className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-medium text-gray-500 block mb-1">Unit</label>
+              <select
+                value={item.unit}
+                onChange={e => onUpdate('unit', e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {UNITS.map(u => <option key={u}>{u}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] font-medium text-gray-500 block mb-1">SKU (auto)</label>
+              <div className="flex items-center gap-1.5 border border-blue-200 bg-blue-50 rounded-lg px-2 py-1.5 h-[34px]">
+                <span className="text-[9px] bg-blue-600 text-white font-bold px-1.5 py-0.5 rounded-full shrink-0">AUTO</span>
+                <span className="text-sm font-mono font-bold text-blue-800">
                   {nextSku !== null ? String(nextSku) : '…'}
                 </span>
                 {supplier && (
-                  <span className="ml-1 text-xs font-mono font-bold text-blue-600">
+                  <span className="text-[10px] font-mono font-bold text-blue-500 shrink-0">
                     · {supplier.code || supplier.name.replace(/\s+/g,'').slice(0,4).toUpperCase()}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-gray-400 mt-0.5">This SKU ID will be permanently assigned when you save.</p>
             </div>
-            <Select label="Unit" value={item.unit} onChange={e => onUpdate('unit', e.target.value)}>
-              {UNITS.map(u => <option key={u}>{u}</option>)}
-            </Select>
-            <Input label="HSN Code" value={item.hsnCode} onChange={e => onUpdate('hsnCode', e.target.value)} placeholder="e.g. 1006" />
           </div>
         ) : (
+          /* ── Existing product: search ── */
           <div className="relative">
-            <label className="text-sm font-medium text-gray-700 block mb-1">Select Product *</label>
+            <label className="text-[11px] font-medium text-gray-500 block mb-1">Product *</label>
             <input
               value={search}
               onChange={e => { setSearch(e.target.value); setShowDrop(true); }}
               onFocus={() => setShowDrop(true)}
               onBlur={() => { setTimeout(() => setShowDrop(false), 150); if (search.trim()) onUpdate('productName', search.trim()); }}
               placeholder="Search by name or SKU ID…"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             {item.productId && (
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                 {item.sku && (
                   <span className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 rounded-md px-2 py-0.5 text-xs font-mono font-bold text-blue-700">
                     SKU: {item.sku}{supplier ? ` · ${supplier.code || supplier.name.replace(/\s+/g,'').slice(0,4).toUpperCase()}` : ''}
@@ -163,16 +169,19 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
           </div>
         )}
 
-        {/* ── Quantity + Cost + GST ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Input
-            label="Quantity"
-            type="number" min="0"
-            value={item.quantity}
-            onChange={e => onUpdate('quantity', +e.target.value)}
-          />
+        {/* ── Qty + Cost + GST in one row ── */}
+        <div className="grid gap-2" style={{ gridTemplateColumns: '0.7fr 1.4fr 0.9fr' }}>
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Purchase Cost (₹)</label>
+            <label className="text-[11px] font-medium text-gray-500 block mb-1">Qty</label>
+            <input
+              type="number" min="0"
+              value={item.quantity}
+              onChange={e => onUpdate('quantity', +e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] font-medium text-gray-500 block mb-1">Cost (₹)</label>
             <input
               type="number" min="0" step="0.01"
               value={item.unitPrice}
@@ -181,59 +190,49 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
                 const pricing = calcSellingPrices(cost, supplier?.margin, supplier?.discount);
                 onUpdate('_bulk', { ...item, unitPrice: cost, pricing });
               }}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-right font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-right font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <Select label="GST %" value={item.gstRate} onChange={e => onUpdate('gstRate', +e.target.value)}>
-            {GST_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
-          </Select>
-        </div>
-
-        {/* ── Selling Prices (auto-calculated from supplier margins) ── */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Selling Prices</p>
-            {supplier?.margin && (
-              <p className="text-xs text-gray-400">
-                Auto from supplier margins
-                {supplier.discount > 0 && ` · ${supplier.discount}% discount applied`}
-              </p>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { tier: 'wholesale', label: 'Wholesale', color: 'blue',   margin: supplier?.margin?.wholesale },
-              { tier: 'shop',      label: 'Shop',      color: 'purple', margin: supplier?.margin?.shop },
-            ].map(({ tier, label, color, margin }) => (
-              <div key={tier} className={`bg-${color}-50 border border-${color}-100 rounded-xl p-2.5`}>
-                <div className="flex items-center justify-between mb-1">
-                  <p className={`text-[10px] font-bold text-${color}-600 uppercase tracking-wide`}>{label}</p>
-                  {margin != null && <p className="text-[9px] text-gray-400">{margin}% margin</p>}
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className={`text-xs text-${color}-500`}>₹</span>
-                  <input
-                    type="number" min="0" step="0.01"
-                    value={item.pricing[tier]}
-                    onChange={e => onUpdate('pricing', { ...item.pricing, [tier]: e.target.value === '' ? '' : +e.target.value })}
-                    className={`w-full bg-white border border-${color}-200 rounded-lg px-2 py-1 text-sm text-right font-bold text-${color}-800 focus:outline-none focus:ring-1 focus:ring-${color}-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
-                  />
-                </div>
-              </div>
-            ))}
+          <div>
+            <label className="text-[11px] font-medium text-gray-500 block mb-1">GST</label>
+            <select
+              value={item.gstRate}
+              onChange={e => onUpdate('gstRate', +e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {GST_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
+            </select>
           </div>
         </div>
 
-        {/* ── Line total ── */}
-        {item.quantity > 0 && item.unitPrice > 0 && (
-          <div className="flex items-center justify-between pt-1 border-t border-gray-100 text-sm">
-            <span className="text-gray-400">
-              {item.quantity} × {formatCurrency(item.unitPrice)}
-              {item.gstRate > 0 && ` + ${item.gstRate}% GST`}
+        {/* ── Selling prices + line total in one slim row ── */}
+        <div className="flex items-center gap-2 pt-0.5">
+          <span className="text-[11px] text-gray-400 font-medium shrink-0">
+            Sell:
+            {supplier?.discount > 0 && <span className="ml-1 text-[10px] text-orange-500">{supplier.discount}% off</span>}
+          </span>
+          {[
+            { tier: 'wholesale', label: 'W', color: 'blue',   margin: supplier?.margin?.wholesale },
+            { tier: 'shop',      label: 'S', color: 'purple', margin: supplier?.margin?.shop },
+          ].map(({ tier, label, color, margin }) => (
+            <div key={tier} className={`flex items-center gap-1 bg-${color}-50 border border-${color}-100 rounded-lg px-2 py-1 flex-1 min-w-0`}>
+              <span className={`text-[10px] font-bold text-${color}-500 shrink-0`}>
+                {label} ₹{margin != null ? <span className="font-normal text-gray-400 ml-0.5">{margin}%</span> : ''}
+              </span>
+              <input
+                type="number" min="0" step="0.01"
+                value={item.pricing[tier]}
+                onChange={e => onUpdate('pricing', { ...item.pricing, [tier]: e.target.value === '' ? '' : +e.target.value })}
+                className={`w-full bg-transparent text-sm text-right font-bold text-${color}-800 focus:outline-none min-w-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+              />
+            </div>
+          ))}
+          {item.quantity > 0 && item.unitPrice > 0 && (
+            <span className="text-[11px] text-gray-400 shrink-0">
+              = <span className="font-bold text-gray-700 text-sm">{formatCurrency(lineTotal)}</span>
             </span>
-            <span className="font-bold text-gray-800">{formatCurrency(lineTotal)}</span>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
