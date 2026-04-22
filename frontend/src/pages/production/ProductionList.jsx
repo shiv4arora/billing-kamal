@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useProducts } from '../../context/ProductContext';
-import { useGlobalToast } from '../../context/ToastContext';
 import { api } from '../../hooks/useApi';
 import { formatDate, formatCurrency } from '../../utils/helpers';
 import { Button } from '../../components/ui';
@@ -9,11 +8,9 @@ import { Button } from '../../components/ui';
 export default function ProductionList() {
   const navigate = useNavigate();
   const toast = useGlobalToast();
-  const { active: products, refresh: refreshProducts } = useProducts();
+  const { active: products } = useProducts();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState(null);
-  const [confirmId, setConfirmId] = useState(null);
 
   useEffect(() => {
     api('/production')
@@ -21,21 +18,6 @@ export default function ProductionList() {
       .catch(() => setEntries([]))
       .finally(() => setLoading(false));
   }, []);
-
-  const handleDelete = async (id) => {
-    setDeletingId(id);
-    try {
-      await api(`/production/${id}`, { method: 'DELETE' });
-      setEntries(prev => prev.filter(e => e.id !== id));
-      await refreshProducts();
-      toast.success('Entry deleted and stock reversed');
-    } catch (e) {
-      toast.error(e.message || 'Failed to delete');
-    } finally {
-      setDeletingId(null);
-      setConfirmId(null);
-    }
-  };
 
   return (
     <div className="space-y-4">
@@ -66,7 +48,7 @@ export default function ProductionList() {
                 <th className="px-4 py-3 text-left">Output Product</th>
                 <th className="px-4 py-3 text-right">Qty</th>
                 <th className="px-4 py-3 text-left">Components</th>
-                <th className="px-4 py-3 text-center w-36">Actions</th>
+                <th className="px-4 py-3 text-center w-28">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -119,31 +101,6 @@ export default function ProductionList() {
                       >
                         🏷 Label
                       </button>
-                      {confirmId === e.id ? (
-                        <span className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleDelete(e.id)}
-                            disabled={deletingId === e.id}
-                            className="px-2 py-1.5 text-xs font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg disabled:opacity-50"
-                          >
-                            {deletingId === e.id ? '…' : 'Yes'}
-                          </button>
-                          <button
-                            onClick={() => setConfirmId(null)}
-                            className="px-2 py-1.5 text-xs font-medium text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg"
-                          >
-                            No
-                          </button>
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => setConfirmId(e.id)}
-                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-red-500 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
-                          title="Delete entry"
-                        >
-                          🗑 Del
-                        </button>
-                      )}
                     </div>
                   </td>
                 </tr>
