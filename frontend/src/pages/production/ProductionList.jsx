@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useProducts } from '../../context/ProductContext';
 import { api } from '../../hooks/useApi';
-import { formatDate } from '../../utils/helpers';
+import { formatDate, formatCurrency } from '../../utils/helpers';
 import { Button } from '../../components/ui';
 
 export default function ProductionList() {
   const navigate = useNavigate();
+  const { active: products } = useProducts();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -53,7 +55,20 @@ export default function ProductionList() {
                 <tr key={e.id} className="border-b last:border-0 hover:bg-gray-50">
                   <td className="px-4 py-3 font-mono font-semibold text-blue-600">{e.entryNumber}</td>
                   <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatDate(e.date)}</td>
-                  <td className="px-4 py-3 font-medium text-gray-800">{e.outputProductName}</td>
+                  <td className="px-4 py-3">
+                    <p className="font-medium text-gray-800">{e.outputProductName}</p>
+                    {(() => {
+                      const p = products.find(p => p.id === e.outputProductId);
+                      const pricing = p ? (() => { try { return JSON.parse(p.pricing || '{}'); } catch { return {}; } })() : null;
+                      return p ? (
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {p.sku && <span className="text-xs font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{p.sku}</span>}
+                          {pricing?.wholesale > 0 && <span className="text-xs text-blue-500">W {formatCurrency(pricing.wholesale)}</span>}
+                          {pricing?.shop > 0 && <span className="text-xs text-purple-500">S {formatCurrency(pricing.shop)}</span>}
+                        </div>
+                      ) : null;
+                    })()}
+                  </td>
                   <td className="px-4 py-3 text-right font-semibold">{e.outputQuantity}</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">

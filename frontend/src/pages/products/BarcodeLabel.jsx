@@ -13,7 +13,7 @@ function StickerLabel({ product, supplier }) {
   const wCoded  = Math.round((product.pricing?.wholesale || 0) * 2);
   const wCode   = `D.No.${wCoded}`;
   const pCoded  = Math.round((product.pricing?.shop || 0) * 2);
-  const pCode   = `P.${pCoded}`;
+  const pCode   = `${pCoded}`;
   const qrValue = String(product.sku || product.id);
 
   return (
@@ -218,7 +218,7 @@ export default function BarcodeLabel() {
       <div className="no-print bg-blue-50 border-b border-blue-100 px-6 py-2 text-xs text-blue-700 flex gap-6 flex-wrap items-center">
         <span>34mm × 20mm · <strong>3 per row</strong> on 102mm sheet</span>
         <span className="font-mono font-bold text-blue-800">W → D.No.{wCoded}</span>
-        <span className="font-mono font-bold text-purple-700">P → P.{pCoded}</span>
+        <span className="font-mono font-bold text-purple-700">P → {pCoded}</span>
         <span>Supplier: <strong>{supplierCode}</strong></span>
         <span>QR = SKU only</span>
       </div>
