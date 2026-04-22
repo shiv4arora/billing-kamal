@@ -67,6 +67,8 @@ export default function ProductionEdit() {
   const [outputWholesale, setOutputWholesale] = useState('');
   const [outputShop, setOutputShop] = useState('');
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Effect 1: fetch the entry
   useEffect(() => {
@@ -137,6 +139,20 @@ export default function ProductionEdit() {
 
   const removeComponent = (i) =>
     setComponents(prev => prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i));
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await api(`/production/${id}`, { method: 'DELETE' });
+      await refreshProducts();
+      toast.success('Entry deleted and stock reversed');
+      navigate('/production');
+    } catch (e) {
+      toast.error(e.message || 'Failed to delete');
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  };
 
   const handleSave = async () => {
     const validComps = components.filter(c => c.productId && c.quantity > 0);
@@ -282,12 +298,34 @@ export default function ProductionEdit() {
         </div>
       </div>
 
-      <div className="flex items-center justify-end gap-3 pb-10">
+      <div className="flex items-center justify-between pb-10">
+        <div>
+          {confirmDelete ? (
+            <span className="flex items-center gap-2">
+              <span className="text-sm text-red-600 font-medium">Delete & reverse stock?</span>
+              <button onClick={handleDelete} disabled={deleting}
+                className="px-3 py-1.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 disabled:opacity-50">
+                {deleting ? '…' : 'Yes, Delete'}
+              </button>
+              <button onClick={() => setConfirmDelete(false)}
+                className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg">
+                Cancel
+              </button>
+            </span>
+          ) : (
+            <button onClick={() => setConfirmDelete(true)}
+              className="px-3 py-1.5 text-sm font-medium text-red-500 bg-red-50 hover:bg-red-100 rounded-lg">
+              🗑 Delete Entry
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
         <button onClick={() => navigate('/production')} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
         <button onClick={handleSave} disabled={saving}
           className="px-6 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
           {saving ? '⏳ Saving…' : 'Save Changes'}
         </button>
+        </div>
       </div>
     </div>
   );

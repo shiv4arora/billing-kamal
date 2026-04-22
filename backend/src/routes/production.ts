@@ -361,4 +361,67 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
+/* ── DELETE /production/:id — delete entry and reverse stock ── */
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const existing = await prisma.productionEntry.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: 'Not found' });
+
+    const components: any[] = (() => { try { return JSON.parse(existing.components); } catch { return []; } })();
+
+    await prisma.$transaction(async (tx) => {
+      const today = new Date().toISOString().slice(0, 10);
+
+      // Restore component stock (reverse production_out)
+      for (const c of components) {
+        const qty = Number(c.quantity);
+        await tx.product.update({
+          where: { id: c.productId },
+          data: { currentStock: { increment: qty } },
+        });
+        await tx.stockLedger.create({
+          data: {
+            productId: c.productId,
+            date: today,
+            movementType: 'production_out_reversal',
+            quantity: qty,
+            referenceId: existing.id,
+            referenceNo: existing.entryNumber,
+          },
+        });
+      }
+
+      // Reduce output product stock (reverse production_in)
+      const outQty = Number(existing.outputQuantity);
+      const outProd = await tx.product.findUnique({ where: { id: existing.outputProductId } });
+      if (outProd && outProd.currentStock - outQty < 0) {
+        throw new Error(`Cannot delete: only ${outProd.currentStock} of "${outProd.name}" in stock`);
+      }
+      await tx.product.update({
+        where: { id: existing.outputProductId },
+        data: { currentStock: { decrement: outQty } },
+      });
+      await tx.stockLedger.create({
+        data: {
+          productId: existing.outputProductId,
+          date: today,
+          movementType: 'production_in_reversal',
+          quantity: -outQty,
+          referenceId: existing.id,
+          referenceNo: existing.entryNumber,
+        },
+      });
+
+      await tx.productionEntry.delete({ where: { id: existing.id } });
+    });
+
+    res.json({ ok: true });
+  } catch (err: any) {
+    if (err.message?.startsWith('Cannot delete')) {
+      return res.status(400).json({ error: err.message });
+    }
+    next(err);
+  }
+});
+
 export default router;
