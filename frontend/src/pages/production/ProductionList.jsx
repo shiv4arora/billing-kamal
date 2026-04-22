@@ -7,7 +7,6 @@ import { Button } from '../../components/ui';
 
 export default function ProductionList() {
   const navigate = useNavigate();
-  const toast = useGlobalToast();
   const { active: products } = useProducts();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
