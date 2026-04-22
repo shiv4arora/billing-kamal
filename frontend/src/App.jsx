@@ -37,6 +37,8 @@ import UserManagement from './pages/auth/UserManagement';
 import CrmList from './pages/crm/CrmList';
 import CrmForm from './pages/crm/CrmForm';
 import CrmDetail from './pages/crm/CrmDetail';
+import ProductionList from './pages/production/ProductionList';
+import ProductionCreate from './pages/production/ProductionCreate';
 
 /** Redirect to / if already logged in */
 function PublicRoute({ children }) {
@@ -85,6 +87,8 @@ function LayoutRoutes() {
           <Route path="/crm/new" element={<CrmForm />} />
           <Route path="/crm/:id" element={<CrmDetail />} />
           <Route path="/crm/:id/edit" element={<CrmForm />} />
+          <Route path="/production" element={<ProductionList />} />
+          <Route path="/production/new" element={<ProductionCreate />} />
           {can('reports') && <Route path="/reports/sales" element={<SalesReport />} />}
           {can('reports') && <Route path="/reports/purchases" element={<PurchasesReport />} />}
           {can('reports') && <Route path="/reports/inventory" element={<InventoryReport />} />}

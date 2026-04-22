@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Item Card Mockup</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8 font-sans">
+
+<div class="max-w-5xl mx-auto space-y-10">
+
+  <!-- ══ BEFORE ══ -->
+  <div>
+    <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">● BEFORE (current)</p>
+    <div class="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+      <!-- Header bar -->
+      <div class="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-100">
+        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Item 12</span>
+        <div class="flex items-center gap-2">
+          <button class="text-xs px-2 py-1 rounded-full font-medium border border-gray-300 text-gray-500">+ New Product</button>
+          <button class="text-gray-300 text-lg leading-none">✕</button>
+        </div>
+      </div>
+
+      <div class="p-4 space-y-4">
+        <!-- Product search -->
+        <div>
+          <label class="text-sm font-medium text-gray-700 block mb-1">Select Product *</label>
+          <input class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-400" placeholder="Search by name or SKU ID…" readonly />
+        </div>
+
+        <!-- Qty + Cost + GST -->
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="text-sm font-medium text-gray-700 block mb-1">Quantity</label>
+            <div class="border border-gray-300 rounded-lg px-3 py-2 text-sm flex justify-between items-center"><span>1</span><span class="text-gray-300">⌃⌄</span></div>
+          </div>
+          <div>
+            <label class="text-sm font-medium text-gray-700 block mb-1">Purchase Cost (₹)</label>
+            <div class="border border-gray-300 rounded-lg px-3 py-2 text-sm text-right font-semibold flex justify-between items-center"><span></span><span>0 <span class="text-gray-300">⌃⌄</span></span></div>
+          </div>
+          <div>
+            <label class="text-sm font-medium text-gray-700 block mb-1">GST %</label>
+            <div class="border border-gray-300 rounded-lg px-3 py-2 text-sm flex justify-between items-center"><span>0%</span><span class="text-gray-300">⌃⌄</span></div>
+          </div>
+        </div>
+
+        <!-- Selling prices -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Selling Prices</p>
+            <p class="text-xs text-gray-400">Auto from supplier margins</p>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div class="bg-blue-50 border border-blue-100 rounded-xl p-2.5">
+              <div class="flex items-center justify-between mb-1">
+                <p class="text-[10px] font-bold text-blue-600 uppercase tracking-wide">Wholesale</p>
+                <p class="text-[9px] text-gray-400">25% margin</p>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="text-xs text-blue-500">₹</span>
+                <div class="w-full bg-white border border-blue-200 rounded-lg px-2 py-1 text-sm text-right font-bold text-blue-800">0</div>
+              </div>
+            </div>
+            <div class="bg-purple-50 border border-purple-100 rounded-xl p-2.5">
+              <div class="flex items-center justify-between mb-1">
+                <p class="text-[10px] font-bold text-purple-600 uppercase tracking-wide">Shop</p>
+                <p class="text-[9px] text-gray-400">90% margin</p>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="text-xs text-purple-500">₹</span>
+                <div class="w-full bg-white border border-purple-200 rounded-lg px-2 py-1 text-sm text-right font-bold text-purple-800">0</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ AFTER ══ -->
+  <div>
+    <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">● AFTER (compact)</p>
+
+    <!-- Existing product mode -->
+    <p class="text-[11px] text-gray-400 mb-1.5 font-medium">Existing product mode:</p>
+    <div class="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+      <!-- Slim inline header -->
+      <div class="flex items-center gap-2 px-3 py-1.5 border-b border-gray-100">
+        <span class="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">12</span>
+        <button class="text-[11px] px-2 py-0.5 rounded-full font-medium border border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600">+ New Product</button>
+        <div class="flex-1"></div>
+        <button class="text-gray-300 text-base leading-none">✕</button>
+      </div>
+
+      <div class="p-3 space-y-2">
+        <!-- Product + Qty + Cost + GST in ONE row -->
+        <div class="grid gap-2" style="grid-template-columns: 3fr 0.7fr 1.2fr 0.8fr;">
+          <div>
+            <label class="text-[11px] font-medium text-gray-500 block mb-1">Product *</label>
+            <input class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm text-gray-400" placeholder="Search name or SKU…" readonly />
+          </div>
+          <div>
+            <label class="text-[11px] font-medium text-gray-500 block mb-1">Qty</label>
+            <div class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm flex justify-between items-center"><span>1</span><span class="text-gray-300 text-xs">⌃⌄</span></div>
+          </div>
+          <div>
+            <label class="text-[11px] font-medium text-gray-500 block mb-1">Cost (₹)</label>
+            <div class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-right font-semibold">0</div>
+          </div>
+          <div>
+            <label class="text-[11px] font-medium text-gray-500 block mb-1">GST</label>
+            <div class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm flex justify-between items-center"><span>0%</span><span class="text-gray-300 text-xs">⌃⌄</span></div>
+          </div>
+        </div>
+
+        <!-- Selling prices + line total in ONE slim row -->
+        <div class="flex items-center gap-2 pt-1">
+          <span class="text-[11px] text-gray-400 font-medium shrink-0">Sell:</span>
+          <div class="flex items-center gap-1 bg-blue-50 border border-blue-100 rounded-lg px-2 py-1 flex-1">
+            <span class="text-[10px] font-bold text-blue-500">W ₹</span>
+            <input type="number" value="0" class="w-full bg-transparent text-sm text-right font-bold text-blue-800 outline-none min-w-0" />
+          </div>
+          <div class="flex items-center gap-1 bg-purple-50 border border-purple-100 rounded-lg px-2 py-1 flex-1">
+            <span class="text-[10px] font-bold text-purple-500">S ₹</span>
+            <input type="number" value="0" class="w-full bg-transparent text-sm text-right font-bold text-purple-800 outline-none min-w-0" />
+          </div>
+          <span class="text-[11px] text-gray-400 shrink-0">= <span class="font-bold text-gray-700 text-sm">₹0</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- New product mode -->
+    <p class="text-[11px] text-gray-400 mt-4 mb-1.5 font-medium">New Product mode (+ New Product toggled on):</p>
+    <div class="border border-blue-300 rounded-xl overflow-hidden bg-white shadow-sm">
+      <!-- Slim inline header -->
+      <div class="flex items-center gap-2 px-3 py-1.5 border-b border-blue-100 bg-blue-50">
+        <span class="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">12</span>
+        <button class="text-[11px] px-2 py-0.5 rounded-full font-medium border border-blue-600 bg-blue-600 text-white">✦ New Product</button>
+        <div class="flex-1"></div>
+        <button class="text-gray-300 text-base leading-none">✕</button>
+      </div>
+
+      <div class="p-3 space-y-2">
+        <!-- Name + Unit + SKU in one row -->
+        <div class="grid gap-2" style="grid-template-columns: 2.5fr 0.8fr 1.2fr;">
+          <div>
+            <label class="text-[11px] font-medium text-gray-500 block mb-1">Product Name *</label>
+            <input class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm" placeholder="e.g. Basmati Rice 5kg" />
+          </div>
+          <div>
+            <label class="text-[11px] font-medium text-gray-500 block mb-1">Unit</label>
+            <div class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm flex justify-between items-center"><span>Pcs</span><span class="text-gray-300 text-xs">⌃⌄</span></div>
+          </div>
+          <div>
+            <label class="text-[11px] font-medium text-gray-500 block mb-1">SKU (auto)</label>
+            <div class="flex items-center gap-1.5 border border-blue-200 bg-blue-50 rounded-lg px-2 py-1.5">
+              <span class="text-[9px] bg-blue-600 text-white font-bold px-1.5 py-0.5 rounded-full shrink-0">AUTO</span>
+              <span class="text-sm font-mono font-bold text-blue-800">1012</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Qty + Cost + GST + HSN in one row -->
+        <div class="grid gap-2" style="grid-template-columns: 0.7fr 1.2fr 0.8fr 1fr;">
+          <div>
+            <label class="text-[11px] font-medium text-gray-500 block mb-1">Qty</label>
+            <div class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm">1</div>
+          </div>
+          <div>
+            <label class="text-[11px] font-medium text-gray-500 block mb-1">Cost (₹)</label>
+            <div class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-right font-semibold">0</div>
+          </div>
+          <div>
+            <label class="text-[11px] font-medium text-gray-500 block mb-1">GST</label>
+            <div class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm">0%</div>
+          </div>
+          <div>
+            <label class="text-[11px] font-medium text-gray-500 block mb-1">HSN</label>
+            <input class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-gray-400" placeholder="optional" />
+          </div>
+        </div>
+
+        <!-- Selling prices row -->
+        <div class="flex items-center gap-2 pt-1">
+          <span class="text-[11px] text-gray-400 font-medium shrink-0">Sell:</span>
+          <div class="flex items-center gap-1 bg-blue-50 border border-blue-100 rounded-lg px-2 py-1 flex-1">
+            <span class="text-[10px] font-bold text-blue-500">W ₹</span>
+            <input type="number" value="0" class="w-full bg-transparent text-sm text-right font-bold text-blue-800 outline-none min-w-0" />
+          </div>
+          <div class="flex items-center gap-1 bg-purple-50 border border-purple-100 rounded-lg px-2 py-1 flex-1">
+            <span class="text-[10px] font-bold text-purple-500">S ₹</span>
+            <input type="number" value="0" class="w-full bg-transparent text-sm text-right font-bold text-purple-800 outline-none min-w-0" />
+          </div>
+          <span class="text-[11px] text-gray-400 shrink-0">= <span class="font-bold text-gray-700 text-sm">₹0</span></span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>

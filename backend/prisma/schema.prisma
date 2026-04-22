@@ -219,6 +219,18 @@ model Lead {
   @@index([nextFollowUp])
 }
 
+model ProductionEntry {
+  id                String   @id @default(cuid())
+  entryNumber       String   @unique
+  date              String
+  components        String   // JSON: [{productId, productName, sku, quantity}]
+  outputProductId   String
+  outputProductName String   @default("")
+  outputQuantity    Float
+  notes             String   @default("")
+  createdAt         DateTime @default(now())
+}
+
 model ReminderLog {
   id            String      @id @default(cuid())
   invoiceId     String
