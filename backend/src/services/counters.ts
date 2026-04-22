@@ -24,20 +24,32 @@ export async function nextPurchaseInvoiceNumber(prefix: string, tx?: any): Promi
 // This prevents duplicate SKU errors even if the counter gets out of sync
 export async function allocateSkuNumbers(count = 1, tx?: any): Promise<number> {
   const client = tx || prisma;
-  let candidate: number;
 
-  // Keep advancing until we find a free SKU
+  const row = await client.counter.findUnique({ where: { key: 'sku' } });
+  if (!row) throw new Error("Counter 'sku' not found");
+
+  // Scan in-memory until we find a free SKU — never burn counter values in the loop
+  let candidate = row.value;
   while (true) {
-    const row = await client.counter.findUnique({ where: { key: 'sku' } });
-    if (!row) throw new Error("Counter 'sku' not found");
-    candidate = row.value;
-    await client.counter.update({ where: { key: 'sku' }, data: { value: candidate + count } });
-
-    // Check if this SKU is already taken
     const existing = await prisma.product.findUnique({ where: { sku: String(candidate) } });
-    if (!existing) break; // free — use it
-    // else: loop again with the next counter value
+    if (!existing) break;
+    candidate++;
   }
 
+  // Write the counter once, jumping past the allocated range
+  await client.counter.update({ where: { key: 'sku' }, data: { value: candidate + count } });
+
   return candidate;
+}
+
+// Returns the next free SKU without consuming it (for preview in the UI)
+export async function peekNextSku(): Promise<number> {
+  const row = await prisma.counter.findUnique({ where: { key: 'sku' } });
+  if (!row) return 1001;
+  let candidate = row.value;
+  while (true) {
+    const existing = await prisma.product.findUnique({ where: { sku: String(candidate) } });
+    if (!existing) return candidate;
+    candidate++;
+  }
 }
