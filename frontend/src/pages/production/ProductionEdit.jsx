@@ -60,7 +60,7 @@ export default function ProductionEdit() {
         setDate(e.date);
         setNotes(e.notes || '');
         setComponents((Array.isArray(e.components) ? e.components : []).map(c => ({
-          productId: c.productId, productName: c.productName, sku: c.sku || '', currentStock: 0, quantity: c.quantity,
+          productId: c.productId, productName: c.productName, sku: c.sku || '', currentStock: 0, unit: '', wholesale: 0, quantity: c.quantity,
         })));
         const outs = Array.isArray(e.outputs) && e.outputs.length > 0 ? e.outputs : [];
         setOutputs(outs.map(o => ({
@@ -76,7 +76,14 @@ export default function ProductionEdit() {
   // Effect 2: fill stock + pricing once products load
   useEffect(() => {
     if (!entry || !products.length) return;
-    setComponents(prev => prev.map(c => ({ ...c, currentStock: products.find(p => p.id === c.productId)?.currentStock ?? 0 })));
+    setComponents(prev => prev.map(c => {
+      const prod = products.find(p => p.id === c.productId);
+      if (!prod) return c;
+      const pricing = (typeof prod.pricing === 'object' && prod.pricing !== null)
+        ? prod.pricing
+        : (() => { try { return JSON.parse(prod.pricing || '{}'); } catch { return {}; } })();
+      return { ...c, currentStock: prod.currentStock ?? 0, unit: prod.unit || '', wholesale: pricing.wholesale || 0 };
+    }));
     setOutputs(prev => prev.map(o => {
       const prod = products.find(p => p.id === o.productId);
       if (!prod) return o;
@@ -89,8 +96,16 @@ export default function ProductionEdit() {
 
   /* ── Component helpers ── */
   const updateComp = (i, field, value) => setComponents(prev => prev.map((c, idx) => idx === i ? { ...c, [field]: value } : c));
-  const selectComponent = (i, prod) => setComponents(prev => prev.map((c, idx) => idx === i ? { ...c, productId: prod.id, productName: prod.name, sku: prod.sku || '', currentStock: prod.currentStock ?? 0 } : c));
-  const addComponent = () => setComponents(prev => [...prev, { productId: '', productName: '', sku: '', currentStock: 0, quantity: '' }]);
+  const selectComponent = (i, prod) => {
+    const pricing = (typeof prod.pricing === 'object' && prod.pricing !== null)
+      ? prod.pricing
+      : (() => { try { return JSON.parse(prod.pricing || '{}'); } catch { return {}; } })();
+    setComponents(prev => prev.map((c, idx) => idx === i ? {
+      ...c, productId: prod.id, productName: prod.name, sku: prod.sku || '',
+      currentStock: prod.currentStock ?? 0, unit: prod.unit || '', wholesale: pricing.wholesale || 0,
+    } : c));
+  };
+  const addComponent = () => setComponents(prev => [...prev, { productId: '', productName: '', sku: '', currentStock: 0, unit: '', wholesale: 0, quantity: '' }]);
   const removeComponent = (i) => setComponents(prev => prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i));
 
   /* ── Output helpers ── */
@@ -196,7 +211,9 @@ export default function ProductionEdit() {
                   <ProductSearch value={comp.productName} products={products} exclude={usedCompIds.filter((_, idx) => idx !== i)} onSelect={p => selectComponent(i, p)} placeholder="Search raw material…" />
                   {comp.productId && (
                     <p className={`text-xs mt-0.5 ${overStock ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
-                      {overStock ? `⚠ Only ${comp.currentStock} in stock` : `Stock: ${comp.currentStock} · SKU: ${comp.sku}`}
+                      {overStock
+                        ? `⚠ Only ${comp.currentStock} ${comp.unit} in stock`
+                        : `Stock: ${comp.currentStock} ${comp.unit} · SKU: ${comp.sku}${comp.wholesale ? ` · W: ₹${comp.wholesale}` : ''}`}
                     </p>
                   )}
                 </div>

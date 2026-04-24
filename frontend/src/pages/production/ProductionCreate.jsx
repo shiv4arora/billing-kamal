@@ -6,7 +6,7 @@ import { api } from '../../hooks/useApi';
 import { today } from '../../utils/helpers';
 import { UNITS } from '../../constants';
 
-const BLANK_COMP = () => ({ productId: '', productName: '', sku: '', currentStock: 0, quantity: '' });
+const BLANK_COMP = () => ({ productId: '', productName: '', sku: '', currentStock: 0, unit: '', wholesale: 0, quantity: '' });
 const BLANK_OUTPUT = () => ({ isNew: false, productId: '', productName: '', sku: '', currentStock: 0, unit: 'Pcs', quantity: '', wholesale: '', shop: '' });
 
 /* ── Shared product search dropdown ── */
@@ -64,7 +64,15 @@ export default function ProductionCreate() {
   const addComponent = () => setComponents(prev => [...prev, BLANK_COMP()]);
   const removeComponent = (i) => setComponents(prev => prev.length === 1 ? [BLANK_COMP()] : prev.filter((_, idx) => idx !== i));
   const updateComp = (i, field, value) => setComponents(prev => prev.map((c, idx) => idx === i ? { ...c, [field]: value } : c));
-  const selectComponent = (i, prod) => setComponents(prev => prev.map((c, idx) => idx === i ? { ...c, productId: prod.id, productName: prod.name, sku: prod.sku || '', currentStock: prod.currentStock ?? 0 } : c));
+  const selectComponent = (i, prod) => {
+    const pricing = (typeof prod.pricing === 'object' && prod.pricing !== null)
+      ? prod.pricing
+      : (() => { try { return JSON.parse(prod.pricing || '{}'); } catch { return {}; } })();
+    setComponents(prev => prev.map((c, idx) => idx === i ? {
+      ...c, productId: prod.id, productName: prod.name, sku: prod.sku || '',
+      currentStock: prod.currentStock ?? 0, unit: prod.unit || '', wholesale: pricing.wholesale || 0,
+    } : c));
+  };
 
   /* ── Output helpers ── */
   const addOutput = () => setOutputs(prev => [...prev, BLANK_OUTPUT()]);
@@ -165,7 +173,9 @@ export default function ProductionCreate() {
                   <ProductSearch value={comp.productName} products={products} exclude={usedCompIds.filter((_, idx) => idx !== i)} onSelect={p => selectComponent(i, p)} placeholder="Search raw material…" />
                   {comp.productId && (
                     <p className={`text-xs mt-0.5 ${overStock ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
-                      {overStock ? `⚠ Only ${comp.currentStock} in stock` : `Stock: ${comp.currentStock} · SKU: ${comp.sku}`}
+                      {overStock
+                        ? `⚠ Only ${comp.currentStock} ${comp.unit} in stock`
+                        : `Stock: ${comp.currentStock} ${comp.unit} · SKU: ${comp.sku}${comp.wholesale ? ` · W: ₹${comp.wholesale}` : ''}`}
                     </p>
                   )}
                 </div>

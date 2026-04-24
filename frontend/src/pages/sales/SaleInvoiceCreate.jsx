@@ -12,7 +12,7 @@ import { GST_RATES } from '../../constants';
 import { useInvoiceLock } from '../../hooks/useInvoiceLock';
 import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedChanges.jsx';
 
-const BLANK_ITEM = { productId: '', productName: '', sku: '', hsnCode: '', unit: 'Pcs', quantity: 1, unitPrice: 0, discountPct: 0, gstRate: 0 };
+const BLANK_ITEM = { productId: '', productName: '', sku: '', hsnCode: '', unit: 'Pcs', quantity: 1, unitPrice: 0, discountPct: 0, gstRate: 0, vendorCode: '' };
 
 export default function SaleInvoiceCreate() {
   const { id } = useParams();
@@ -91,6 +91,7 @@ export default function SaleInvoiceCreate() {
         ...item,
         productId: prod.id, productName: prod.name, sku: prod.sku || '',
         hsnCode: prod.hsnCode || '', unit: prod.unit, unitPrice: price, gstRate: prod.gstRate || 0,
+        vendorCode: prod.supplier?.code || prod.supplier?.name || '',
       } : item);
       if (idx === prev.length - 1) return [...updated, { ...BLANK_ITEM }];
       return updated;
@@ -181,7 +182,7 @@ export default function SaleInvoiceCreate() {
     const lastIsBlank = !items[lastIdx]?.productId;
     const newIdx = lastIsBlank ? lastIdx : items.length;
     setItems(prev => {
-      const newItem = { ...BLANK_ITEM, productId: prod.id, productName: prod.name, sku: prod.sku || '', hsnCode: prod.hsnCode || '', unit: prod.unit, unitPrice: price, gstRate: prod.gstRate || 0 };
+      const newItem = { ...BLANK_ITEM, productId: prod.id, productName: prod.name, sku: prod.sku || '', hsnCode: prod.hsnCode || '', unit: prod.unit, unitPrice: price, gstRate: prod.gstRate || 0, vendorCode: prod.supplier?.code || prod.supplier?.name || '' };
       if (lastIsBlank) return prev.map((item, i) => i === lastIdx ? newItem : item);
       return [...prev, newItem];
     });
@@ -340,12 +341,18 @@ export default function SaleInvoiceCreate() {
                       </td>
                       <td className="px-3 py-2">
                         {item.sku ? (
-                          <span className="text-xs font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{item.sku}</span>
+                          <div className="space-y-0.5">
+                            <span className="text-xs font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded block w-fit">{item.sku}</span>
+                            {item.vendorCode && <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded block w-fit">{item.vendorCode}</span>}
+                          </div>
                         ) : (
                           <span className="text-xs text-gray-300">—</span>
                         )}
                       </td>
-                      <td className="px-3 py-2"><input ref={el => qtyRefs.current[idx] = el} type="number" min="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', +e.target.value)} onWheel={e => e.target.blur()} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); skuInputRef.current?.focus(); skuInputRef.current?.select(); } }} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
+                      <td className="px-3 py-2">
+                        <input ref={el => qtyRefs.current[idx] = el} type="number" min="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', +e.target.value)} onWheel={e => e.target.blur()} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); skuInputRef.current?.focus(); skuInputRef.current?.select(); } }} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                        {item.unit && <p className="text-xs text-gray-400 text-right mt-0.5">{item.unit}</p>}
+                      </td>
                       <td className="px-3 py-2 text-right">
                         <span className="text-sm font-medium text-gray-700 w-24 inline-block">{item.unitPrice ? formatCurrency(item.unitPrice) : '—'}</span>
                       </td>
