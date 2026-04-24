@@ -172,16 +172,18 @@ export default function ProductionCreate() {
                 <div className="flex-1 min-w-0">
                   <ProductSearch value={comp.productName} products={products} exclude={usedCompIds.filter((_, idx) => idx !== i)} onSelect={p => selectComponent(i, p)} placeholder="Search raw material…" />
                   {comp.productId && (
-                    <p className={`text-xs mt-0.5 ${overStock ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
-                      {overStock
-                        ? `⚠ Only ${comp.currentStock} ${comp.unit} in stock`
-                        : `Stock: ${comp.currentStock} ${comp.unit} · SKU: ${comp.sku}${comp.wholesale ? ` · W: ₹${comp.wholesale}` : ''}`}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                      {comp.sku && <span className="text-xs font-mono bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{comp.sku}</span>}
+                      {comp.unit && <span className="text-xs bg-blue-100 text-blue-700 font-medium px-2 py-0.5 rounded-full">{comp.unit}</span>}
+                      {comp.wholesale > 0 && <span className="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">W ₹{comp.wholesale}</span>}
+                      <span className="text-xs bg-gray-50 text-gray-500 px-2 py-0.5 rounded-full">Stock: {comp.currentStock}</span>
+                    </div>
                   )}
                 </div>
                 <div className="w-28 shrink-0">
                   <input type="number" min="0" value={comp.quantity} onChange={e => updateComp(i, 'quantity', e.target.value)} placeholder="Qty"
                     className={`w-full border rounded-lg px-2 py-1.5 text-sm text-right font-semibold focus:outline-none focus:ring-2 ${overStock ? 'border-red-300 focus:ring-red-400' : 'border-gray-300 focus:ring-blue-500'}`} />
+                  {overStock && <p className="text-xs text-red-500 font-medium text-right mt-0.5">⚠ Only {comp.currentStock}</p>}
                 </div>
                 <button onClick={() => removeComponent(i)} className="text-gray-300 hover:text-red-500 shrink-0">✕</button>
               </div>
