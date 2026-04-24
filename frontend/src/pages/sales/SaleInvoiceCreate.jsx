@@ -40,9 +40,11 @@ export default function SaleInvoiceCreate() {
   const [isDirty, setIsDirty] = useState(false);
   const [productSearch, setProductSearch] = useState({});
   const [showDropdown, setShowDropdown] = useState({});
+  const [dropdownPos, setDropdownPos] = useState({});
   const [skuQuickAdd, setSkuQuickAdd] = useState('');
   const [bulkDiscount, setBulkDiscount] = useState('');
   const dropdownRefs = useRef({});
+  const searchInputRefs = useRef({});
 
   useEffect(() => {
     if (isEdit) {
@@ -319,13 +321,27 @@ export default function SaleInvoiceCreate() {
                   return (
                     <tr key={idx} className="border-b hover:bg-gray-50">
                       <td className="px-3 py-2 text-center text-xs text-gray-400 font-medium">{idx + 1}</td>
-                      <td className="px-3 py-2 relative">
-                        <input value={search} onChange={e => { setProductSearch(p => ({ ...p, [idx]: e.target.value })); setShowDropdown(p => ({ ...p, [idx]: true })); }} onFocus={() => setShowDropdown(p => ({ ...p, [idx]: true }))}
+                      <td className="px-3 py-2">
+                        <input
+                          ref={el => searchInputRefs.current[idx] = el}
+                          value={search}
+                          onChange={e => {
+                            setProductSearch(p => ({ ...p, [idx]: e.target.value }));
+                            setShowDropdown(p => ({ ...p, [idx]: true }));
+                            const rect = searchInputRefs.current[idx]?.getBoundingClientRect();
+                            if (rect) setDropdownPos(p => ({ ...p, [idx]: { top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: Math.max(rect.width, 320) } }));
+                          }}
+                          onFocus={e => {
+                            const rect = e.target.getBoundingClientRect();
+                            setDropdownPos(p => ({ ...p, [idx]: { top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: Math.max(rect.width, 320) } }));
+                            setShowDropdown(p => ({ ...p, [idx]: true }));
+                          }}
+                          onBlur={() => setTimeout(() => setShowDropdown(p => ({ ...p, [idx]: false })), 200)}
                           placeholder="Search product…" className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                        {showDropdown[idx] && filteredProducts(search).length > 0 && (
-                          <div ref={el => dropdownRefs.current[idx] = el} className="absolute z-30 top-full left-0 w-80 bg-white border border-gray-200 rounded-lg shadow-xl mt-1">
+                        {showDropdown[idx] && filteredProducts(search).length > 0 && dropdownPos[idx] && (
+                          <div ref={el => dropdownRefs.current[idx] = el} style={{ position: 'fixed', top: dropdownPos[idx].top + 4, left: dropdownPos[idx].left, width: dropdownPos[idx].width, zIndex: 9999 }} className="bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto">
                             {filteredProducts(search).map(p => (
-                              <div key={p.id} className="px-3 py-2.5 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0" onMouseDown={() => handleProductSelect(idx, p)}>
+                              <div key={p.id} className="px-3 py-2.5 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0" onMouseDown={e => { e.preventDefault(); handleProductSelect(idx, p); }}>
                                 <div className="flex items-center justify-between gap-2">
                                   <p className="font-medium text-gray-800 text-sm truncate">{p.name}</p>
                                   <div className="flex items-center gap-1 shrink-0">
