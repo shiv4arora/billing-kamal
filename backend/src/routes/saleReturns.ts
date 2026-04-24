@@ -110,6 +110,64 @@ router.post('/', async (req, res, next) => {
   }
 });
 
+/* PUT /sale-returns/:id — reverse old, apply new */
+router.put('/:id', async (req, res, next) => {
+  try {
+    const existing = await prisma.saleReturn.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: 'Not found' });
+
+    const { date, originalInvoiceId, originalInvoiceNo, customerId, customerName, items, notes } = req.body;
+    if (!items?.length) return res.status(400).json({ error: 'Add at least one item' });
+
+    const result = await prisma.$transaction(async (tx) => {
+      const today = date || new Date().toISOString().slice(0, 10);
+      const oldItems = parseItems(existing.items);
+
+      // Reverse old stock movements
+      for (const item of oldItems) {
+        const qty = Number(item.quantity);
+        await tx.product.update({ where: { id: item.productId }, data: { currentStock: { decrement: qty } } });
+      }
+      await tx.stockLedger.deleteMany({ where: { referenceNo: existing.returnNumber, movementType: 'sale_return' } });
+
+      // Reverse old ledger + balance
+      await tx.ledgerEntry.deleteMany({ where: { referenceNo: existing.returnNumber, type: 'sale_return' } });
+      if (existing.customerId) {
+        await tx.customer.update({ where: { id: existing.customerId }, data: { balance: { increment: existing.grandTotal } } });
+      }
+
+      // Apply new items
+      let subtotal = 0, totalGST = 0;
+      const resolvedItems: any[] = [];
+      for (const item of items) {
+        const qty = Number(item.quantity) || 0;
+        const unitPrice = Number(item.unitPrice) || 0;
+        const gstRate = Number(item.gstRate) || 0;
+        const lineSubtotal = qty * unitPrice;
+        const lineGST = lineSubtotal * gstRate / 100;
+        subtotal += lineSubtotal;
+        totalGST += lineGST;
+        await tx.product.update({ where: { id: item.productId }, data: { currentStock: { increment: qty } } });
+        await tx.stockLedger.create({ data: { productId: item.productId, date: today, movementType: 'sale_return', quantity: qty, referenceId: existing.id, referenceNo: existing.returnNumber } });
+        resolvedItems.push({ ...item, quantity: qty, unitPrice, gstRate, lineTotal: lineSubtotal + lineGST });
+      }
+      const grandTotal = subtotal + totalGST;
+
+      if (customerId) {
+        await postSaleReturn(tx, { customerId, customerName: customerName || '', date: today, amount: grandTotal, referenceId: existing.id, referenceNo: existing.returnNumber });
+        await tx.customer.update({ where: { id: customerId }, data: { balance: { decrement: grandTotal } } });
+      }
+
+      return tx.saleReturn.update({
+        where: { id: existing.id },
+        data: { date: today, originalInvoiceId: originalInvoiceId || null, originalInvoiceNo: originalInvoiceNo || '', customerId: customerId || null, customerName: customerName || '', items: JSON.stringify(resolvedItems), subtotal, totalGST, grandTotal, notes: notes || '' },
+      });
+    });
+
+    res.json({ ...result, items: parseItems(result.items) });
+  } catch (err) { next(err); }
+});
+
 /* DELETE /sale-returns/:id — reverse everything */
 router.delete('/:id', async (req, res, next) => {
   try {

@@ -140,6 +140,7 @@ export default function CustomerLedger() {
               <Button variant="outline">🖨 Export PDF</Button>
             </Link>
             <Button variant="success" onClick={() => setPayOpen(true)}>+ Record Payment</Button>
+            <Button variant="outline" onClick={() => setRetOpen(true)}>↩ Sale Return</Button>
             <Button variant="secondary" onClick={() => setAdjOpen(true)}>⚙ Adjust</Button>
           </div>
         </div>

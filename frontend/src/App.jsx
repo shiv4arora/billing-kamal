@@ -90,12 +90,14 @@ function LayoutRoutes() {
           <Route path="/sales/:id/edit" element={<SaleInvoiceCreate />} />
           <Route path="/sales/returns" element={<SaleReturnList />} />
           <Route path="/sales/returns/new" element={<SaleReturnCreate />} />
+          <Route path="/sales/returns/:id/edit" element={<SaleReturnCreate />} />
           <Route path="/purchases" element={<PurchaseInvoiceList />} />
           <Route path="/purchases/new" element={<PurchaseInvoiceCreate />} />
           <Route path="/purchases/:id" element={<PurchaseInvoiceView />} />
           <Route path="/purchases/:id/edit" element={<PurchaseInvoiceCreate />} />
           <Route path="/purchases/returns" element={<PurchaseReturnList />} />
           <Route path="/purchases/returns/new" element={<PurchaseReturnCreate />} />
+          <Route path="/purchases/returns/:id/edit" element={<PurchaseReturnCreate />} />
           <Route path="/quotations" element={<QuotationList />} />
           <Route path="/quotations/new" element={<QuotationCreate />} />
           <Route path="/quotations/:id" element={<QuotationView />} />

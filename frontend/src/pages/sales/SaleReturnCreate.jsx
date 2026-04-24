@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { useProducts } from '../../context/ProductContext';
 import { useCustomers } from '../../context/CustomerContext';
 import { useGlobalToast } from '../../context/ToastContext';
@@ -12,6 +12,7 @@ const BLANK_ITEM = () => ({ productId: '', productName: '', sku: '', unit: 'Pcs'
 function ProductSearch({ value, onSelect, products, placeholder = 'Search product…' }) {
   const [q, setQ] = useState(value || '');
   const [open, setOpen] = useState(false);
+  useEffect(() => { setQ(value || ''); }, [value]);
   const filtered = products
     .filter(p => p.name?.toLowerCase().includes(q.toLowerCase()) || p.sku?.toLowerCase().includes(q.toLowerCase()))
     .slice(0, 8);
@@ -34,6 +35,8 @@ function ProductSearch({ value, onSelect, products, placeholder = 'Search produc
 }
 
 export default function SaleReturnCreate() {
+  const { id } = useParams();
+  const isEdit = !!id;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const toast = useGlobalToast();
@@ -48,6 +51,20 @@ export default function SaleReturnCreate() {
   const [items, setItems] = useState([BLANK_ITEM()]);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (isEdit) {
+      api(`/sale-returns/${id}`).then(r => {
+        setDate(r.date);
+        setOriginalInvoiceNo(r.originalInvoiceNo || '');
+        setOriginalInvoiceId(r.originalInvoiceId || '');
+        setCustomerId(r.customerId || '');
+        setCustomerName(r.customerName || '');
+        setNotes(r.notes || '');
+        setItems(r.items?.length ? r.items : [BLANK_ITEM()]);
+      }).catch(() => toast.error('Could not load return'));
+    }
+  }, [id]);
 
   const updateItem = (i, field, value) => setItems(prev => prev.map((it, idx) => idx === i ? { ...it, [field]: value } : it));
   const selectProduct = (i, prod) => setItems(prev => prev.map((it, idx) => idx === i ? {
@@ -75,14 +92,11 @@ export default function SaleReturnCreate() {
     if (!validItems.length) { toast.error('Add at least one item with qty and price'); return; }
     setSaving(true);
     try {
-      const result = await api('/sale-returns', {
-        method: 'POST',
-        body: {
-          date, originalInvoiceId, originalInvoiceNo, customerId: customerId || null, customerName,
-          items: validItems, notes,
-        },
-      });
-      toast.success(`Credit Note ${result.returnNumber} created`);
+      const body = { date, originalInvoiceId, originalInvoiceNo, customerId: customerId || null, customerName, items: validItems, notes };
+      const result = isEdit
+        ? await api(`/sale-returns/${id}`, { method: 'PUT', body })
+        : await api('/sale-returns', { method: 'POST', body });
+      toast.success(isEdit ? 'Credit Note updated' : `Credit Note ${result.returnNumber} created`);
       navigate('/sales/returns');
     } catch (e) {
       toast.error(e.message || 'Failed to save');
@@ -94,7 +108,7 @@ export default function SaleReturnCreate() {
       <div className="flex items-center gap-3">
         <button onClick={() => navigate('/sales/returns')} className="text-gray-400 hover:text-gray-600">←</button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Sale Return (Credit Note)</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Sale Return' : 'New Sale Return (Credit Note)'}</h1>
           <p className="text-sm text-gray-500 mt-0.5">Stock will be restored for returned items</p>
         </div>
       </div>
@@ -189,12 +203,11 @@ export default function SaleReturnCreate() {
         </div>
       </div>
 
-      {/* Footer */}
       <div className="flex justify-end gap-3 pb-10">
         <button onClick={() => navigate('/sales/returns')} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
         <button onClick={handleSave} disabled={saving}
           className="px-6 py-2 bg-orange-600 text-white text-sm font-semibold rounded-lg hover:bg-orange-700 disabled:opacity-50">
-          {saving ? '⏳ Saving…' : '↩ Save Credit Note'}
+          {saving ? '⏳ Saving…' : isEdit ? '💾 Update Credit Note' : '↩ Save Credit Note'}
         </button>
       </div>
     </div>

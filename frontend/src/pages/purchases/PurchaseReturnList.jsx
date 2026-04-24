@@ -1,18 +1,34 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../../hooks/useApi';
+import { useGlobalToast } from '../../context/ToastContext';
 import { formatDate, formatCurrency } from '../../utils/helpers';
 import { Button } from '../../components/ui';
 
 export default function PurchaseReturnList() {
   const navigate = useNavigate();
+  const toast = useGlobalToast();
   const [returns, setReturns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
 
-  useEffect(() => {
+  const load = () => {
     api('/purchase-returns').then(setReturns).catch(() => setReturns([])).finally(() => setLoading(false));
-  }, []);
+  };
+  useEffect(load, []);
+
+  const handleDelete = async (r) => {
+    if (!window.confirm(`Delete Debit Note ${r.returnNumber}? This will reverse all stock and ledger entries.`)) return;
+    setDeletingId(r.id);
+    try {
+      await api(`/purchase-returns/${r.id}`, { method: 'DELETE' });
+      toast.success(`${r.returnNumber} deleted`);
+      setReturns(prev => prev.filter(x => x.id !== r.id));
+    } catch (e) {
+      toast.error(e.message || 'Failed to delete');
+    } finally { setDeletingId(null); }
+  };
 
   const filtered = returns.filter(r =>
     r.returnNumber?.toLowerCase().includes(search.toLowerCase()) ||
@@ -47,7 +63,7 @@ export default function PurchaseReturnList() {
                     <th className="px-4 py-3 text-left">Supplier</th>
                     <th className="px-4 py-3 text-left">Linked Invoice</th>
                     <th className="px-4 py-3 text-right">Amount</th>
-                    <th className="px-4 py-3 text-center w-24">Actions</th>
+                    <th className="px-4 py-3 text-center w-32">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -59,10 +75,16 @@ export default function PurchaseReturnList() {
                       <td className="px-4 py-3 text-gray-500 font-mono text-xs">{r.originalInvoiceNo || '—'}</td>
                       <td className="px-4 py-3 text-right font-semibold text-red-700">{formatCurrency(r.grandTotal)}</td>
                       <td className="px-4 py-3 text-center">
-                        <button onClick={() => navigate(`/purchases/returns/${r.id}/print`)}
-                          className="px-2.5 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg">
-                          🖨 Print
-                        </button>
+                        <div className="flex justify-center gap-1.5">
+                          <button onClick={() => navigate(`/purchases/returns/${r.id}/print`)}
+                            className="px-2 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg">🖨</button>
+                          <button onClick={() => navigate(`/purchases/returns/${r.id}/edit`)}
+                            className="px-2 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg">✏️</button>
+                          <button onClick={() => handleDelete(r)} disabled={deletingId === r.id}
+                            className="px-2 py-1.5 text-xs font-medium text-red-500 bg-red-50 hover:bg-red-100 rounded-lg disabled:opacity-40">
+                            {deletingId === r.id ? '…' : '🗑'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

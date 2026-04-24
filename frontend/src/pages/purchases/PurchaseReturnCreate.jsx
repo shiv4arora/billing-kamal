@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { useProducts } from '../../context/ProductContext';
 import { useSuppliers } from '../../context/SupplierContext';
 import { useGlobalToast } from '../../context/ToastContext';
@@ -12,6 +12,7 @@ const BLANK_ITEM = () => ({ productId: '', productName: '', sku: '', unit: 'Pcs'
 function ProductSearch({ value, onSelect, products, placeholder = 'Search product…' }) {
   const [q, setQ] = useState(value || '');
   const [open, setOpen] = useState(false);
+  useEffect(() => { setQ(value || ''); }, [value]);
   const filtered = products
     .filter(p => p.name?.toLowerCase().includes(q.toLowerCase()) || p.sku?.toLowerCase().includes(q.toLowerCase()))
     .slice(0, 8);
@@ -34,6 +35,8 @@ function ProductSearch({ value, onSelect, products, placeholder = 'Search produc
 }
 
 export default function PurchaseReturnCreate() {
+  const { id } = useParams();
+  const isEdit = !!id;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const toast = useGlobalToast();
@@ -48,6 +51,20 @@ export default function PurchaseReturnCreate() {
   const [items, setItems] = useState([BLANK_ITEM()]);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (isEdit) {
+      api(`/purchase-returns/${id}`).then(r => {
+        setDate(r.date);
+        setOriginalInvoiceNo(r.originalInvoiceNo || '');
+        setOriginalInvoiceId(r.originalInvoiceId || '');
+        setSupplierId(r.supplierId || '');
+        setSupplierName(r.supplierName || '');
+        setNotes(r.notes || '');
+        setItems(r.items?.length ? r.items : [BLANK_ITEM()]);
+      }).catch(() => toast.error('Could not load return'));
+    }
+  }, [id]);
 
   const updateItem = (i, field, value) => setItems(prev => prev.map((it, idx) => idx === i ? { ...it, [field]: value } : it));
   const selectProduct = (i, prod) => setItems(prev => prev.map((it, idx) => idx === i ? {
@@ -71,11 +88,11 @@ export default function PurchaseReturnCreate() {
     if (!validItems.length) { toast.error('Add at least one item with qty and price'); return; }
     setSaving(true);
     try {
-      const result = await api('/purchase-returns', {
-        method: 'POST',
-        body: { date, originalInvoiceId, originalInvoiceNo, supplierId: supplierId || null, supplierName, items: validItems, notes },
-      });
-      toast.success(`Debit Note ${result.returnNumber} created`);
+      const body = { date, originalInvoiceId, originalInvoiceNo, supplierId: supplierId || null, supplierName, items: validItems, notes };
+      const result = isEdit
+        ? await api(`/purchase-returns/${id}`, { method: 'PUT', body })
+        : await api('/purchase-returns', { method: 'POST', body });
+      toast.success(isEdit ? 'Debit Note updated' : `Debit Note ${result.returnNumber} created`);
       navigate('/purchases/returns');
     } catch (e) {
       toast.error(e.message || 'Failed to save');
@@ -87,7 +104,7 @@ export default function PurchaseReturnCreate() {
       <div className="flex items-center gap-3">
         <button onClick={() => navigate('/purchases/returns')} className="text-gray-400 hover:text-gray-600">←</button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Purchase Return (Debit Note)</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Purchase Return' : 'New Purchase Return (Debit Note)'}</h1>
           <p className="text-sm text-gray-500 mt-0.5">Stock will be reduced for returned items</p>
         </div>
       </div>
@@ -181,7 +198,7 @@ export default function PurchaseReturnCreate() {
         <button onClick={() => navigate('/purchases/returns')} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
         <button onClick={handleSave} disabled={saving}
           className="px-6 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 disabled:opacity-50">
-          {saving ? '⏳ Saving…' : '↩ Save Debit Note'}
+          {saving ? '⏳ Saving…' : isEdit ? '💾 Update Debit Note' : '↩ Save Debit Note'}
         </button>
       </div>
     </div>
