@@ -34,7 +34,7 @@ export default function QuotationPrint() {
           </div>
           <div className="text-right">
             <div className="inline-block bg-indigo-100 border border-indigo-300 rounded-lg px-4 py-2">
-              <p className="text-xs text-indigo-600 font-bold uppercase tracking-wide">Quotation</p>
+              <p className="text-xs text-indigo-600 font-bold uppercase tracking-wide">Estimate</p>
               <p className="text-xl font-bold text-indigo-800 font-mono">{q.quotationNumber}</p>
             </div>
             <div className="mt-2 text-sm text-gray-500 space-y-0.5">

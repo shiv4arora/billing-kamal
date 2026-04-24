@@ -4,8 +4,6 @@ import { useGlobalToast } from '../../context/ToastContext';
 import { api } from '../../hooks/useApi';
 import { formatDate, formatCurrency } from '../../utils/helpers';
 
-const STATUS_BG = { draft: 'bg-gray-100 text-gray-700', sent: 'bg-blue-100 text-blue-700', accepted: 'bg-green-100 text-green-700', rejected: 'bg-red-100 text-red-600' };
-
 export default function QuotationView() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -17,16 +15,8 @@ export default function QuotationView() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    api(`/quotations/${id}`).then(setQ).catch(() => toast.error('Could not load quotation')).finally(() => setLoading(false));
+    api(`/quotations/${id}`).then(setQ).catch(() => toast.error('Could not load estimate')).finally(() => setLoading(false));
   }, [id]);
-
-  const handleStatusChange = async (status) => {
-    try {
-      const updated = await api(`/quotations/${id}`, { method: 'PUT', body: { ...q, status } });
-      setQ({ ...updated, items: updated.items || q.items });
-      toast.success(`Status updated to ${status}`);
-    } catch (e) { toast.error(e.message || 'Failed'); }
-  };
 
   const handleConvert = async () => {
     setConverting(true);
@@ -44,7 +34,7 @@ export default function QuotationView() {
     setDeleting(true);
     try {
       await api(`/quotations/${id}`, { method: 'DELETE' });
-      toast.success('Quotation deleted');
+      toast.success('Estimate deleted');
       navigate('/quotations');
     } catch (e) {
       toast.error(e.message || 'Failed');
@@ -54,7 +44,7 @@ export default function QuotationView() {
   };
 
   if (loading) return <div className="text-center py-16 text-gray-400">Loading…</div>;
-  if (!q) return <div className="text-center py-16 text-gray-400">Quotation not found</div>;
+  if (!q) return <div className="text-center py-16 text-gray-400">Estimate not found</div>;
 
   const items = q.items || [];
 
@@ -65,11 +55,8 @@ export default function QuotationView() {
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/quotations')} className="text-gray-400 hover:text-gray-600">←</button>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-gray-900 font-mono">{q.quotationNumber}</h1>
-              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_BG[q.status] || STATUS_BG.draft}`}>{q.status}</span>
-            </div>
-            <p className="text-sm text-gray-500 mt-0.5">{formatDate(q.date)}{q.validUntil ? ` · Valid until ${formatDate(q.validUntil)}` : ''}</p>
+            <h1 className="text-2xl font-bold text-gray-900 font-mono">{q.quotationNumber}</h1>
+            <p className="text-sm text-gray-500 mt-0.5">{formatDate(q.date)}{q.customerName ? ` · ${q.customerName}` : ''}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -89,31 +76,6 @@ export default function QuotationView() {
             </Link>
           )}
         </div>
-      </div>
-
-      {/* Status actions */}
-      {!q.convertedToInvoiceId && q.status !== 'accepted' && q.status !== 'rejected' && (
-        <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 flex-wrap">
-          <span className="text-sm text-gray-500">Update status:</span>
-          {q.status !== 'sent' && <button onClick={() => handleStatusChange('sent')} className="px-3 py-1 text-sm text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg">Mark as Sent</button>}
-          <button onClick={() => handleStatusChange('accepted')} className="px-3 py-1 text-sm text-green-700 bg-green-100 hover:bg-green-200 rounded-lg">✓ Accepted</button>
-          <button onClick={() => handleStatusChange('rejected')} className="px-3 py-1 text-sm text-red-600 bg-red-100 hover:bg-red-200 rounded-lg">✗ Rejected</button>
-        </div>
-      )}
-
-      {/* Details */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-4 text-sm">
-        <div>
-          <p className="text-xs text-gray-400 font-medium uppercase mb-1">Customer</p>
-          <p className="font-semibold text-gray-800">{q.customerName || '—'}</p>
-          {q.customerPlace && <p className="text-gray-500">{q.customerPlace}</p>}
-        </div>
-        <div>
-          <p className="text-xs text-gray-400 font-medium uppercase mb-1">Details</p>
-          <p className="text-gray-600">Date: {formatDate(q.date)}</p>
-          {q.validUntil && <p className="text-gray-600">Valid: {formatDate(q.validUntil)}</p>}
-        </div>
-        {q.notes && <div className="col-span-2"><p className="text-xs text-gray-400 font-medium uppercase mb-1">Notes</p><p className="text-gray-600 italic">{q.notes}</p></div>}
       </div>
 
       {/* Items */}
@@ -166,7 +128,7 @@ export default function QuotationView() {
         <div className="flex justify-start pb-10">
           {confirmDelete ? (
             <span className="flex items-center gap-2">
-              <span className="text-sm text-red-600 font-medium">Delete quotation?</span>
+              <span className="text-sm text-red-600 font-medium">Delete estimate?</span>
               <button onClick={handleDelete} disabled={deleting} className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg font-semibold disabled:opacity-50">{deleting ? '…' : 'Yes, Delete'}</button>
               <button onClick={() => setConfirmDelete(false)} className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg">Cancel</button>
             </span>

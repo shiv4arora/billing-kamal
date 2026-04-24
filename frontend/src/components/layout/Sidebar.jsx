@@ -33,7 +33,7 @@ export default function Sidebar({ isOpen, onClose }) {
       items: [
         ...(can('sales_view')     ? [{ to: '/sales',     label: 'Sale Invoices',     icon: '🧾' }] : []),
         ...(can('purchases_view') ? [{ to: '/purchases', label: 'Purchase Invoices', icon: '📦' }] : []),
-        { to: '/quotations', label: 'Quotations', icon: '📋' },
+        { to: '/quotations', label: 'Estimates', icon: '📋' },
         { to: '/production', label: 'Production', icon: '⚙️' },
       ],
     },
