@@ -224,9 +224,10 @@ model ProductionEntry {
   entryNumber       String   @unique
   date              String
   components        String   // JSON: [{productId, productName, sku, quantity}]
-  outputProductId   String
+  outputs           String   @default("[]") // JSON: [{productId, productName, sku, quantity, pricing:{wholesale,shop}}]
+  outputProductId   String   @default("")   // first output (display / compat)
   outputProductName String   @default("")
-  outputQuantity    Float
+  outputQuantity    Float    @default(0)
   notes             String   @default("")
   createdAt         DateTime @default(now())
 }

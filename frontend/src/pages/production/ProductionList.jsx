@@ -45,7 +45,7 @@ export default function ProductionList() {
                 <th className="px-4 py-3 text-left">Entry #</th>
                 <th className="px-4 py-3 text-left">Date</th>
                 <th className="px-4 py-3 text-left">Output Product</th>
-                <th className="px-4 py-3 text-right">Qty</th>
+                <th className="px-4 py-3 text-right"></th>
                 <th className="px-4 py-3 text-left">Components</th>
                 <th className="px-4 py-3 text-center w-28">Actions</th>
               </tr>
@@ -56,24 +56,28 @@ export default function ProductionList() {
                   <td className="px-4 py-3 font-mono font-semibold text-blue-600">{e.entryNumber}</td>
                   <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatDate(e.date)}</td>
                   <td className="px-4 py-3">
-                    <p className="font-medium text-gray-800">{e.outputProductName}</p>
-                    {(() => {
-                      const p = products.find(p => p.id === e.outputProductId);
-                      const pricing = p ? (
-                        (typeof p.pricing === 'object' && p.pricing !== null)
-                          ? p.pricing
-                          : (() => { try { return JSON.parse(p.pricing || '{}'); } catch { return {}; } })()
-                      ) : null;
-                      return p ? (
-                        <div className="flex items-center gap-2 mt-0.5">
-                          {p.sku && <span className="text-xs font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{p.sku}</span>}
-                          {pricing?.wholesale > 0 && <span className="text-xs text-blue-500">W {formatCurrency(pricing.wholesale)}</span>}
-                          {pricing?.shop > 0 && <span className="text-xs text-purple-500">S {formatCurrency(pricing.shop)}</span>}
-                        </div>
-                      ) : null;
-                    })()}
+                    {(Array.isArray(e.outputs) && e.outputs.length > 0 ? e.outputs : [{ productId: e.outputProductId, productName: e.outputProductName, quantity: e.outputQuantity, pricing: {} }])
+                      .map((out, oi) => {
+                        const p = products.find(p => p.id === out.productId);
+                        const pricing = p
+                          ? ((typeof p.pricing === 'object' && p.pricing !== null) ? p.pricing : (() => { try { return JSON.parse(p.pricing || '{}'); } catch { return {}; } })())
+                          : (out.pricing || {});
+                        return (
+                          <div key={oi} className={oi > 0 ? 'mt-1.5 pt-1.5 border-t border-gray-100' : ''}>
+                            <p className="font-medium text-gray-800 text-sm">{out.productName}</p>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              {p?.sku && <span className="text-xs font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{p.sku}</span>}
+                              <span className="text-xs text-gray-500">×{out.quantity}</span>
+                              {pricing?.wholesale > 0 && <span className="text-xs text-blue-500">W {formatCurrency(pricing.wholesale)}</span>}
+                              {pricing?.shop > 0 && <span className="text-xs text-purple-500">S {formatCurrency(pricing.shop)}</span>}
+                            </div>
+                          </div>
+                        );
+                      })}
                   </td>
-                  <td className="px-4 py-3 text-right font-semibold">{e.outputQuantity}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-gray-400 text-xs align-top pt-4">
+                    {Array.isArray(e.outputs) && e.outputs.length > 1 ? `${e.outputs.length} products` : ''}
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
                       {(Array.isArray(e.components) ? e.components : []).map((c, i) => (
