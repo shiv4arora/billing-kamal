@@ -177,10 +177,13 @@ export default function ProductionCreate() {
                   <ProductSearch value={comp.productName} products={products} exclude={usedCompIds.filter((_, idx) => idx !== i)} onSelect={p => selectComponent(i, p)} placeholder="Search raw material…" />
                   {comp.productId && (
                     <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                      {comp.sku && <span className="text-xs font-mono bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{comp.sku}</span>}
+                      {(comp.sku || comp.vendorCode) && (
+                        <span className="text-xs font-mono bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                          {[comp.sku, comp.vendorCode].filter(Boolean).join(' · ')}
+                        </span>
+                      )}
                       {comp.unit && <span className="text-xs bg-blue-100 text-blue-700 font-medium px-2 py-0.5 rounded-full">{comp.unit}</span>}
                       {comp.wholesale > 0 && <span className="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">W ₹{comp.wholesale}</span>}
-                      {comp.vendorCode && <span className="text-xs bg-purple-100 text-purple-700 font-medium px-2 py-0.5 rounded-full">{comp.vendorCode}</span>}
                       <span className="text-xs bg-gray-50 text-gray-500 px-2 py-0.5 rounded-full">Stock: {comp.currentStock}</span>
                     </div>
                   )}
