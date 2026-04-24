@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useProducts } from '../../context/ProductContext';
+import { useSuppliers } from '../../context/SupplierContext';
 import { useGlobalToast } from '../../context/ToastContext';
 import { api } from '../../hooks/useApi';
 
@@ -41,6 +42,7 @@ export default function ProductionEdit() {
   const navigate = useNavigate();
   const toast = useGlobalToast();
   const { active: products, refresh: refreshProducts } = useProducts();
+  const { suppliers } = useSuppliers();
 
   const [loading, setLoading] = useState(true);
   const [entry, setEntry] = useState(null);
@@ -60,7 +62,7 @@ export default function ProductionEdit() {
         setDate(e.date);
         setNotes(e.notes || '');
         setComponents((Array.isArray(e.components) ? e.components : []).map(c => ({
-          productId: c.productId, productName: c.productName, sku: c.sku || '', currentStock: 0, unit: '', wholesale: 0, quantity: c.quantity,
+          productId: c.productId, productName: c.productName, sku: c.sku || '', currentStock: 0, unit: '', wholesale: 0, vendorCode: '', quantity: c.quantity,
         })));
         const outs = Array.isArray(e.outputs) && e.outputs.length > 0 ? e.outputs : [];
         setOutputs(outs.map(o => ({
@@ -82,7 +84,7 @@ export default function ProductionEdit() {
       const pricing = (typeof prod.pricing === 'object' && prod.pricing !== null)
         ? prod.pricing
         : (() => { try { return JSON.parse(prod.pricing || '{}'); } catch { return {}; } })();
-      return { ...c, currentStock: prod.currentStock ?? 0, unit: prod.unit || '', wholesale: pricing.wholesale || 0 };
+      return { ...c, currentStock: prod.currentStock ?? 0, unit: prod.unit || '', wholesale: pricing.wholesale || 0, vendorCode: prod.supplier?.code || prod.supplier?.name || '' };
     }));
     setOutputs(prev => prev.map(o => {
       const prod = products.find(p => p.id === o.productId);
@@ -103,9 +105,10 @@ export default function ProductionEdit() {
     setComponents(prev => prev.map((c, idx) => idx === i ? {
       ...c, productId: prod.id, productName: prod.name, sku: prod.sku || '',
       currentStock: prod.currentStock ?? 0, unit: prod.unit || '', wholesale: pricing.wholesale || 0,
+      vendorCode: prod.supplier?.code || prod.supplier?.name || '',
     } : c));
   };
-  const addComponent = () => setComponents(prev => [...prev, { productId: '', productName: '', sku: '', currentStock: 0, unit: '', wholesale: 0, quantity: '' }]);
+  const addComponent = () => setComponents(prev => [...prev, { productId: '', productName: '', sku: '', currentStock: 0, unit: '', wholesale: 0, vendorCode: '', quantity: '' }]);
   const removeComponent = (i) => setComponents(prev => prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i));
 
   /* ── Output helpers ── */
@@ -214,6 +217,7 @@ export default function ProductionEdit() {
                       {comp.sku && <span className="text-xs font-mono bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{comp.sku}</span>}
                       {comp.unit && <span className="text-xs bg-blue-100 text-blue-700 font-medium px-2 py-0.5 rounded-full">{comp.unit}</span>}
                       {comp.wholesale > 0 && <span className="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">W ₹{comp.wholesale}</span>}
+                      {comp.vendorCode && <span className="text-xs bg-purple-100 text-purple-700 font-medium px-2 py-0.5 rounded-full">{comp.vendorCode}</span>}
                       <span className="text-xs bg-gray-50 text-gray-500 px-2 py-0.5 rounded-full">Stock: {comp.currentStock}</span>
                     </div>
                   )}

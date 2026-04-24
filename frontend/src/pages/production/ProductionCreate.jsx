@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProducts } from '../../context/ProductContext';
+import { useSuppliers } from '../../context/SupplierContext';
 import { useGlobalToast } from '../../context/ToastContext';
 import { api } from '../../hooks/useApi';
 import { today } from '../../utils/helpers';
 import { UNITS } from '../../constants';
 
-const BLANK_COMP = () => ({ productId: '', productName: '', sku: '', currentStock: 0, unit: '', wholesale: 0, quantity: '' });
-const BLANK_OUTPUT = () => ({ isNew: false, productId: '', productName: '', sku: '', currentStock: 0, unit: 'Pcs', quantity: '', wholesale: '', shop: '' });
+const BLANK_COMP = () => ({ productId: '', productName: '', sku: '', currentStock: 0, unit: '', wholesale: 0, vendorCode: '', quantity: '' });
+const BLANK_OUTPUT = () => ({ isNew: false, productId: '', productName: '', sku: '', currentStock: 0, unit: 'Pcs', quantity: '', wholesale: '', shop: '', supplierId: '' });
 
 /* ── Shared product search dropdown ── */
 function ProductSearch({ value, onSelect, products, placeholder = 'Search product…', exclude = [] }) {
@@ -48,6 +49,7 @@ export default function ProductionCreate() {
   const navigate = useNavigate();
   const toast = useGlobalToast();
   const { active: products, refresh: refreshProducts } = useProducts();
+  const { suppliers } = useSuppliers();
 
   const [date, setDate] = useState(today());
   const [notes, setNotes] = useState('');
@@ -71,6 +73,7 @@ export default function ProductionCreate() {
     setComponents(prev => prev.map((c, idx) => idx === i ? {
       ...c, productId: prod.id, productName: prod.name, sku: prod.sku || '',
       currentStock: prod.currentStock ?? 0, unit: prod.unit || '', wholesale: pricing.wholesale || 0,
+      vendorCode: prod.supplier?.code || prod.supplier?.name || '',
     } : c));
   };
 
@@ -117,6 +120,7 @@ export default function ProductionCreate() {
             unit: o.unit,
             quantity: Number(o.quantity),
             pricing: { wholesale: Number(o.wholesale) || 0, shop: Number(o.shop) || 0 },
+            supplierId: o.supplierId || null,
           })),
         },
       });
@@ -176,6 +180,7 @@ export default function ProductionCreate() {
                       {comp.sku && <span className="text-xs font-mono bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{comp.sku}</span>}
                       {comp.unit && <span className="text-xs bg-blue-100 text-blue-700 font-medium px-2 py-0.5 rounded-full">{comp.unit}</span>}
                       {comp.wholesale > 0 && <span className="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">W ₹{comp.wholesale}</span>}
+                      {comp.vendorCode && <span className="text-xs bg-purple-100 text-purple-700 font-medium px-2 py-0.5 rounded-full">{comp.vendorCode}</span>}
                       <span className="text-xs bg-gray-50 text-gray-500 px-2 py-0.5 rounded-full">Stock: {comp.currentStock}</span>
                     </div>
                   )}
@@ -207,12 +212,19 @@ export default function ProductionCreate() {
               <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">
                   {out.isNew ? (
-                    <div className="grid gap-2" style={{ gridTemplateColumns: '2fr 0.8fr' }}>
-                      <input value={out.productName} onChange={e => updateOut(i, 'productName', e.target.value)} placeholder="Product name *"
-                        className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                      <select value={out.unit} onChange={e => updateOut(i, 'unit', e.target.value)}
-                        className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        {UNITS.map(u => <option key={u}>{u}</option>)}
+                    <div className="space-y-1.5">
+                      <div className="grid gap-2" style={{ gridTemplateColumns: '2fr 0.8fr' }}>
+                        <input value={out.productName} onChange={e => updateOut(i, 'productName', e.target.value)} placeholder="Product name *"
+                          className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <select value={out.unit} onChange={e => updateOut(i, 'unit', e.target.value)}
+                          className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          {UNITS.map(u => <option key={u}>{u}</option>)}
+                        </select>
+                      </div>
+                      <select value={out.supplierId} onChange={e => updateOut(i, 'supplierId', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">— No vendor —</option>
+                        {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}{s.code ? ` (${s.code})` : ''}</option>)}
                       </select>
                     </div>
                   ) : (

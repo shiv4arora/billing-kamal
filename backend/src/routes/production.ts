@@ -94,6 +94,7 @@ router.post('/', async (req, res, next) => {
               sku, name: out.productName.trim(), unit: out.unit || 'Pcs',
               gstRate: 0, pricing: JSON.stringify(pricing), costPrice: 0,
               currentStock: qty, isActive: true,
+              ...(out.supplierId ? { supplierId: out.supplierId } : {}),
             },
           });
           productId = newProd.id;
