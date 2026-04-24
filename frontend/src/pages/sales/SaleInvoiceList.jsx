@@ -41,7 +41,10 @@ export default function SaleInvoiceList() {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold text-gray-900">Sale Invoices</h1>
-        <Link to="/sales/new"><Button>+ New Invoice</Button></Link>
+        <div className="flex gap-2">
+          <Link to="/sales/returns"><Button variant="outline">↩ Sale Returns</Button></Link>
+          <Link to="/sales/new"><Button>+ New Invoice</Button></Link>
+        </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-blue-50 rounded-xl p-4"><p className="text-xs text-blue-500 font-medium">Total ({filtered.length})</p><p className="text-xl font-bold text-blue-900">{formatCurrency(totalRevenue)}</p></div>

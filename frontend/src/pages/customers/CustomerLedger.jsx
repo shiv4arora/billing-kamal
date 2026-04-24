@@ -139,7 +139,6 @@ export default function CustomerLedger() {
             <Link to={`/customers/${id}/ledger/print`} target="_blank" rel="noopener noreferrer">
               <Button variant="outline">🖨 Export PDF</Button>
             </Link>
-            <Link to="/sales/returns"><Button variant="outline">↩ Sale Returns</Button></Link>
             <Button variant="success" onClick={() => setPayOpen(true)}>+ Record Payment</Button>
             <Button variant="secondary" onClick={() => setAdjOpen(true)}>⚙ Adjust</Button>
           </div>

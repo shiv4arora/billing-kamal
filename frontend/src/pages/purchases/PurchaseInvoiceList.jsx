@@ -38,7 +38,10 @@ export default function PurchaseInvoiceList() {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold text-gray-900">Purchase Invoices</h1>
-        <Link to="/purchases/new"><Button variant="success">+ New Purchase</Button></Link>
+        <div className="flex gap-2">
+          <Link to="/purchases/returns"><Button variant="outline">↩ Purchase Returns</Button></Link>
+          <Link to="/purchases/new"><Button variant="success">+ New Purchase</Button></Link>
+        </div>
       </div>
       <Card padding={false}>
         <div className="p-4 border-b"><SearchInput value={search} onChange={setSearch} placeholder="Search purchases…" /></div>
