@@ -147,8 +147,8 @@ export default function SupplierLedger() {
             <Link to={`/suppliers/${id}/ledger/print`} target="_blank" rel="noopener noreferrer">
               <Button variant="outline">🖨 Export PDF</Button>
             </Link>
+            <Link to="/purchases/returns"><Button variant="outline">↩ Purchase Returns</Button></Link>
             <Button variant="success" onClick={() => setPayOpen(true)}>+ Record Payment</Button>
-            <Button variant="outline" onClick={() => setRetOpen(true)}>↩ Purchase Return</Button>
             <Button variant="secondary" onClick={() => setAdjOpen(true)}>⚙ Adjust</Button>
           </div>
         </div>
