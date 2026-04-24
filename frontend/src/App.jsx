@@ -40,6 +40,16 @@ import CrmDetail from './pages/crm/CrmDetail';
 import ProductionList from './pages/production/ProductionList';
 import ProductionCreate from './pages/production/ProductionCreate';
 import ProductionEdit from './pages/production/ProductionEdit';
+import SaleReturnList from './pages/sales/SaleReturnList';
+import SaleReturnCreate from './pages/sales/SaleReturnCreate';
+import SaleReturnPrint from './pages/sales/SaleReturnPrint';
+import PurchaseReturnList from './pages/purchases/PurchaseReturnList';
+import PurchaseReturnCreate from './pages/purchases/PurchaseReturnCreate';
+import PurchaseReturnPrint from './pages/purchases/PurchaseReturnPrint';
+import QuotationList from './pages/quotations/QuotationList';
+import QuotationCreate from './pages/quotations/QuotationCreate';
+import QuotationView from './pages/quotations/QuotationView';
+import QuotationPrint from './pages/quotations/QuotationPrint';
 
 /** Redirect to / if already logged in */
 function PublicRoute({ children }) {
@@ -78,10 +88,18 @@ function LayoutRoutes() {
           <Route path="/sales/new" element={<SaleInvoiceCreate />} />
           <Route path="/sales/:id" element={<SaleInvoiceView />} />
           <Route path="/sales/:id/edit" element={<SaleInvoiceCreate />} />
+          <Route path="/sales/returns" element={<SaleReturnList />} />
+          <Route path="/sales/returns/new" element={<SaleReturnCreate />} />
           <Route path="/purchases" element={<PurchaseInvoiceList />} />
           <Route path="/purchases/new" element={<PurchaseInvoiceCreate />} />
           <Route path="/purchases/:id" element={<PurchaseInvoiceView />} />
           <Route path="/purchases/:id/edit" element={<PurchaseInvoiceCreate />} />
+          <Route path="/purchases/returns" element={<PurchaseReturnList />} />
+          <Route path="/purchases/returns/new" element={<PurchaseReturnCreate />} />
+          <Route path="/quotations" element={<QuotationList />} />
+          <Route path="/quotations/new" element={<QuotationCreate />} />
+          <Route path="/quotations/:id" element={<QuotationView />} />
+          <Route path="/quotations/:id/edit" element={<QuotationCreate />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/reminders" element={<Reminders />} />
           <Route path="/crm" element={<CrmList />} />
@@ -114,6 +132,9 @@ export default function App() {
           <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
           {/* Full-page views (no sidebar) — protected */}
           <Route path="/sales/:id/print" element={<ProtectedRoute><SaleInvoicePrint /></ProtectedRoute>} />
+          <Route path="/sales/returns/:id/print" element={<ProtectedRoute><SaleReturnPrint /></ProtectedRoute>} />
+          <Route path="/purchases/returns/:id/print" element={<ProtectedRoute><PurchaseReturnPrint /></ProtectedRoute>} />
+          <Route path="/quotations/:id/print" element={<ProtectedRoute><QuotationPrint /></ProtectedRoute>} />
           <Route path="/products/:id/label" element={<ProtectedRoute><BarcodeLabel /></ProtectedRoute>} />
           <Route path="/labels/bulk" element={<ProtectedRoute><BulkLabelPrint /></ProtectedRoute>} />
           <Route path="/customers/:id/ledger/print" element={<ProtectedRoute><CustomerLedgerPrint /></ProtectedRoute>} />

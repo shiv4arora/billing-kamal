@@ -232,6 +232,61 @@ model ProductionEntry {
   createdAt         DateTime @default(now())
 }
 
+model SaleReturn {
+  id                String   @id @default(cuid())
+  returnNumber      String   @unique
+  date              String
+  originalInvoiceId String?
+  originalInvoiceNo String   @default("")
+  customerId        String?
+  customerName      String   @default("")
+  items             String   // JSON: [{productId, productName, sku, unit, quantity, unitPrice, gstRate, lineTotal}]
+  subtotal          Float    @default(0)
+  totalGST          Float    @default(0)
+  grandTotal        Float    @default(0)
+  notes             String   @default("")
+  createdAt         DateTime @default(now())
+}
+
+model PurchaseReturn {
+  id                String   @id @default(cuid())
+  returnNumber      String   @unique
+  date              String
+  originalInvoiceId String?
+  originalInvoiceNo String   @default("")
+  supplierId        String?
+  supplierName      String   @default("")
+  items             String   // JSON: [{productId, productName, sku, unit, quantity, unitPrice, gstRate, lineTotal}]
+  subtotal          Float    @default(0)
+  totalGST          Float    @default(0)
+  grandTotal        Float    @default(0)
+  notes             String   @default("")
+  createdAt         DateTime @default(now())
+}
+
+model Quotation {
+  id                   String   @id @default(cuid())
+  quotationNumber      String   @unique
+  date                 String
+  validUntil           String   @default("")
+  customerId           String?
+  customerName         String   @default("")
+  customerPlace        String   @default("")
+  customerType         String   @default("retail")
+  customerAddress      String   @default("")
+  customerGstin        String   @default("")
+  items                String   // JSON same shape as SaleInvoice items
+  subtotal             Float    @default(0)
+  totalDiscount        Float    @default(0)
+  totalGST             Float    @default(0)
+  grandTotal           Float    @default(0)
+  notes                String   @default("")
+  status               String   @default("draft")  // draft | sent | accepted | rejected
+  convertedToInvoiceId String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
 model ReminderLog {
   id            String      @id @default(cuid())
   invoiceId     String

@@ -31,8 +31,11 @@ export default function Sidebar({ isOpen, onClose }) {
     {
       section: 'Transactions',
       items: [
-        ...(can('sales_view')     ? [{ to: '/sales',     label: 'Sale Invoices',     icon: '🧾' }] : []),
-        ...(can('purchases_view') ? [{ to: '/purchases', label: 'Purchase Invoices', icon: '📦' }] : []),
+        ...(can('sales_view')     ? [{ to: '/sales',           label: 'Sale Invoices',     icon: '🧾' }] : []),
+        ...(can('sales_view')     ? [{ to: '/sales/returns',    label: 'Sale Returns',      icon: '↩️' }] : []),
+        ...(can('purchases_view') ? [{ to: '/purchases',        label: 'Purchase Invoices', icon: '📦' }] : []),
+        ...(can('purchases_view') ? [{ to: '/purchases/returns',label: 'Purchase Returns',  icon: '↪️' }] : []),
+        { to: '/quotations', label: 'Quotations', icon: '📋' },
         { to: '/production', label: 'Production', icon: '⚙️' },
       ],
     },

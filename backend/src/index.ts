@@ -20,6 +20,9 @@ import adminRouter from './routes/admin';
 import countersRouter from './routes/counters';
 import leadsRouter from './routes/leads';
 import productionRouter from './routes/production';
+import saleReturnsRouter from './routes/saleReturns';
+import purchaseReturnsRouter from './routes/purchaseReturns';
+import quotationsRouter from './routes/quotations';
 import { verifyJWT } from './middleware/auth';
 import { errorHandler } from './middleware/errorHandler';
 
@@ -68,6 +71,9 @@ app.use('/api/admin', adminRouter);
 app.use('/api/counters', countersRouter);
 app.use('/api/leads', leadsRouter);
 app.use('/api/production', productionRouter);
+app.use('/api/sale-returns', saleReturnsRouter);
+app.use('/api/purchase-returns', purchaseReturnsRouter);
+app.use('/api/quotations', quotationsRouter);
 
 app.use(errorHandler);
 

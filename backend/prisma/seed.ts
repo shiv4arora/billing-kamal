@@ -25,6 +25,9 @@ async function main() {
   await prisma.counter.upsert({ where: { key: 'purchaseInvoice' }, update: {}, create: { key: 'purchaseInvoice', value: 1 } });
   await prisma.counter.upsert({ where: { key: 'sku' }, update: {}, create: { key: 'sku', value: 1001 } });
   await prisma.counter.upsert({ where: { key: 'production' }, update: {}, create: { key: 'production', value: 1 } });
+  await prisma.counter.upsert({ where: { key: 'saleReturn' }, update: {}, create: { key: 'saleReturn', value: 1 } });
+  await prisma.counter.upsert({ where: { key: 'purchaseReturn' }, update: {}, create: { key: 'purchaseReturn', value: 1 } });
+  await prisma.counter.upsert({ where: { key: 'quotation' }, update: {}, create: { key: 'quotation', value: 1 } });
 
   // Default settings — stored as JSON string in SQLite
   const defaultData = {
