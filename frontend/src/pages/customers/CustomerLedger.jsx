@@ -201,6 +201,8 @@ export default function CustomerLedger() {
                         <p className="text-xs text-blue-500 font-mono mt-0.5">
                           {e.referenceType === 'sale_invoice'
                             ? <Link to={`/sales/${e.referenceId}`} className="hover:underline">{e.referenceNo}</Link>
+                            : e.referenceType === 'sale_return'
+                            ? <Link to={`/sales/returns/${e.referenceId}/print`} target="_blank" rel="noopener noreferrer" className="hover:underline text-orange-500">{e.referenceNo} ↗</Link>
                             : e.referenceNo}
                         </p>
                       )}

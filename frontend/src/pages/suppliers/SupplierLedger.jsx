@@ -213,6 +213,8 @@ export default function SupplierLedger() {
                         <p className="text-xs text-blue-500 font-mono mt-0.5">
                           {e.referenceType === 'purchase_invoice'
                             ? <Link to={`/purchases/${e.referenceId}`} className="hover:underline">{e.referenceNo}</Link>
+                            : e.referenceType === 'purchase_return'
+                            ? <Link to={`/purchases/returns/${e.referenceId}/print`} target="_blank" rel="noopener noreferrer" className="hover:underline text-red-500">{e.referenceNo} ↗</Link>
                             : e.referenceNo}
                         </p>
                       )}
