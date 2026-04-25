@@ -4,7 +4,6 @@ import { useProducts } from '../../context/ProductContext';
 import { useGlobalToast } from '../../context/ToastContext';
 import { api } from '../../hooks/useApi';
 import { today, formatCurrency, getPrice } from '../../utils/helpers';
-import { GST_RATES } from '../../constants';
 
 const BLANK_ITEM = () => ({ productId: '', productName: '', sku: '', unit: 'Pcs', quantity: 1, unitPrice: 0, discountPct: 0, gstRate: 0 });
 
@@ -69,15 +68,10 @@ export default function QuotationCreate() {
 
   const calcLine = (it) => {
     const qty = Number(it.quantity) || 0, price = Number(it.unitPrice) || 0;
-    const disc = Number(it.discountPct) || 0, gst = Number(it.gstRate) || 0;
-    const sub = qty * price * (1 - disc / 100);
-    return { sub, gstAmt: sub * gst / 100, total: sub + sub * gst / 100, discAmt: qty * price * disc / 100 };
+    return { total: qty * price };
   };
 
-  const totals = items.reduce((acc, it) => {
-    const l = calcLine(it);
-    return { subtotal: acc.subtotal + l.sub, discount: acc.discount + l.discAmt, gst: acc.gst + l.gstAmt, grand: acc.grand + l.total };
-  }, { subtotal: 0, discount: 0, gst: 0, grand: 0 });
+  const grand = items.reduce((s, it) => s + calcLine(it).total, 0);
 
   const handleSave = async () => {
     const validItems = items.filter(it => it.productId && Number(it.quantity) > 0);
@@ -87,8 +81,8 @@ export default function QuotationCreate() {
       const body = {
         date, customerName, customerPlace: '', customerId: null, customerType: 'retail',
         validUntil: '', notes: '', items: validItems,
-        subtotal: totals.subtotal, totalDiscount: totals.discount,
-        totalGST: totals.gst, grandTotal: totals.grand,
+        subtotal: grand, totalDiscount: 0,
+        totalGST: 0, grandTotal: grand,
       };
       const result = isEdit
         ? await api(`/quotations/${id}`, { method: 'PUT', body })
@@ -138,7 +132,7 @@ export default function QuotationCreate() {
                   </div>
                   <button onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-500 mt-1.5 shrink-0">✕</button>
                 </div>
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <div>
                     <label className="text-xs text-gray-400 block mb-0.5">Qty</label>
                     <input type="number" min="0" value={it.quantity} onChange={e => updateItem(i, 'quantity', e.target.value)}
@@ -148,18 +142,6 @@ export default function QuotationCreate() {
                     <label className="text-xs text-gray-400 block mb-0.5">Rate ₹</label>
                     <input type="number" min="0" value={it.unitPrice} onChange={e => updateItem(i, 'unitPrice', e.target.value)}
                       className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-indigo-400" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-0.5">Disc %</label>
-                    <input type="number" min="0" max="100" value={it.discountPct} onChange={e => updateItem(i, 'discountPct', e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-indigo-400" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-0.5">GST %</label>
-                    <select value={it.gstRate} onChange={e => updateItem(i, 'gstRate', Number(e.target.value))}
-                      className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-indigo-400">
-                      {GST_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
-                    </select>
                   </div>
                   <div>
                     <label className="text-xs text-gray-400 block mb-0.5">Total</label>
@@ -176,13 +158,10 @@ export default function QuotationCreate() {
         </button>
       </div>
 
-      {/* Totals */}
-      <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 space-y-1.5 text-sm">
-        <div className="flex justify-between text-gray-600"><span>Subtotal</span><span>{formatCurrency(totals.subtotal + totals.discount)}</span></div>
-        {totals.discount > 0 && <div className="flex justify-between text-red-600"><span>Discount</span><span>−{formatCurrency(totals.discount)}</span></div>}
-        <div className="flex justify-between text-gray-600"><span>GST</span><span>{formatCurrency(totals.gst)}</span></div>
-        <div className="flex justify-between font-bold text-indigo-800 text-base border-t border-indigo-200 pt-1.5">
-          <span>Grand Total</span><span>{formatCurrency(totals.grand)}</span>
+      {/* Total */}
+      <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+        <div className="flex justify-between font-bold text-indigo-800 text-lg">
+          <span>Total</span><span>{formatCurrency(grand)}</span>
         </div>
       </div>
 

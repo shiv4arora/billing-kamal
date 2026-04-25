@@ -21,8 +21,6 @@ export default function SaleInvoiceList() {
     })
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  const totalRevenue = filtered.filter(i => i.status !== 'void').reduce((s, i) => s + (i.grandTotal || 0), 0);
-
   const columns = [
     { header: 'Invoice #', render: i => <span className="font-medium text-blue-600">{i.invoiceNumber}</span> },
     { header: 'Customer', render: i => <p className="font-medium">{formatCustomerDisplay(i.customerName, i.customerPlace, i.customerType)}</p> },
@@ -45,11 +43,6 @@ export default function SaleInvoiceList() {
           <Link to="/sales/returns"><Button variant="outline">↩ Sale Returns</Button></Link>
           <Link to="/sales/new"><Button>+ New Invoice</Button></Link>
         </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-blue-50 rounded-xl p-4"><p className="text-xs text-blue-500 font-medium">Total ({filtered.length})</p><p className="text-xl font-bold text-blue-900">{formatCurrency(totalRevenue)}</p></div>
-        <div className="bg-yellow-50 rounded-xl p-4"><p className="text-xs text-yellow-500 font-medium">Unpaid</p><p className="text-xl font-bold text-yellow-900">{formatCurrency(filtered.filter(i => i.paymentStatus === 'unpaid' && i.status !== 'void').reduce((s,i) => s + (i.grandTotal||0), 0))}</p></div>
-        <div className="bg-green-50 rounded-xl p-4"><p className="text-xs text-green-500 font-medium">Paid</p><p className="text-xl font-bold text-green-900">{formatCurrency(filtered.filter(i => i.paymentStatus === 'paid').reduce((s,i) => s + (i.grandTotal||0), 0))}</p></div>
       </div>
       <Card padding={false}>
         <div className="p-4 border-b flex gap-3">

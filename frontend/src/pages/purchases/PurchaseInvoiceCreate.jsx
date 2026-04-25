@@ -42,6 +42,11 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
   const [showDrop, setShowDrop] = useState(false);
   const dropRef = useRef(null);
 
+  // Sync search input when productName is set externally (edit load, SKU scan, etc.)
+  useEffect(() => {
+    if (!item.isNew) setSearch(item.productName || '');
+  }, [item.productName]);
+
   const filtered = products.filter(p =>
     // only show products linked to the current supplier (or unlinked products)
     (!supplier?.id || !p.supplierId || p.supplierId === supplier.id) &&

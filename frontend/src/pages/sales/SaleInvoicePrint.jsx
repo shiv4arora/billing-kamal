@@ -75,7 +75,8 @@ export default function SaleInvoicePrint() {
       try {
         setSharing(true);
         const blob = await generatePdfBlob();
-        const file = new File([blob], `Invoice-${inv.invoiceNumber || id}.pdf`, { type: 'application/pdf' });
+        const fileName = `${inv.customerName || inv.invoiceNumber || 'Invoice'}.pdf`;
+        const file = new File([blob], fileName, { type: 'application/pdf' });
         if (navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file], text });
           return;
@@ -102,7 +103,7 @@ export default function SaleInvoicePrint() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Invoice-${inv.invoiceNumber || id}.pdf`;
+      a.download = `${inv.customerName || inv.invoiceNumber || 'Invoice'}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } finally {
