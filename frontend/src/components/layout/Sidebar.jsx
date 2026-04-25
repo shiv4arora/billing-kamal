@@ -4,14 +4,12 @@ import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useReminderLog } from '../../context/ReminderContext';
 import { useLeads } from '../../context/LeadContext';
-import { useTheme } from '../../context/ThemeContext';
 import { today } from '../../utils/helpers';
 
 export default function Sidebar({ isOpen, onClose }) {
   const { active } = useProducts();
   const { settings } = useSettings();
   const { currentUser, isAdmin, logout, can } = useAuth();
-  const { dark, toggle: toggleTheme } = useTheme();
   const { pendingCount } = useReminderLog();
   const { leads } = useLeads();
   const todayStr = today();
@@ -146,17 +144,6 @@ export default function Sidebar({ isOpen, onClose }) {
         ))}
       </nav>
 
-      <div className="px-4 py-2 border-t border-gray-700">
-        <button
-          onClick={toggleTheme}
-          className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
-        >
-          <span>{dark ? '☀️ Light mode' : '🌙 Dark mode'}</span>
-          <span className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 ${dark ? 'bg-blue-600' : 'bg-gray-600'}`}>
-            <span className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${dark ? 'translate-x-4' : 'translate-x-0'}`} />
-          </span>
-        </button>
-      </div>
       <div className="px-4 py-3 border-t border-gray-700">
         <div className="flex items-center gap-2">
           <div className="flex-1 min-w-0">

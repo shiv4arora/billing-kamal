@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useSettings } from '../context/SettingsContext';
+import { useTheme } from '../context/ThemeContext';
 import { api } from '../hooks/useApi';
 import { Button, Input, Textarea, Card, useToast, Toast } from '../components/ui';
 
@@ -36,6 +37,7 @@ import { GST_RATES } from '../constants';
 
 export default function Settings() {
   const { settings, update } = useSettings();
+  const { dark, toggle: toggleTheme } = useTheme();
   const toast = useToast();
   const [logo, setLogo] = useState(settings.company.logo || null);
 
@@ -91,6 +93,29 @@ export default function Settings() {
       <Toast toasts={toast.toasts} remove={toast.remove} />
       <div className="max-w-2xl space-y-6">
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+
+        {/* Appearance */}
+        <Card>
+          <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-4">Appearance</h3>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Dark Mode</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{dark ? 'Dark appearance is on' : 'Light appearance is on'}</p>
+            </div>
+            {/* Apple-style toggle */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-checked={dark}
+              role="switch"
+              className={`relative w-[51px] h-[31px] rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${dark ? 'bg-[#34C759]' : 'bg-[#E5E5EA] dark:bg-[#636366]'}`}
+            >
+              <span
+                className={`absolute top-[2px] left-[2px] w-[27px] h-[27px] bg-white rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.3)] transition-transform duration-200 ${dark ? 'translate-x-[20px]' : 'translate-x-0'}`}
+              />
+            </button>
+          </div>
+        </Card>
 
         <Card>
           <h3 className="font-semibold text-gray-800 mb-4">Company Information</h3>
