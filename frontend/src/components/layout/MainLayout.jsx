@@ -96,7 +96,7 @@ export default function MainLayout({ children }) {
   const { settings } = useSettings();
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -123,7 +123,7 @@ export default function MainLayout({ children }) {
         </div>
 
         <ReminderBanner />
-        <div className="p-4 lg:p-6 flex-1">{children}</div>
+        <div className="p-4 lg:p-6 flex-1 dark:text-gray-100">{children}</div>
       </main>
     </div>
   );

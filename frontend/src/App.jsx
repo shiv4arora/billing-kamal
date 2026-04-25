@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 import { useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import MainLayout from './components/layout/MainLayout';
 
 import Dashboard from './pages/Dashboard';
@@ -127,6 +128,7 @@ function LayoutRoutes() {
 
 export default function App() {
   return (
+    <ThemeProvider>
     <AppProvider>
       <BrowserRouter>
         <Routes>
@@ -146,5 +148,6 @@ export default function App() {
         </Routes>
       </BrowserRouter>
     </AppProvider>
+    </ThemeProvider>
   );
 }
