@@ -1,34 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useProducts } from '../../context/ProductContext';
 import { useGlobalToast } from '../../context/ToastContext';
 import { api } from '../../hooks/useApi';
-import { today, formatCurrency, getPrice } from '../../utils/helpers';
+import { today, formatCurrency } from '../../utils/helpers';
 
-const BLANK_ITEM = () => ({ productId: '', productName: '', sku: '', unit: 'Pcs', quantity: 1, unitPrice: 0, discountPct: 0, gstRate: 0 });
-
-function ProductSearch({ value, onSelect, products }) {
-  const [q, setQ] = useState(value || '');
-  const [open, setOpen] = useState(false);
-  useEffect(() => { setQ(value || ''); }, [value]);
-  const filtered = products.filter(p => p.name?.toLowerCase().includes(q.toLowerCase()) || p.sku?.toLowerCase().includes(q.toLowerCase())).slice(0, 8);
-  return (
-    <div className="relative">
-      <input value={q} onChange={e => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)}
-        placeholder="Search product…" className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-      {open && filtered.length > 0 && (
-        <div className="absolute z-30 top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-52 overflow-y-auto">
-          {filtered.map(p => (
-            <div key={p.id} onMouseDown={() => { onSelect(p); setQ(p.name); setOpen(false); }} className="px-3 py-2 hover:bg-indigo-50 cursor-pointer">
-              <p className="text-sm font-semibold">{p.name}</p>
-              <p className="text-xs text-gray-400 font-mono">{p.sku}</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+const BLANK_ITEM = () => ({ productId: '', productName: '', sku: '', unit: '', quantity: 1, unitPrice: 0, discountPct: 0, gstRate: 0 });
 
 export default function QuotationCreate() {
   const { id } = useParams();
@@ -36,6 +13,7 @@ export default function QuotationCreate() {
   const navigate = useNavigate();
   const toast = useGlobalToast();
   const { active: products } = useProducts();
+  const qtyRefs = useRef({});
 
   const [date, setDate] = useState(today());
   const [customerName, setCustomerName] = useState('');
@@ -53,36 +31,39 @@ export default function QuotationCreate() {
   }, [id]);
 
   const updateItem = (i, field, value) => setItems(prev => prev.map((it, idx) => idx === i ? { ...it, [field]: value } : it));
-  const selectProduct = (i, prod) => {
-    const price = getPrice(prod, 'retail');
-    setItems(prev => {
-      const updated = prev.map((it, idx) => idx === i ? {
-        ...it, productId: prod.id, productName: prod.name, sku: prod.sku || '',
-        unit: prod.unit || 'Pcs', unitPrice: price, gstRate: prod.gstRate || 0,
-      } : it);
-      if (i === prev.length - 1) return [...updated, BLANK_ITEM()];
-      return updated;
-    });
+
+  const handleSkuChange = (i, val) => {
+    updateItem(i, 'sku', val);
+    const prod = products.find(p => p.sku?.toLowerCase() === val.trim().toLowerCase());
+    if (prod) {
+      const pricing = (typeof prod.pricing === 'object' && prod.pricing !== null)
+        ? prod.pricing
+        : (() => { try { return JSON.parse(prod.pricing || '{}'); } catch { return {}; } })();
+      setItems(prev => prev.map((it, idx) => idx === i ? {
+        ...it, sku: val, productId: prod.id, productName: prod.name,
+        unit: prod.unit || '', unitPrice: pricing.wholesale || 0,
+      } : it));
+      setTimeout(() => qtyRefs.current[i]?.focus(), 50);
+    } else {
+      setItems(prev => prev.map((it, idx) => idx === i ? { ...it, sku: val, productId: '', productName: '' } : it));
+    }
   };
+
   const removeItem = (i) => setItems(prev => prev.length === 1 ? [BLANK_ITEM()] : prev.filter((_, idx) => idx !== i));
 
-  const calcLine = (it) => {
-    const qty = Number(it.quantity) || 0, price = Number(it.unitPrice) || 0;
-    return { total: qty * price };
-  };
+  const calcTotal = (it) => (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0);
 
-  const grand = items.reduce((s, it) => s + calcLine(it).total, 0);
+  const grand = items.reduce((s, it) => s + calcTotal(it), 0);
 
   const handleSave = async () => {
     const validItems = items.filter(it => it.productId && Number(it.quantity) > 0);
-    if (!validItems.length) { toast.error('Add at least one item'); return; }
+    if (!validItems.length) { toast.error('Add at least one valid item (match SKU to a product)'); return; }
     setSaving(true);
     try {
       const body = {
         date, customerName, customerPlace: '', customerId: null, customerType: 'retail',
         validUntil: '', notes: '', items: validItems,
-        subtotal: grand, totalDiscount: 0,
-        totalGST: 0, grandTotal: grand,
+        subtotal: grand, totalDiscount: 0, totalGST: 0, grandTotal: grand,
       };
       const result = isEdit
         ? await api(`/quotations/${id}`, { method: 'PUT', body })
@@ -95,13 +76,13 @@ export default function QuotationCreate() {
   };
 
   return (
-    <div className="max-w-3xl space-y-5">
+    <div className="max-w-2xl space-y-5">
       <div className="flex items-center gap-3">
         <button onClick={() => navigate('/quotations')} className="text-gray-400 hover:text-gray-600">←</button>
         <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Estimate' : 'New Estimate'}</h1>
       </div>
 
-      {/* Header — just date + customer name */}
+      {/* Header */}
       <div className="bg-white border border-gray-200 rounded-xl p-4 flex gap-4">
         <div className="w-40 shrink-0">
           <label className="text-xs font-medium text-gray-500 block mb-1">Date</label>
@@ -116,49 +97,74 @@ export default function QuotationCreate() {
       </div>
 
       {/* Items */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Items</p>
-        </div>
-        <div className="divide-y divide-gray-100">
-          {items.map((it, i) => {
-            const l = calcLine(it);
-            return (
-              <div key={i} className="px-4 py-3 space-y-2">
-                <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <ProductSearch value={it.productName} products={products} onSelect={p => selectProduct(i, p)} />
-                    {it.sku && <p className="text-xs text-gray-400 mt-0.5 font-mono">{it.sku}</p>}
-                  </div>
-                  <button onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-500 mt-1.5 shrink-0">✕</button>
+      <div className="space-y-3">
+        {items.map((it, i) => {
+          const total = calcTotal(it);
+          const matched = !!it.productId;
+          return (
+            <div key={i} className={`bg-white border rounded-xl p-4 ${matched ? 'border-indigo-200' : 'border-gray-200'}`}>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Item {i + 1}</span>
+                <button onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-500 text-sm">✕</button>
+              </div>
+
+              {/* SKU row */}
+              <div className="mb-3">
+                <label className="text-xs font-medium text-gray-500 block mb-1">SKU ID</label>
+                <input
+                  value={it.sku}
+                  onChange={e => handleSkuChange(i, e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); qtyRefs.current[i]?.focus(); } }}
+                  placeholder="Type SKU and press Enter…"
+                  className={`w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 ${matched ? 'border-indigo-300 bg-indigo-50 focus:ring-indigo-400' : 'border-gray-300 focus:ring-indigo-400'}`}
+                />
+                {matched && (
+                  <p className="text-xs text-indigo-600 font-medium mt-1">✓ {it.productName}{it.unit ? ` · ${it.unit}` : ''}</p>
+                )}
+                {it.sku && !matched && (
+                  <p className="text-xs text-red-400 mt-1">No product found for this SKU</p>
+                )}
+              </div>
+
+              {/* Qty + Rate + Total */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-500 block mb-1">Qty</label>
+                  <input
+                    ref={el => qtyRefs.current[i] = el}
+                    type="number" min="0" value={it.quantity}
+                    onChange={e => updateItem(i, 'quantity', e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-right font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  />
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-0.5">Qty</label>
-                    <input type="number" min="0" value={it.quantity} onChange={e => updateItem(i, 'quantity', e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-right font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-400" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-0.5">Rate ₹</label>
-                    <input type="number" min="0" value={it.unitPrice} onChange={e => updateItem(i, 'unitPrice', e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-indigo-400" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-0.5">Total</label>
-                    <div className="border border-gray-200 bg-gray-50 rounded-lg px-2 py-1.5 text-sm text-right font-semibold">{formatCurrency(l.total)}</div>
+                <div>
+                  <label className="text-xs font-medium text-gray-500 block mb-1">Rate ₹</label>
+                  <input
+                    type="number" min="0" value={it.unitPrice}
+                    onChange={e => updateItem(i, 'unitPrice', e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-right focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-500 block mb-1">Total</label>
+                  <div className={`border rounded-lg px-3 py-2 text-sm text-right font-bold ${total > 0 ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-gray-200 bg-gray-50 text-gray-400'}`}>
+                    {total > 0 ? formatCurrency(total) : '—'}
                   </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-        <button onClick={() => setItems(prev => [...prev, BLANK_ITEM()])}
-          className="w-full py-2.5 border-t border-dashed border-gray-200 text-sm font-medium text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 transition-colors">
+            </div>
+          );
+        })}
+
+        <button
+          onClick={() => setItems(prev => [...prev, BLANK_ITEM()])}
+          className="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-400 hover:text-indigo-500 hover:border-indigo-300 transition-colors"
+        >
           + Add Item
         </button>
       </div>
 
-      {/* Total */}
+      {/* Grand Total */}
       <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
         <div className="flex justify-between font-bold text-indigo-800 text-lg">
           <span>Total</span><span>{formatCurrency(grand)}</span>

@@ -24,6 +24,7 @@ export default function CustomerForm() {
     const e = {};
     if (!form.name.trim()) e.name = 'Name is required';
     if (!form.phone.trim()) e.phone = 'Contact number is required';
+    else if (!/^\d{10}$/.test(form.phone.trim())) e.phone = 'Enter a valid 10-digit number';
     if (!form.place.trim()) e.place = 'Place is required';
     setErrors(e);
     return !Object.keys(e).length;
@@ -54,7 +55,7 @@ export default function CustomerForm() {
           <div className="space-y-4">
             <Input label="Customer Name *" value={form.name} onChange={e => set('name', e.target.value)} error={errors.name} placeholder="e.g. Rajesh Traders" />
             <Input label="Place *" value={form.place} onChange={e => set('place', e.target.value)} error={errors.place} placeholder="e.g. Pune, Mumbai, Delhi" />
-            <Input label="Contact Number *" type="tel" value={form.phone} onChange={e => set('phone', e.target.value)} error={errors.phone} placeholder="e.g. 9876543210" />
+            <Input label="Contact Number *" type="tel" value={form.phone} onChange={e => set('phone', e.target.value.replace(/\D/g, '').slice(0, 10))} error={errors.phone} placeholder="e.g. 9876543210" maxLength={10} />
           </div>
         </Card>
 
