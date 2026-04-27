@@ -21,7 +21,7 @@ export default function PurchaseReturnPrint() {
       <div className="no-print sticky top-0 bg-gray-900 text-white px-6 py-3 flex items-center gap-4">
         <button onClick={() => window.history.back()} className="text-gray-300 hover:text-white text-sm">← Back</button>
         <span className="text-sm font-medium">{ret.returnNumber} — Debit Note</span>
-        <button onClick={() => window.print()} className="ml-auto bg-red-600 hover:bg-red-700 text-white text-sm px-5 py-2 rounded-lg font-medium">🖨 Print</button>
+        <button onClick={() => { const d = document.documentElement; const w = d.classList.contains('dark'); if (w) d.classList.remove('dark'); window.print(); if (w) d.classList.add('dark'); }} className="ml-auto bg-red-600 hover:bg-red-700 text-white text-sm px-5 py-2 rounded-lg font-medium">🖨 Print</button>
       </div>
       <div className="max-w-3xl mx-auto p-8 bg-white">
         <div className="flex justify-between items-start mb-6">

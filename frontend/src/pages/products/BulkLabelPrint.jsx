@@ -202,7 +202,7 @@ export default function BulkLabelPrint() {
         <span className="text-xs text-gray-400">{totalLabels} label{totalLabels !== 1 ? 's' : ''} total</span>
         <div className="ml-auto">
           <button
-            onClick={() => window.print()}
+            onClick={() => { const d = document.documentElement; const w = d.classList.contains('dark'); if (w) d.classList.remove('dark'); window.print(); if (w) d.classList.add('dark'); }}
             className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-5 py-2 rounded-lg font-medium"
           >
             🖨 Print {totalLabels} Label{totalLabels !== 1 ? 's' : ''}

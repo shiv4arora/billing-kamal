@@ -66,7 +66,7 @@ export default function CustomerLedgerPrint() {
 
       <div className="no-print p-4 bg-gray-800 flex items-center gap-3">
         <button
-          onClick={() => window.print()}
+          onClick={() => { const d = document.documentElement; const w = d.classList.contains('dark'); if (w) d.classList.remove('dark'); window.print(); if (w) d.classList.add('dark'); }}
           className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium"
         >
           🖨 Print / Save PDF

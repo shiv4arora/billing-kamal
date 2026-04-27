@@ -106,4 +106,12 @@
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+  /* Force light mode for print — override ALL dark mode rules */
+  html.dark, html.dark body,
+  html.dark *, html.dark *::before, html.dark *::after {
+    background-color: revert !important;
+    color: revert !important;
+    border-color: revert !important;
+  }
+  html.dark body { background: white !important; color: black !important; }
 }

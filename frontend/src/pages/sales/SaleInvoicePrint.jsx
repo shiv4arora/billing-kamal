@@ -50,8 +50,17 @@ export default function SaleInvoicePrint() {
     const html2canvas = (await import('html2canvas')).default;
     const { jsPDF } = await import('jspdf');
 
-    const el = invoiceRef.current;
-    const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    // Temporarily strip dark mode so PDF is always light
+    const wasDark = document.documentElement.classList.contains('dark');
+    if (wasDark) document.documentElement.classList.remove('dark');
+
+    let canvas;
+    try {
+      const el = invoiceRef.current;
+      canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    } finally {
+      if (wasDark) document.documentElement.classList.add('dark');
+    }
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageW = pdf.internal.pageSize.getWidth();
@@ -116,7 +125,12 @@ export default function SaleInvoicePrint() {
   return (
     <div className="min-h-screen bg-white">
       <div className="no-print p-4 bg-gray-100 flex gap-3 flex-wrap items-center">
-        <button onClick={() => window.print()}
+        <button onClick={() => {
+            const wasDark = document.documentElement.classList.contains('dark');
+            if (wasDark) document.documentElement.classList.remove('dark');
+            window.print();
+            if (wasDark) document.documentElement.classList.add('dark');
+          }}
           className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium">
           🖨 Print
         </button>
