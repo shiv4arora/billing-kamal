@@ -6,6 +6,7 @@ import { useGlobalToast } from '../../context/ToastContext';
 import { api } from '../../hooks/useApi';
 import { today } from '../../utils/helpers';
 import { UNITS } from '../../constants';
+import QuickCalc from '../../components/ui/QuickCalc';
 
 const BLANK_COMP = () => ({ productId: '', productName: '', sku: '', currentStock: 0, unit: '', wholesale: 0, vendorCode: '', quantity: '' });
 const BLANK_OUTPUT = () => ({ isNew: false, productId: '', productName: '', sku: '', currentStock: 0, unit: 'Pcs', quantity: '', wholesale: '', shop: '', supplierId: '' });
@@ -87,7 +88,7 @@ export default function ProductionCreate() {
       : (() => { try { return JSON.parse(prod.pricing || '{}'); } catch { return {}; } })();
     setOutputs(prev => prev.map((o, idx) => idx === i ? {
       ...o, productId: prod.id, productName: prod.name, sku: prod.sku || '',
-      currentStock: prod.currentStock ?? 0,
+      currentStock: prod.currentStock ?? 0, unit: prod.unit || 'Pcs',
       wholesale: pricing.wholesale ?? '', shop: pricing.shop ?? '',
     } : o));
   };
@@ -161,6 +162,9 @@ export default function ProductionCreate() {
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
       </div>
+
+      {/* Quick Calculator */}
+      <QuickCalc />
 
       {/* Components */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -242,7 +246,10 @@ export default function ProductionCreate() {
                       <span className="text-xs text-blue-500 font-mono">SKU: {nextSku + i}</span>
                     )}
                     {!out.isNew && out.productId && (
-                      <span className="text-xs text-gray-400 font-mono">SKU: {out.sku} · Stock: {out.currentStock}</span>
+                      <>
+                        <span className="text-xs text-gray-400 font-mono">SKU: {out.sku} · Stock: {out.currentStock}</span>
+                        {out.unit && <span className="text-xs bg-blue-100 text-blue-700 dark:bg-[rgba(10,132,255,0.15)] dark:text-[#0A84FF] font-medium px-2 py-0.5 rounded-full">{out.unit}</span>}
+                      </>
                     )}
                   </div>
                 </div>

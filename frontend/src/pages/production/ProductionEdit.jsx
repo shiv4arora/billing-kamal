@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import QuickCalc from '../../components/ui/QuickCalc';
 import { useProducts } from '../../context/ProductContext';
 import { useSuppliers } from '../../context/SupplierContext';
 import { useGlobalToast } from '../../context/ToastContext';
@@ -83,6 +84,7 @@ export default function ProductionEdit() {
         const outs = Array.isArray(e.outputs) && e.outputs.length > 0 ? e.outputs : [];
         setOutputs(outs.map(o => ({
           productId: o.productId, productName: o.productName, sku: o.sku || '', currentStock: 0,
+          unit: o.unit || 'Pcs',
           quantity: o.quantity,
           wholesale: o.pricing?.wholesale ?? '', shop: o.pricing?.shop ?? '',
         })));
@@ -112,6 +114,7 @@ export default function ProductionEdit() {
       return {
         ...o,
         currentStock: prod.currentStock ?? 0,
+        unit: o.unit && o.unit !== 'Pcs' ? o.unit : (prod.unit || o.unit || 'Pcs'),
         wholesale: (o.wholesale !== '' && o.wholesale !== null && o.wholesale !== undefined) ? o.wholesale : (pricing.wholesale ?? ''),
         shop:      (o.shop      !== '' && o.shop      !== null && o.shop      !== undefined) ? o.shop      : (pricing.shop      ?? ''),
       };
@@ -140,7 +143,8 @@ export default function ProductionEdit() {
       ? prod.pricing
       : (() => { try { return JSON.parse(prod.pricing || '{}'); } catch { return {}; } })();
     setOutputs(prev => prev.map((o, idx) => idx === i ? {
-      ...o, productId: prod.id, productName: prod.name, sku: prod.sku || '', currentStock: prod.currentStock ?? 0,
+      ...o, productId: prod.id, productName: prod.name, sku: prod.sku || '',
+      currentStock: prod.currentStock ?? 0, unit: prod.unit || 'Pcs',
       wholesale: pricing.wholesale ?? '', shop: pricing.shop ?? '',
     } : o));
   };
@@ -230,6 +234,9 @@ export default function ProductionEdit() {
         </div>
       </div>
 
+      {/* Quick Calculator */}
+      <QuickCalc />
+
       {/* Components */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
@@ -306,7 +313,10 @@ export default function ProductionEdit() {
                       {out.isNew ? '✦ New Product' : '+ New Product'}
                     </button>
                     {!out.isNew && out.productId && (
-                      <span className="text-xs text-gray-400 font-mono">SKU: {out.sku} · Stock: {out.currentStock}</span>
+                      <>
+                        <span className="text-xs text-gray-400 font-mono">SKU: {out.sku} · Stock: {out.currentStock}</span>
+                        {out.unit && <span className="text-xs bg-blue-100 text-blue-700 dark:bg-[rgba(10,132,255,0.15)] dark:text-[#0A84FF] font-medium px-2 py-0.5 rounded-full">{out.unit}</span>}
+                      </>
                     )}
                   </div>
                 </div>
