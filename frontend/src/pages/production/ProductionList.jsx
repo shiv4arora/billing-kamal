@@ -67,7 +67,7 @@ export default function ProductionList() {
                             <p className="font-medium text-gray-800 text-sm">{out.productName}</p>
                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                               {p?.sku && <span className="text-xs font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{p.sku}</span>}
-                              <span className="text-xs text-gray-500">×{out.quantity}</span>
+                              <span className="text-xs text-gray-500">×{out.quantity} {out.unit || p?.unit || ''}</span>
                               {pricing?.wholesale > 0 && <span className="text-xs text-blue-500">W {formatCurrency(pricing.wholesale)}</span>}
                               {pricing?.shop > 0 && <span className="text-xs text-purple-500">S {formatCurrency(pricing.shop)}</span>}
                             </div>

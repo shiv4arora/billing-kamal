@@ -33,13 +33,13 @@ export default function Sidebar({ isOpen, onClose }) {
       items: [
         ...(can('sales_view')     ? [{ to: '/sales',     label: 'Sale Invoices',     icon: '🧾' }] : []),
         ...(can('purchases_view') ? [{ to: '/purchases', label: 'Purchase Invoices', icon: '📦' }] : []),
-        { to: '/quotations', label: 'Estimates', icon: '📋' },
-        { to: '/production', label: 'Production', icon: '⚙️' },
+        ...(can('quotations') ? [{ to: '/quotations', label: 'Estimates',  icon: '📋' }] : []),
+        ...(can('production') ? [{ to: '/production', label: 'Production', icon: '⚙️' }] : []),
       ],
     },
     {
       section: 'CRM',
-      items: [{ to: '/crm', label: 'Leads', icon: '🎯' }],
+      items: [...(can('crm') ? [{ to: '/crm', label: 'Leads', icon: '🎯' }] : [])],
     },
     {
       section: 'Master',

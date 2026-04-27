@@ -87,11 +87,12 @@ router.post('/', async (req, res, next) => {
         let productId = out.productId;
         let productName = out.productName;
 
+        let unit = out.unit || 'Pcs';
         if (out.isNew) {
           const sku = String(await allocateSkuNumbers(1, tx));
           const newProd = await tx.product.create({
             data: {
-              sku, name: out.productName.trim(), unit: out.unit || 'Pcs',
+              sku, name: out.productName.trim(), unit,
               gstRate: 0, pricing: JSON.stringify(pricing), costPrice: 0,
               currentStock: qty, isActive: true,
               ...(out.supplierId ? { supplierId: out.supplierId } : {}),
@@ -99,6 +100,7 @@ router.post('/', async (req, res, next) => {
           });
           productId = newProd.id;
           productName = newProd.name;
+          unit = newProd.unit;
           await tx.stockLedger.create({ data: { productId, date: today, movementType: 'production_in', quantity: qty, referenceId: '', referenceNo: entryNumber } });
         } else {
           if (pricing.wholesale || pricing.shop) {
@@ -108,9 +110,10 @@ router.post('/', async (req, res, next) => {
           await tx.stockLedger.create({ data: { productId, date: today, movementType: 'production_in', quantity: qty, referenceId: '', referenceNo: entryNumber } });
           const prod = await tx.product.findUnique({ where: { id: productId } });
           productName = prod?.name || productName;
+          unit = prod?.unit || unit;
         }
 
-        resolvedOutputs.push({ productId, productName, sku: '', quantity: qty, pricing });
+        resolvedOutputs.push({ productId, productName, sku: '', quantity: qty, pricing, unit });
       }
 
       const firstOut = resolvedOutputs[0];
@@ -196,7 +199,7 @@ router.put('/:id', async (req, res, next) => {
             },
           });
           await tx.stockLedger.create({ data: { productId: newProd.id, date: today, movementType: 'production_in', quantity: qty, referenceId: existing.id, referenceNo: existing.entryNumber } });
-          resolvedNewOutputs.push({ productId: newProd.id, productName: newProd.name, sku: newProd.sku, quantity: qty, pricing });
+          resolvedNewOutputs.push({ productId: newProd.id, productName: newProd.name, sku: newProd.sku, quantity: qty, pricing, unit: newProd.unit });
         } else {
           resolvedNewOutputs.push(o);
         }
@@ -246,7 +249,7 @@ router.put('/:id', async (req, res, next) => {
       /* ── Resolve output names ── */
       const resolvedOutputs = await Promise.all(resolvedNewOutputs.map(async (o: any) => {
         const prod = await tx.product.findUnique({ where: { id: o.productId } });
-        return { productId: o.productId, productName: prod?.name || o.productName, sku: prod?.sku || '', quantity: Number(o.quantity), pricing: o.pricing || {} };
+        return { productId: o.productId, productName: prod?.name || o.productName, sku: prod?.sku || '', quantity: Number(o.quantity), pricing: o.pricing || {}, unit: prod?.unit || o.unit || 'Pcs' };
       }));
 
       const firstOut = resolvedOutputs[0] || { productId: '', productName: '', quantity: 0 };

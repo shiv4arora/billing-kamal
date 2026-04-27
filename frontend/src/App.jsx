@@ -90,29 +90,29 @@ function LayoutRoutes() {
           <Route path="/sales/new" element={<SaleInvoiceCreate />} />
           <Route path="/sales/:id" element={<SaleInvoiceView />} />
           <Route path="/sales/:id/edit" element={<SaleInvoiceCreate />} />
-          <Route path="/sales/returns" element={<SaleReturnList />} />
-          <Route path="/sales/returns/new" element={<SaleReturnCreate />} />
-          <Route path="/sales/returns/:id/edit" element={<SaleReturnCreate />} />
+          {can('sale_returns') && <Route path="/sales/returns" element={<SaleReturnList />} />}
+          {can('sale_returns') && <Route path="/sales/returns/new" element={<SaleReturnCreate />} />}
+          {can('sale_returns') && <Route path="/sales/returns/:id/edit" element={<SaleReturnCreate />} />}
           <Route path="/purchases" element={<PurchaseInvoiceList />} />
           <Route path="/purchases/new" element={<PurchaseInvoiceCreate />} />
           <Route path="/purchases/:id" element={<PurchaseInvoiceView />} />
           <Route path="/purchases/:id/edit" element={<PurchaseInvoiceCreate />} />
-          <Route path="/purchases/returns" element={<PurchaseReturnList />} />
-          <Route path="/purchases/returns/new" element={<PurchaseReturnCreate />} />
-          <Route path="/purchases/returns/:id/edit" element={<PurchaseReturnCreate />} />
-          <Route path="/quotations" element={<QuotationList />} />
-          <Route path="/quotations/new" element={<QuotationCreate />} />
-          <Route path="/quotations/:id" element={<QuotationView />} />
-          <Route path="/quotations/:id/edit" element={<QuotationCreate />} />
+          {can('purchase_returns') && <Route path="/purchases/returns" element={<PurchaseReturnList />} />}
+          {can('purchase_returns') && <Route path="/purchases/returns/new" element={<PurchaseReturnCreate />} />}
+          {can('purchase_returns') && <Route path="/purchases/returns/:id/edit" element={<PurchaseReturnCreate />} />}
+          {can('quotations') && <Route path="/quotations" element={<QuotationList />} />}
+          {can('quotations') && <Route path="/quotations/new" element={<QuotationCreate />} />}
+          {can('quotations') && <Route path="/quotations/:id" element={<QuotationView />} />}
+          {can('quotations') && <Route path="/quotations/:id/edit" element={<QuotationCreate />} />}
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/reminders" element={<Reminders />} />
-          <Route path="/crm" element={<CrmList />} />
-          <Route path="/crm/new" element={<CrmForm />} />
-          <Route path="/crm/:id" element={<CrmDetail />} />
-          <Route path="/crm/:id/edit" element={<CrmForm />} />
-          <Route path="/production" element={<ProductionList />} />
-          <Route path="/production/new" element={<ProductionCreate />} />
-          <Route path="/production/:id/edit" element={<ProductionEdit />} />
+          {can('crm') && <Route path="/crm" element={<CrmList />} />}
+          {can('crm') && <Route path="/crm/new" element={<CrmForm />} />}
+          {can('crm') && <Route path="/crm/:id" element={<CrmDetail />} />}
+          {can('crm') && <Route path="/crm/:id/edit" element={<CrmForm />} />}
+          {can('production') && <Route path="/production" element={<ProductionList />} />}
+          {can('production') && <Route path="/production/new" element={<ProductionCreate />} />}
+          {can('production') && <Route path="/production/:id/edit" element={<ProductionEdit />} />}
           {can('reports') && <Route path="/reports/sales" element={<SalesReport />} />}
           {can('reports') && <Route path="/reports/purchases" element={<PurchasesReport />} />}
           {can('reports') && <Route path="/reports/inventory" element={<InventoryReport />} />}
