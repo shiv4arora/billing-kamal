@@ -67,6 +67,7 @@ export default function Sidebar({ isOpen, onClose }) {
             { to: '/reports/inventory',    label: 'Inventory Report',  icon: '📋' },
             { to: '/reports/profit-loss',  label: 'Profit & Loss',     icon: '💰' },
             { to: '/reports/vendor-sales', label: 'Vendor-wise Sales', icon: '🏭' },
+            { to: '/reports/production',   label: 'Production Report', icon: '⚙️' },
           ],
         }]
       : []),

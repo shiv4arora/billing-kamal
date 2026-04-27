@@ -33,6 +33,7 @@ import InventoryReport from './pages/reports/InventoryReport';
 import ProfitLoss from './pages/reports/ProfitLoss';
 import Settings from './pages/Settings';
 import VendorSalesReport from './pages/reports/VendorSalesReport';
+import ProductionReport from './pages/reports/ProductionReport';
 import LoginPage from './pages/auth/LoginPage';
 import UserManagement from './pages/auth/UserManagement';
 import CrmList from './pages/crm/CrmList';
@@ -117,6 +118,7 @@ function LayoutRoutes() {
           {can('reports') && <Route path="/reports/inventory" element={<InventoryReport />} />}
           {can('reports') && <Route path="/reports/profit-loss" element={<ProfitLoss />} />}
           {can('reports') && <Route path="/reports/vendor-sales" element={<VendorSalesReport />} />}
+          {can('reports') && <Route path="/reports/production" element={<ProductionReport />} />}
           {can('settings') && <Route path="/settings" element={<Settings />} />}
           {can('users_manage') && <Route path="/users" element={<UserManagement />} />}
           <Route path="*" element={<Navigate to="/" replace />} />
