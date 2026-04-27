@@ -1,16 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useProducts } from '../../context/ProductContext';
 import { useSuppliers } from '../../context/SupplierContext';
 import { useGlobalToast } from '../../context/ToastContext';
 import { api } from '../../hooks/useApi';
 
-const BLANK_OUTPUT = () => ({ productId: '', productName: '', sku: '', currentStock: 0, quantity: '', wholesale: '', shop: '' });
+const UNITS = ['Pcs', 'Box', 'Kg', 'g', 'L', 'ml', 'Set', 'Pair', 'Dozen', 'Roll', 'Sheet'];
+const BLANK_OUTPUT = () => ({ isNew: false, productId: '', productName: '', sku: '', currentStock: 0, unit: 'Pcs', quantity: '', wholesale: '', shop: '', supplierId: '' });
 
-/* ── Product search dropdown ── */
+/* ── Product search dropdown (position:fixed to escape overflow:hidden) ── */
 function ProductSearch({ value, onSelect, products, placeholder = 'Search product…', exclude = [] }) {
   const [q, setQ] = useState(value || '');
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+  const inputRef = useRef(null);
   useEffect(() => { setQ(value || ''); }, [value]);
 
   const filtered = products
@@ -18,16 +21,29 @@ function ProductSearch({ value, onSelect, products, placeholder = 'Search produc
     .filter(p => p.name?.toLowerCase().includes(q.toLowerCase()) || p.sku?.toLowerCase().includes(q.toLowerCase()))
     .slice(0, 8);
 
+  const calcPos = () => {
+    const rect = inputRef.current?.getBoundingClientRect();
+    if (rect) setPos({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX, width: Math.max(rect.width, 280) });
+  };
+
   return (
-    <div className="relative">
-      <input value={q} onChange={e => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)}
+    <div>
+      <input
+        ref={inputRef}
+        value={q}
+        onChange={e => { setQ(e.target.value); setOpen(true); calcPos(); }}
+        onFocus={() => { calcPos(); setOpen(true); }}
+        onBlur={() => setTimeout(() => setOpen(false), 200)}
         placeholder={placeholder}
-        className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      {open && filtered.length > 0 && (
-        <div className="absolute z-30 top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-52 overflow-y-auto">
+        className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+      />
+      {open && filtered.length > 0 && pos && (
+        <div style={{ position: 'fixed', top: pos.top, left: pos.left, width: pos.width, zIndex: 9999 }}
+          className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-52 overflow-y-auto">
           {filtered.map(p => (
-            <div key={p.id} onMouseDown={() => { onSelect(p); setQ(p.name); setOpen(false); }} className="px-3 py-2 hover:bg-blue-50 cursor-pointer">
-              <p className="text-sm font-semibold text-gray-800">{p.name}</p>
+            <div key={p.id} onMouseDown={e => { e.preventDefault(); onSelect(p); setQ(p.name); setOpen(false); }}
+              className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer">
+              <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{p.name}</p>
               <p className="text-xs text-gray-400 font-mono">{p.sku} · Stock: {p.currentStock ?? 0} {p.unit}</p>
             </div>
           ))}
@@ -130,6 +146,7 @@ export default function ProductionEdit() {
   };
   const addOutput = () => setOutputs(prev => [...prev, BLANK_OUTPUT()]);
   const removeOutput = (i) => setOutputs(prev => prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i));
+  const toggleOutputNew = (i) => setOutputs(prev => prev.map((o, idx) => idx === i ? { ...BLANK_OUTPUT(), isNew: !o.isNew } : o));
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -148,8 +165,12 @@ export default function ProductionEdit() {
   const handleSave = async () => {
     const validComps = components.filter(c => c.productId && c.quantity > 0);
     if (!validComps.length) { toast.error('Add at least one component'); return; }
-    const validOuts = outputs.filter(o => o.productId && o.quantity > 0);
+    const validOuts = outputs.filter(o => (o.productId || (o.isNew && o.productName?.trim())) && o.quantity > 0);
     if (!validOuts.length) { toast.error('Add at least one finished product'); return; }
+    for (const o of validOuts) {
+      if (o.isNew && !o.productName?.trim()) { toast.error('Enter name for new product'); return; }
+      if (!o.isNew && !o.productId) { toast.error('Select all finished products'); return; }
+    }
 
     setSaving(true);
     try {
@@ -159,7 +180,11 @@ export default function ProductionEdit() {
           date, notes,
           components: validComps.map(c => ({ productId: c.productId, productName: c.productName, sku: c.sku, quantity: Number(c.quantity) })),
           outputs: validOuts.map(o => ({
-            productId: o.productId, productName: o.productName,
+            isNew: o.isNew || false,
+            productId: o.isNew ? null : o.productId,
+            productName: o.productName,
+            unit: o.unit || 'Pcs',
+            supplierId: o.supplierId || null,
             quantity: Number(o.quantity),
             pricing: { wholesale: Number(o.wholesale) || 0, shop: Number(o.shop) || 0 },
           })),
@@ -256,10 +281,34 @@ export default function ProductionEdit() {
             <div key={i} className="px-4 py-3 space-y-2">
               <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">
-                  <ProductSearch value={out.productName} products={products} exclude={usedOutIds.filter((_, idx) => idx !== i)} onSelect={p => selectOutput(i, p)} placeholder="Search finished product…" />
-                  {out.productId && (
-                    <p className="text-xs text-gray-400 mt-0.5 font-mono">SKU: {out.sku} · Stock: {out.currentStock}</p>
+                  {out.isNew ? (
+                    <div className="space-y-1.5">
+                      <div className="grid gap-2" style={{ gridTemplateColumns: '2fr 0.8fr' }}>
+                        <input value={out.productName} onChange={e => updateOut(i, 'productName', e.target.value)} placeholder="Product name *"
+                          className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <select value={out.unit} onChange={e => updateOut(i, 'unit', e.target.value)}
+                          className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          {UNITS.map(u => <option key={u}>{u}</option>)}
+                        </select>
+                      </div>
+                      <select value={out.supplierId} onChange={e => updateOut(i, 'supplierId', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">— No vendor —</option>
+                        {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}{s.code ? ` (${s.code})` : ''}</option>)}
+                      </select>
+                    </div>
+                  ) : (
+                    <ProductSearch value={out.productName} products={products} exclude={usedOutIds.filter((_, idx) => idx !== i)} onSelect={p => selectOutput(i, p)} placeholder="Search finished product…" />
                   )}
+                  <div className="flex items-center gap-2 mt-1">
+                    <button onClick={() => toggleOutputNew(i)}
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium border transition-colors ${out.isNew ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-400 hover:border-blue-400 hover:text-blue-600'}`}>
+                      {out.isNew ? '✦ New Product' : '+ New Product'}
+                    </button>
+                    {!out.isNew && out.productId && (
+                      <span className="text-xs text-gray-400 font-mono">SKU: {out.sku} · Stock: {out.currentStock}</span>
+                    )}
+                  </div>
                 </div>
                 <div className="w-24 shrink-0">
                   <input type="number" min="1" value={out.quantity} onChange={e => updateOut(i, 'quantity', e.target.value)}

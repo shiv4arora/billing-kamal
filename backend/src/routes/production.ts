@@ -179,11 +179,39 @@ router.put('/:id', async (req, res, next) => {
         await tx.stockLedger.create({ data: { productId, date: today, movementType: delta > 0 ? 'production_out' : 'production_out_reversal', quantity: -delta, referenceId: existing.id, referenceNo: existing.entryNumber } });
       }
 
-      /* ── Output deltas (by productId) ── */
+      /* ── Create any new output products first, assign productId ── */
+      const resolvedNewOutputs: any[] = [];
+      for (const o of newOutputs) {
+        if (o.isNew) {
+          if (!o.productName?.trim()) throw new Error('Enter name for new output product');
+          const qty = Number(o.quantity);
+          const pricing = { wholesale: Number(o.pricing?.wholesale) || 0, shop: Number(o.pricing?.shop) || 0 };
+          const sku = String(await allocateSkuNumbers(1, tx));
+          const newProd = await tx.product.create({
+            data: {
+              sku, name: o.productName.trim(), unit: o.unit || 'Pcs',
+              gstRate: 0, pricing: JSON.stringify(pricing), costPrice: 0,
+              currentStock: qty, isActive: true,
+              ...(o.supplierId ? { supplierId: o.supplierId } : {}),
+            },
+          });
+          await tx.stockLedger.create({ data: { productId: newProd.id, date: today, movementType: 'production_in', quantity: qty, referenceId: existing.id, referenceNo: existing.entryNumber } });
+          resolvedNewOutputs.push({ productId: newProd.id, productName: newProd.name, sku: newProd.sku, quantity: qty, pricing });
+        } else {
+          resolvedNewOutputs.push(o);
+        }
+      }
+
+      /* ── Output deltas (existing products only; new products already have stock added above) ── */
+      const isNewProductId = new Set(
+        newOutputs.filter((n: any) => n.isNew).map((_: any, idx: number) => resolvedNewOutputs[idx]?.productId).filter(Boolean)
+      );
       const oldOutMap: Record<string, number> = {};
       for (const o of oldOutputs) oldOutMap[o.productId] = Number(o.quantity);
       const newOutMap: Record<string, number> = {};
-      for (const o of newOutputs) newOutMap[o.productId] = Number(o.quantity);
+      for (const o of resolvedNewOutputs) {
+        if (!isNewProductId.has(o.productId)) newOutMap[o.productId] = Number(o.quantity);
+      }
       const allOutIds = new Set([...Object.keys(oldOutMap), ...Object.keys(newOutMap)]);
 
       for (const productId of allOutIds) {
@@ -199,9 +227,9 @@ router.put('/:id', async (req, res, next) => {
         await tx.stockLedger.create({ data: { productId, date: today, movementType: delta > 0 ? 'production_in' : 'production_in_reversal', quantity: delta, referenceId: existing.id, referenceNo: existing.entryNumber } });
       }
 
-      /* ── Update pricing for all new outputs ── */
-      for (const o of newOutputs) {
-        if (o.pricing && (o.pricing.wholesale || o.pricing.shop)) {
+      /* ── Update pricing for existing outputs ── */
+      for (const o of resolvedNewOutputs) {
+        if (o.pricing && (o.pricing.wholesale || o.pricing.shop) && o.productId) {
           await tx.product.update({
             where: { id: o.productId },
             data: { pricing: JSON.stringify({ wholesale: Number(o.pricing.wholesale) || 0, shop: Number(o.pricing.shop) || 0 }) },
@@ -216,7 +244,7 @@ router.put('/:id', async (req, res, next) => {
       }));
 
       /* ── Resolve output names ── */
-      const resolvedOutputs = await Promise.all(newOutputs.map(async (o: any) => {
+      const resolvedOutputs = await Promise.all(resolvedNewOutputs.map(async (o: any) => {
         const prod = await tx.product.findUnique({ where: { id: o.productId } });
         return { productId: o.productId, productName: prod?.name || o.productName, sku: prod?.sku || '', quantity: Number(o.quantity), pricing: o.pricing || {} };
       }));
