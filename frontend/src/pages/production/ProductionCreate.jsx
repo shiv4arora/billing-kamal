@@ -88,7 +88,7 @@ export default function ProductionCreate() {
     setOutputs(prev => prev.map((o, idx) => idx === i ? {
       ...o, productId: prod.id, productName: prod.name, sku: prod.sku || '',
       currentStock: prod.currentStock ?? 0,
-      wholesale: pricing.wholesale || '', shop: pricing.shop || '',
+      wholesale: pricing.wholesale ?? '', shop: pricing.shop ?? '',
     } : o));
   };
   const toggleOutputNew = (i) => setOutputs(prev => prev.map((o, idx) => idx === i ? { ...BLANK_OUTPUT(), isNew: !o.isNew } : o));

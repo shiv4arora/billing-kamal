@@ -68,7 +68,7 @@ export default function ProductionEdit() {
         setOutputs(outs.map(o => ({
           productId: o.productId, productName: o.productName, sku: o.sku || '', currentStock: 0,
           quantity: o.quantity,
-          wholesale: o.pricing?.wholesale || '', shop: o.pricing?.shop || '',
+          wholesale: o.pricing?.wholesale ?? '', shop: o.pricing?.shop ?? '',
         })));
       })
       .catch(() => toast.error('Could not load entry'))
@@ -92,7 +92,13 @@ export default function ProductionEdit() {
       const pricing = (typeof prod.pricing === 'object' && prod.pricing !== null)
         ? prod.pricing
         : (() => { try { return JSON.parse(prod.pricing || '{}'); } catch { return {}; } })();
-      return { ...o, currentStock: prod.currentStock ?? 0, wholesale: o.wholesale || pricing.wholesale || '', shop: o.shop || pricing.shop || '' };
+      // Only fill pricing if not already set from the saved entry ('' means nothing was saved)
+      return {
+        ...o,
+        currentStock: prod.currentStock ?? 0,
+        wholesale: (o.wholesale !== '' && o.wholesale !== null && o.wholesale !== undefined) ? o.wholesale : (pricing.wholesale ?? ''),
+        shop:      (o.shop      !== '' && o.shop      !== null && o.shop      !== undefined) ? o.shop      : (pricing.shop      ?? ''),
+      };
     }));
   }, [entry?.id, products.length]);
 
@@ -119,7 +125,7 @@ export default function ProductionEdit() {
       : (() => { try { return JSON.parse(prod.pricing || '{}'); } catch { return {}; } })();
     setOutputs(prev => prev.map((o, idx) => idx === i ? {
       ...o, productId: prod.id, productName: prod.name, sku: prod.sku || '', currentStock: prod.currentStock ?? 0,
-      wholesale: pricing.wholesale || '', shop: pricing.shop || '',
+      wholesale: pricing.wholesale ?? '', shop: pricing.shop ?? '',
     } : o));
   };
   const addOutput = () => setOutputs(prev => [...prev, BLANK_OUTPUT()]);
