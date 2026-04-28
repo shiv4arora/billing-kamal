@@ -287,7 +287,7 @@ export default function SaleInvoiceCreate() {
                     type="number" min="0" max="100"
                     value={bulkDiscount}
                     onChange={e => setBulkDiscount(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyBulkDiscount(); } }}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyBulkDiscount(); e.target.blur(); } }}
                     placeholder="e.g. 10"
                     className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -386,7 +386,7 @@ export default function SaleInvoiceCreate() {
                         )}
                       </td>
                       <td className="px-3 py-2">
-                        <input ref={el => qtyRefs.current[idx] = el} type="number" min="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', +e.target.value)} onWheel={e => e.target.blur()} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); skuInputRef.current?.focus(); skuInputRef.current?.select(); } }} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                        <input ref={el => qtyRefs.current[idx] = el} type="number" min="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', +e.target.value)} onWheel={e => e.target.blur()} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } }} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" />
                         {item.unit && <p className="text-xs text-gray-400 text-right mt-0.5">{item.unit}</p>}
                       </td>
                       <td className="px-3 py-2 text-right">
@@ -445,7 +445,7 @@ export default function SaleInvoiceCreate() {
                   ref={skuInputRef}
                   value={skuQuickAdd}
                   onChange={e => setSkuQuickAdd(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addProductBySku(skuQuickAdd); } }}
+                  onKeyDown={e => { if (e.key === 'Enter' && skuQuickAdd.trim()) { e.preventDefault(); addProductBySku(skuQuickAdd); } }}
                   placeholder="📷 Scan / type SKU + ↵"
                   className="flex-1 border border-blue-200 bg-blue-50 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder:text-blue-300 min-w-0"
                 />

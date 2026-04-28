@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { allocateSkuNumbers } from '../services/counters';
+import { logActivity } from '../services/activityLogger';
 
 const router = Router();
 
@@ -130,6 +131,13 @@ router.post('/', async (req, res, next) => {
       });
     });
 
+    const outNames = parseOutputs(entry).map((o: any) => `${o.productName} ×${o.quantity}`).join(', ');
+    logActivity({
+      userId: req.user?.id, userName: req.user?.name || req.user?.username,
+      action: 'CREATE', entity: 'Production',
+      entityId: entry.id, entityRef: entry.entryNumber,
+      details: outNames,
+    });
     res.json({ ...entry, components: parseComponents(entry), outputs: parseOutputs(entry) });
   } catch (err: any) {
     if (err.message?.startsWith('Insufficient stock')) return res.status(400).json({ error: err.message });
@@ -305,6 +313,12 @@ router.delete('/:id', async (req, res, next) => {
       await tx.productionEntry.delete({ where: { id: existing.id } });
     });
 
+    logActivity({
+      userId: req.user?.id, userName: req.user?.name || req.user?.username,
+      action: 'DELETE', entity: 'Production',
+      entityId: existing.id, entityRef: existing.entryNumber,
+      details: existing.outputProductName,
+    });
     res.json({ ok: true });
   } catch (err: any) {
     if (err.message?.startsWith('Cannot delete')) return res.status(400).json({ error: err.message });

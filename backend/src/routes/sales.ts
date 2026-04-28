@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { nextSaleInvoiceNumber } from '../services/counters';
 import { buildInvoiceTotals } from '../services/invoiceTotals';
 import { postSaleInvoice, postPaymentIn, postSaleReturn } from '../services/ledgerService';
+import { logActivity } from '../services/activityLogger';
 
 const router = Router();
 
@@ -172,6 +173,12 @@ router.post('/:id/issue', async (req, res, next) => {
       return inv;
     }, { timeout: 30000 });
 
+    logActivity({
+      userId: req.user?.id, userName: req.user?.name || req.user?.username,
+      action: 'ISSUE', entity: 'SaleInvoice',
+      entityId: issued.id, entityRef: issued.invoiceNumber || '',
+      details: `Issued to ${issued.customerName || 'Walk-in'} — ₹${issued.grandTotal}`,
+    });
     res.json(issued);
   } catch (err) { next(err); }
 });
@@ -201,6 +208,12 @@ router.post('/:id/payment', async (req, res, next) => {
         });
       }
       return upd;
+    });
+    logActivity({
+      userId: req.user?.id, userName: req.user?.name || req.user?.username,
+      action: 'PAYMENT', entity: 'SaleInvoice',
+      entityId: inv.id, entityRef: inv.invoiceNumber || '',
+      details: `₹${amount} via ${method} — ${inv.customerName || ''}`,
     });
     res.json(updated);
   } catch (err) { next(err); }

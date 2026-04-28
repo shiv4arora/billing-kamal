@@ -23,6 +23,7 @@ import productionRouter from './routes/production';
 import saleReturnsRouter from './routes/saleReturns';
 import purchaseReturnsRouter from './routes/purchaseReturns';
 import quotationsRouter from './routes/quotations';
+import activityLogsRouter from './routes/activityLogs';
 import { verifyJWT } from './middleware/auth';
 import { errorHandler } from './middleware/errorHandler';
 
@@ -74,6 +75,7 @@ app.use('/api/production', productionRouter);
 app.use('/api/sale-returns', saleReturnsRouter);
 app.use('/api/purchase-returns', purchaseReturnsRouter);
 app.use('/api/quotations', quotationsRouter);
+app.use('/api/activity-logs', activityLogsRouter);
 
 app.use(errorHandler);
 

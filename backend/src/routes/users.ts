@@ -2,6 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcrypt';
 import { prisma } from '../lib/prisma';
 import { requireAdmin } from '../middleware/auth';
+import { logActivity } from '../services/activityLogger';
 
 const router = Router();
 router.use(requireAdmin);
@@ -26,6 +27,12 @@ router.post('/', async (req, res, next) => {
     const user = await prisma.user.create({
       data: { username: username.trim().toLowerCase(), password: hashed, name: name.trim(), role: role || 'user', permissions: serializePerms(permissions) },
     });
+    logActivity({
+      userId: req.user?.id, userName: req.user?.name || req.user?.username,
+      action: 'CREATE', entity: 'User',
+      entityId: user.id, entityRef: user.username,
+      details: `Created ${user.name} (${user.role})`,
+    });
     res.status(201).json(safeUser(user));
   } catch (err) { next(err); }
 });
@@ -37,6 +44,12 @@ router.put('/:id', async (req, res, next) => {
     if (password) data.password = await bcrypt.hash(password, 12);
     if (permissions !== undefined) data.permissions = serializePerms(permissions);
     const user = await prisma.user.update({ where: { id: req.params.id }, data });
+    logActivity({
+      userId: req.user?.id, userName: req.user?.name || req.user?.username,
+      action: 'UPDATE', entity: 'User',
+      entityId: user.id, entityRef: user.username,
+      details: `Updated ${user.name}${password ? ' (password changed)' : ''}${permissions !== undefined ? ' (permissions changed)' : ''}`,
+    });
     res.json(safeUser(user));
   } catch (err) { next(err); }
 });

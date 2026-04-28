@@ -36,6 +36,7 @@ import VendorSalesReport from './pages/reports/VendorSalesReport';
 import ProductionReport from './pages/reports/ProductionReport';
 import LoginPage from './pages/auth/LoginPage';
 import UserManagement from './pages/auth/UserManagement';
+import ActivityLog from './pages/auth/ActivityLog';
 import CrmList from './pages/crm/CrmList';
 import CrmForm from './pages/crm/CrmForm';
 import CrmDetail from './pages/crm/CrmDetail';
@@ -68,7 +69,7 @@ function ProtectedRoute({ children }) {
 }
 
 function LayoutRoutes() {
-  const { can } = useAuth();
+  const { can, isAdmin } = useAuth();
   return (
     <ProtectedRoute>
       <MainLayout>
@@ -121,6 +122,7 @@ function LayoutRoutes() {
           {can('reports') && <Route path="/reports/production" element={<ProductionReport />} />}
           {can('settings') && <Route path="/settings" element={<Settings />} />}
           {can('users_manage') && <Route path="/users" element={<UserManagement />} />}
+          {isAdmin && <Route path="/activity-log" element={<ActivityLog />} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </MainLayout>

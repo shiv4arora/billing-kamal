@@ -144,11 +144,15 @@ export function AuthProvider({ children }) {
       lsSaveUsers(updated);
       const safe = updated.find(u => u.id === id);
       setUsers(p => p.map(u => u.id === id ? safe : u));
+      // refresh currentUser if editing self
+      if (id === currentUser?.id) setCurrentUser(prev => ({ ...prev, ...data, permissions: parsePerms(data.permissions ?? prev.permissions) }));
       return { ok: true };
     }
     try {
       const user = await api(`/users/${id}`, { method: 'PUT', body: data });
       setUsers(p => p.map(u => u.id === id ? user : u));
+      // refresh currentUser if editing self
+      if (id === currentUser?.id) setCurrentUser({ ...user, permissions: parsePerms(user.permissions) });
       return { ok: true };
     } catch (err) { return { ok: false, error: err.message }; }
   };
@@ -182,9 +186,7 @@ export function AuthProvider({ children }) {
     if (!currentUser) return false;
     if (currentUser.role === 'admin') return true;
     const perms = parsePerms(currentUser.permissions);
-    // If user has no explicit permissions set, fall back to default user perms
-    const effective = perms.length > 0 ? perms : USER_PERMS;
-    return effective.includes(feature);
+    return perms.includes(feature);
   };
 
   return (

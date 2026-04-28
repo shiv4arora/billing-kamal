@@ -299,3 +299,19 @@ model ReminderLog {
 
   @@unique([invoiceId, dayOffset])
 }
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String   @default("")
+  userName  String   @default("")
+  action    String   // CREATE | UPDATE | DELETE | ISSUE | PAYMENT | LOGIN
+  entity    String   // SaleInvoice | PurchaseInvoice | Production | Lead | User | etc.
+  entityId  String   @default("")
+  entityRef String   @default("")   // invoice number, entry number, etc.
+  details   String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([entity])
+}
