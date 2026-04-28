@@ -434,7 +434,7 @@ export default function SaleInvoiceCreate() {
               </button>
               {/* Col 2: Free Text */}
               <button
-                onClick={() => setItems(prev => [...prev, { ...BLANK_ITEM, isFreeText: true }])}
+                onClick={() => setItems(prev => [...prev, { ...BLANK_ITEM, isFreeText: true, productName: 'Rakhi SP-11' }])}
                 className="w-full h-full py-3 text-gray-400 hover:text-orange-500 hover:bg-orange-50 text-sm font-medium transition-colors border-r border-dashed border-gray-200"
               >
                 + Free Text
