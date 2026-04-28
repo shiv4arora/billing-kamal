@@ -27,6 +27,7 @@ const PERM_GROUPS = ALL_PERMISSIONS.reduce((acc, p) => {
 
 export default function UserManagement() {
   const { users, addUser, updateUser, deactivateUser, loadUsers, currentUser } = useAuth();
+  const [saving, setSaving] = useState(false);
   useEffect(() => { loadUsers(); }, []);
   const [modalOpen, setModalOpen] = useState(false);
   const [editId,    setEditId]    = useState(null);
@@ -39,7 +40,12 @@ export default function UserManagement() {
   const set = (f, v) => { setForm(p => ({ ...p, [f]: v })); setErrors(e => ({ ...e, [f]: '' })); setApiError(''); };
 
   const handleRoleChange = (role) => {
-    setForm(p => ({ ...p, role, permissions: role === 'admin' ? [] : [...DEFAULT_USER_PERMS] }));
+    setForm(p => {
+      if (role === p.role) return p; // no actual change — don't touch permissions
+      if (role === 'admin') return { ...p, role, permissions: [] };
+      // Switching back to user: keep existing perms if any, else use defaults
+      return { ...p, role, permissions: p.permissions.length > 0 ? p.permissions : [...DEFAULT_USER_PERMS] };
+    });
     setApiError('');
   };
 
@@ -78,7 +84,8 @@ export default function UserManagement() {
   };
 
   const handleSave = async () => {
-    if (!validate()) return;
+    if (!validate() || saving) return;
+    setSaving(true);
     const data = {
       name: form.name.trim(),
       username: form.username.trim(),
@@ -87,7 +94,9 @@ export default function UserManagement() {
     };
     if (form.password) data.password = form.password;
     const result = await (editId ? updateUser(editId, data) : addUser({ ...data, password: form.password }));
-    if (!result.ok) { setApiError(result.error); return; }
+    if (!result.ok) { setApiError(result.error); setSaving(false); return; }
+    await loadUsers(); // reload from server so the list always shows actual saved values
+    setSaving(false);
     setModalOpen(false);
   };
 
@@ -298,8 +307,10 @@ export default function UserManagement() {
             </div>
           )}
           <div className="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-[rgba(84,84,88,0.35)]">
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>{editId ? 'Update User' : 'Create User'}</Button>
+            <Button variant="secondary" onClick={() => setModalOpen(false)} disabled={saving}>Cancel</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving…' : editId ? 'Update User' : 'Create User'}
+            </Button>
           </div>
         </div>
       </Modal>
