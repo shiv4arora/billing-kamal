@@ -374,18 +374,6 @@ export default function SaleInvoiceCreate() {
                             )}
                           </>
                         )}
-                        {/* Free-text toggle */}
-                        <button
-                          type="button"
-                          onClick={() => updateItem(idx, '_bulk', { ...BLANK_ITEM, isFreeText: !item.isFreeText })}
-                          className={`mt-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium border transition-colors ${
-                            item.isFreeText
-                              ? 'bg-orange-500 text-white border-orange-500'
-                              : 'border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500'
-                          }`}
-                        >
-                          {item.isFreeText ? '✦ free text' : '+ free text'}
-                        </button>
                       </td>
                       <td className="px-3 py-2">
                         {item.sku ? (
@@ -436,15 +424,22 @@ export default function SaleInvoiceCreate() {
                 })}
               </tbody>
             </table>
-            <div className="grid grid-cols-2 border-t border-gray-200" style={{minHeight:'52px'}}>
-              {/* Left half: Add Item */}
+            <div className="grid grid-cols-3 border-t border-gray-200" style={{minHeight:'52px'}}>
+              {/* Col 1: Add Item */}
               <button
                 onClick={addItem}
                 className="w-full h-full py-3 text-gray-400 hover:text-blue-500 hover:bg-blue-50 text-sm font-medium transition-colors border-r border-dashed border-gray-200"
               >
                 + Add Item
               </button>
-              {/* Right half: SKU scan */}
+              {/* Col 2: Free Text */}
+              <button
+                onClick={() => setItems(prev => [...prev, { ...BLANK_ITEM, isFreeText: true }])}
+                className="w-full h-full py-3 text-gray-400 hover:text-orange-500 hover:bg-orange-50 text-sm font-medium transition-colors border-r border-dashed border-gray-200"
+              >
+                + Free Text
+              </button>
+              {/* Col 3: SKU scan */}
               <div className="flex items-center gap-1 px-2 py-1.5">
                 <input
                   ref={skuInputRef}
