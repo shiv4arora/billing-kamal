@@ -335,7 +335,7 @@ export default function SaleInvoiceCreate() {
                           <input
                             value={item.productName}
                             onChange={e => updateItem(idx, 'productName', e.target.value)}
-                            placeholder="Item name (e.g. Barfi Box)"
+                            placeholder="e.g. Rakhi SP-11"
                             className="w-full border border-orange-300 bg-orange-50 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-orange-400 dark:bg-[rgba(255,159,10,0.1)] dark:border-[rgba(255,159,10,0.4)] dark:text-white"
                           />
                         ) : (
@@ -424,7 +424,7 @@ export default function SaleInvoiceCreate() {
                 })}
               </tbody>
             </table>
-            <div className="grid grid-cols-3 border-t border-gray-200" style={{minHeight:'52px'}}>
+            <div className="grid border-t border-gray-200" style={{minHeight:'52px', gridTemplateColumns:'30% 30% 40%'}}>
               {/* Col 1: Add Item */}
               <button
                 onClick={addItem}
