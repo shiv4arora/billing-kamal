@@ -49,23 +49,6 @@ export default function UserManagement() {
     setApiError('');
   };
 
-  const togglePerm = (key) => setForm(p => ({
-    ...p,
-    permissions: p.permissions.includes(key)
-      ? p.permissions.filter(k => k !== key)
-      : [...p.permissions, key],
-  }));
-
-  const toggleGroup = (groupKeys) => {
-    const allOn = groupKeys.every(k => form.permissions.includes(k));
-    setForm(p => ({
-      ...p,
-      permissions: allOn
-        ? p.permissions.filter(k => !groupKeys.includes(k))
-        : [...new Set([...p.permissions, ...groupKeys])],
-    }));
-  };
-
   const openAdd = () => { setForm(BLANK_FORM); setEditId(null); setErrors({}); setApiError(''); setShowPw(false); setModalOpen(true); };
   const openEdit = (u) => {
     // u.permissions is always an array from the API; fall back to defaults only when truly empty (legacy accounts)
@@ -243,60 +226,63 @@ export default function UserManagement() {
 
           {form.role === 'user' && (
             <div className="border border-gray-200 dark:border-[rgba(84,84,88,0.65)] rounded-xl overflow-hidden">
+              {/* Header */}
               <div className="px-4 py-3 bg-gray-50 dark:bg-[#2C2C2E] border-b border-gray-200 dark:border-[rgba(84,84,88,0.65)] flex items-center justify-between">
-                <p className="text-sm font-semibold text-gray-700 dark:text-white">Permissions</p>
+                <p className="text-sm font-semibold text-gray-700 dark:text-white">
+                  Permissions <span className="font-normal text-gray-400 dark:text-gray-500">({form.permissions.length}/{ALL_PERMISSIONS.length})</span>
+                </p>
                 <div className="flex gap-3">
-                  <button type="button" onClick={() => setForm(p => ({ ...p, permissions: ALL_PERMISSIONS.map(x => x.key) }))}
-                    className="text-xs text-blue-600 dark:text-[#0A84FF] hover:underline">
-                    Select All
+                  <button type="button"
+                    onClick={() => setForm(p => ({ ...p, permissions: ALL_PERMISSIONS.map(x => x.key) }))}
+                    className="text-xs text-blue-600 dark:text-[#0A84FF] font-medium active:opacity-60">
+                    All
                   </button>
-                  <button type="button" onClick={() => setForm(p => ({ ...p, permissions: [] }))}
-                    className="text-xs text-gray-500 dark:text-gray-400 hover:underline">
-                    Clear All
+                  <button type="button"
+                    onClick={() => setForm(p => ({ ...p, permissions: [...DEFAULT_USER_PERMS] }))}
+                    className="text-xs text-green-600 dark:text-[#30D158] font-medium active:opacity-60">
+                    Default
                   </button>
-                  <button type="button" onClick={() => setForm(p => ({ ...p, permissions: [...DEFAULT_USER_PERMS] }))}
-                    className="text-xs text-green-600 dark:text-[#30D158] hover:underline">
-                    Reset Default
+                  <button type="button"
+                    onClick={() => setForm(p => ({ ...p, permissions: [] }))}
+                    className="text-xs text-gray-400 dark:text-gray-500 font-medium active:opacity-60">
+                    None
                   </button>
                 </div>
               </div>
-              <div className="p-4 space-y-4 max-h-80 overflow-y-auto dark:bg-[#1C1C1E]">
-                {Object.entries(PERM_GROUPS).map(([group, perms]) => {
-                  const groupKeys = perms.map(p => p.key);
-                  const allOn = groupKeys.every(k => form.permissions.includes(k));
-                  const someOn = groupKeys.some(k => form.permissions.includes(k));
-                  return (
-                    <div key={group}>
-                      <label className="flex items-center gap-2 cursor-pointer mb-2">
-                        <input
-                          type="checkbox"
-                          checked={allOn}
-                          ref={el => { if (el) el.indeterminate = !allOn && someOn; }}
-                          onChange={() => toggleGroup(groupKeys)}
-                          className="rounded text-blue-600 dark:accent-[#0A84FF]"
-                        />
-                        <span className="text-xs font-bold text-gray-600 dark:text-[#636366] uppercase tracking-wide">{group}</span>
-                      </label>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 pl-5">
-                        {perms.map(p => (
-                          <label key={p.key} className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={form.permissions.includes(p.key)}
-                              onChange={() => togglePerm(p.key)}
-                              className="rounded text-blue-600 dark:accent-[#0A84FF]"
-                            />
-                            <span className="text-sm text-gray-700 dark:text-[#f2f2f7]">{p.label}</span>
-                          </label>
-                        ))}
-                      </div>
+
+              {/* Permission pills — tap to toggle, no checkboxes */}
+              <div className="p-4 max-h-72 overflow-y-auto dark:bg-[#1C1C1E] space-y-4">
+                {Object.entries(PERM_GROUPS).map(([group, perms]) => (
+                  <div key={group}>
+                    <p className="text-[10px] font-bold text-gray-400 dark:text-[#636366] uppercase tracking-widest mb-2">{group}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {perms.map(p => {
+                        const on = form.permissions.includes(p.key);
+                        return (
+                          <button
+                            key={p.key}
+                            type="button"
+                            onClick={() => {
+                              setForm(prev => ({
+                                ...prev,
+                                permissions: prev.permissions.includes(p.key)
+                                  ? prev.permissions.filter(k => k !== p.key)
+                                  : [...prev.permissions, p.key],
+                              }));
+                            }}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors select-none active:scale-95 ${
+                              on
+                                ? 'bg-blue-600 text-white dark:bg-[#0A84FF]'
+                                : 'bg-gray-100 text-gray-500 dark:bg-[#3A3A3C] dark:text-[#8E8E93] hover:bg-gray-200 dark:hover:bg-[#48484A]'
+                            }`}
+                          >
+                            {on ? '✓ ' : ''}{p.label}
+                          </button>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
-              <div className="px-4 py-2 bg-gray-50 dark:bg-[#2C2C2E] border-t border-gray-200 dark:border-[rgba(84,84,88,0.65)] flex items-center justify-between text-xs text-gray-400">
-                <span>{form.permissions.length} of {ALL_PERMISSIONS.length} permissions selected</span>
-                <span className="text-blue-500 dark:text-[#0A84FF]">✓ Changes apply when user next opens the app</span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
