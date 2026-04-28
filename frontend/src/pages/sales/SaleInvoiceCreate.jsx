@@ -12,7 +12,7 @@ import { GST_RATES } from '../../constants';
 import { useInvoiceLock } from '../../hooks/useInvoiceLock';
 import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedChanges.jsx';
 
-const BLANK_ITEM = { productId: '', productName: '', sku: '', hsnCode: '', unit: 'Pcs', quantity: 1, unitPrice: 0, discountPct: 0, gstRate: 0, vendorCode: '' };
+const BLANK_ITEM = { isFreeText: false, productId: '', productName: '', sku: '', hsnCode: '', unit: 'Pcs', quantity: 1, unitPrice: 0, discountPct: 0, gstRate: 0, vendorCode: '' };
 
 export default function SaleInvoiceCreate() {
   const { id } = useParams();
@@ -56,7 +56,7 @@ export default function SaleInvoiceCreate() {
         if (cust) setCustomerSearch(formatCustomerDisplay(cust));
         setDate(inv.date);
         setDueDate(inv.dueDate || '');
-        setItems(inv.items || [{ ...BLANK_ITEM }]);
+        setItems((inv.items || [{ ...BLANK_ITEM }]).map(i => ({ ...BLANK_ITEM, ...i, isFreeText: false })));
         setNotes(inv.notes || '');
         setAmountPaid(inv.amountPaid || '');
         setPaymentMethod(inv.paymentMethod || 'cash');
@@ -105,7 +105,11 @@ export default function SaleInvoiceCreate() {
 
   const updateItem = (idx, field, value) => {
     setIsDirty(true);
-    setItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+    setItems(prev => prev.map((item, i) => {
+      if (i !== idx) return item;
+      if (field === '_bulk') return value; // full replace (used by free-text toggle)
+      return { ...item, [field]: value };
+    }));
   };
 
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -135,10 +139,14 @@ export default function SaleInvoiceCreate() {
   };
 
   const showDiscCol = bulkDiscount !== '' || items.some(i => (i.discountPct || 0) > 0);
-  const totals = buildInvoiceTotals(items.filter(i => i.productId && i.quantity > 0), settings.tax.intraState === false);
+  const validItems = items.filter(i => (i.productId || (i.isFreeText && i.productName?.trim())) && i.quantity > 0);
+  const totals = buildInvoiceTotals(validItems, settings.tax.intraState === false);
 
   const handleSave = async (status) => {
     if (!customerId) { toast.error('Please select a customer'); return; }
+    for (const item of items) {
+      if (item.isFreeText && !item.productName?.trim()) { toast.error('Enter a name for the free-text item'); return; }
+    }
     if (totals.items.length === 0) { toast.error('Add at least one item'); return; }
     setSaving(true);
 
@@ -305,7 +313,7 @@ export default function SaleInvoiceCreate() {
                 <th className="px-3 py-2 text-left">Product</th>
                 <th className="px-3 py-2 text-left w-20">SKU</th>
                 <th className="px-3 py-2 text-right w-20">Qty</th>
-                <th className="px-3 py-2 text-right w-28">Rate (₹) 🔒</th>
+                <th className="px-3 py-2 text-right w-28">Rate (₹)</th>
                 {showDiscCol && <th className="px-3 py-2 text-right w-20">Disc%</th>}
                 <th className="px-3 py-2 text-right w-20">GST%</th>
                 <th className="px-3 py-2 text-right w-28">Total</th>
@@ -323,38 +331,61 @@ export default function SaleInvoiceCreate() {
                     <tr key={idx} className="border-b hover:bg-gray-50">
                       <td className="px-3 py-2 text-center text-xs text-gray-400 font-medium">{idx + 1}</td>
                       <td className="px-3 py-2">
-                        <input
-                          ref={el => searchInputRefs.current[idx] = el}
-                          value={search}
-                          onChange={e => {
-                            setProductSearch(p => ({ ...p, [idx]: e.target.value }));
-                            setShowDropdown(p => ({ ...p, [idx]: true }));
-                            const rect = searchInputRefs.current[idx]?.getBoundingClientRect();
-                            if (rect) setDropdownPos(p => ({ ...p, [idx]: { top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: Math.max(rect.width, 320) } }));
-                          }}
-                          onFocus={e => {
-                            const rect = e.target.getBoundingClientRect();
-                            setDropdownPos(p => ({ ...p, [idx]: { top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: Math.max(rect.width, 320) } }));
-                            setShowDropdown(p => ({ ...p, [idx]: true }));
-                          }}
-                          onBlur={() => setTimeout(() => setShowDropdown(p => ({ ...p, [idx]: false })), 200)}
-                          placeholder="Search product…" className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                        {showDropdown[idx] && filteredProducts(search).length > 0 && dropdownPos[idx] && (
-                          <div ref={el => dropdownRefs.current[idx] = el} style={{ position: 'fixed', top: dropdownPos[idx].top + 4, left: dropdownPos[idx].left, width: dropdownPos[idx].width, zIndex: 9999 }} className="bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto">
-                            {filteredProducts(search).map(p => (
-                              <div key={p.id} className="px-3 py-2.5 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0" onMouseDown={e => { e.preventDefault(); handleProductSelect(idx, p); }}>
-                                <div className="flex items-center justify-between gap-2">
-                                  <p className="font-medium text-gray-800 text-sm truncate">{p.name}</p>
-                                  <div className="flex items-center gap-1 shrink-0">
-                                    {p.supplier && <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{p.supplier.code || p.supplier.name}</span>}
-                                    {p.sku && <span className="text-xs font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded font-mono">#{p.sku}</span>}
+                        {item.isFreeText ? (
+                          <input
+                            value={item.productName}
+                            onChange={e => updateItem(idx, 'productName', e.target.value)}
+                            placeholder="Item name (e.g. Barfi Box)"
+                            className="w-full border border-orange-300 bg-orange-50 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-orange-400 dark:bg-[rgba(255,159,10,0.1)] dark:border-[rgba(255,159,10,0.4)] dark:text-white"
+                          />
+                        ) : (
+                          <>
+                            <input
+                              ref={el => searchInputRefs.current[idx] = el}
+                              value={search}
+                              onChange={e => {
+                                setProductSearch(p => ({ ...p, [idx]: e.target.value }));
+                                setShowDropdown(p => ({ ...p, [idx]: true }));
+                                const rect = searchInputRefs.current[idx]?.getBoundingClientRect();
+                                if (rect) setDropdownPos(p => ({ ...p, [idx]: { top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: Math.max(rect.width, 320) } }));
+                              }}
+                              onFocus={e => {
+                                const rect = e.target.getBoundingClientRect();
+                                setDropdownPos(p => ({ ...p, [idx]: { top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: Math.max(rect.width, 320) } }));
+                                setShowDropdown(p => ({ ...p, [idx]: true }));
+                              }}
+                              onBlur={() => setTimeout(() => setShowDropdown(p => ({ ...p, [idx]: false })), 200)}
+                              placeholder="Search product…" className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                            {showDropdown[idx] && filteredProducts(search).length > 0 && dropdownPos[idx] && (
+                              <div ref={el => dropdownRefs.current[idx] = el} style={{ position: 'fixed', top: dropdownPos[idx].top + 4, left: dropdownPos[idx].left, width: dropdownPos[idx].width, zIndex: 9999 }} className="bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto">
+                                {filteredProducts(search).map(p => (
+                                  <div key={p.id} className="px-3 py-2.5 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0" onMouseDown={e => { e.preventDefault(); handleProductSelect(idx, p); }}>
+                                    <div className="flex items-center justify-between gap-2">
+                                      <p className="font-medium text-gray-800 text-sm truncate">{p.name}</p>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        {p.supplier && <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{p.supplier.code || p.supplier.name}</span>}
+                                        {p.sku && <span className="text-xs font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded font-mono">#{p.sku}</span>}
+                                      </div>
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-0.5">W:{formatCurrency(p.pricing?.wholesale||0)} · S:{formatCurrency(p.pricing?.shop||0)} · Stock:{p.currentStock||0}</p>
                                   </div>
-                                </div>
-                                <p className="text-xs text-gray-400 mt-0.5">W:{formatCurrency(p.pricing?.wholesale||0)} · S:{formatCurrency(p.pricing?.shop||0)} · Stock:{p.currentStock||0}</p>
+                                ))}
                               </div>
-                            ))}
-                          </div>
+                            )}
+                          </>
                         )}
+                        {/* Free-text toggle */}
+                        <button
+                          type="button"
+                          onClick={() => updateItem(idx, '_bulk', { ...BLANK_ITEM, isFreeText: !item.isFreeText })}
+                          className={`mt-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium border transition-colors ${
+                            item.isFreeText
+                              ? 'bg-orange-500 text-white border-orange-500'
+                              : 'border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500'
+                          }`}
+                        >
+                          {item.isFreeText ? '✦ free text' : '+ free text'}
+                        </button>
                       </td>
                       <td className="px-3 py-2">
                         {item.sku ? (
@@ -371,7 +402,16 @@ export default function SaleInvoiceCreate() {
                         {item.unit && <p className="text-xs text-gray-400 text-right mt-0.5">{item.unit}</p>}
                       </td>
                       <td className="px-3 py-2 text-right">
-                        <span className="text-sm font-medium text-gray-700 w-24 inline-block">{item.unitPrice ? formatCurrency(item.unitPrice) : '—'}</span>
+                        {item.isFreeText ? (
+                          <input
+                            type="number" min="0" value={item.unitPrice}
+                            onChange={e => updateItem(idx, 'unitPrice', +e.target.value)}
+                            onWheel={e => e.target.blur()}
+                            className="w-24 border border-orange-200 bg-orange-50 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-orange-400 dark:bg-[rgba(255,159,10,0.1)] dark:border-[rgba(255,159,10,0.4)] dark:text-white"
+                          />
+                        ) : (
+                          <span className="text-sm font-medium text-gray-700 w-24 inline-block">{item.unitPrice ? formatCurrency(item.unitPrice) : '—'}</span>
+                        )}
                       </td>
                       {showDiscCol && <td className="px-3 py-2"><input type="number" min="0" max="100" value={item.discountPct} onChange={e => updateItem(idx, 'discountPct', +e.target.value)} onWheel={e => e.target.blur()} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>}
                       <td className="px-3 py-2">
@@ -379,7 +419,7 @@ export default function SaleInvoiceCreate() {
                           {GST_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
                         </select>
                       </td>
-                      <td className="px-3 py-2 text-right font-medium">{item.productId ? formatCurrency(lineTotal) : '-'}</td>
+                      <td className="px-3 py-2 text-right font-medium">{(item.productId || item.isFreeText) ? formatCurrency(lineTotal) : '-'}</td>
                       <td className="px-3 py-2">
                         {pendingDelete === idx ? (
                           <div className="flex items-center gap-1 whitespace-nowrap">
