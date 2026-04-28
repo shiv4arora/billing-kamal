@@ -89,6 +89,20 @@ export function AuthProvider({ children }) {
     init();
   }, []);
 
+  // Refresh permissions from server when window regains focus — picks up admin changes immediately
+  useEffect(() => {
+    const onFocus = () => {
+      if (!isApiAvailable()) return;
+      const stored = localStorage.getItem('bms_jwt');
+      if (!stored) return;
+      api('/auth/me')
+        .then(user => setCurrentUser({ ...user, permissions: parsePerms(user.permissions) }))
+        .catch(() => {});
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
+
   const login = async (username, password) => {
     const available = await checkApiAvailable();
     if (available) {
@@ -186,7 +200,9 @@ export function AuthProvider({ children }) {
     if (!currentUser) return false;
     if (currentUser.role === 'admin') return true;
     const perms = parsePerms(currentUser.permissions);
-    return perms.includes(feature);
+    // If user has no permissions stored yet (legacy account), fall back to defaults
+    const effective = perms.length > 0 ? perms : USER_PERMS;
+    return effective.includes(feature);
   };
 
   return (

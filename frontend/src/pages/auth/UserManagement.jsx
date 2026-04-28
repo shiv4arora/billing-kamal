@@ -62,7 +62,9 @@ export default function UserManagement() {
 
   const openAdd = () => { setForm(BLANK_FORM); setEditId(null); setErrors({}); setApiError(''); setShowPw(false); setModalOpen(true); };
   const openEdit = (u) => {
-    setForm({ name: u.name, username: u.username, password: '', role: u.role, permissions: u.permissions || [...DEFAULT_USER_PERMS] });
+    // u.permissions is always an array from the API; fall back to defaults only when truly empty (legacy accounts)
+    const perms = Array.isArray(u.permissions) && u.permissions.length > 0 ? u.permissions : [...DEFAULT_USER_PERMS];
+    setForm({ name: u.name, username: u.username, password: '', role: u.role, permissions: perms });
     setEditId(u.id); setErrors({}); setApiError(''); setShowPw(false); setModalOpen(true);
   };
 
@@ -283,8 +285,9 @@ export default function UserManagement() {
                   );
                 })}
               </div>
-              <div className="px-4 py-2 bg-gray-50 dark:bg-[#2C2C2E] border-t border-gray-200 dark:border-[rgba(84,84,88,0.65)] text-xs text-gray-400">
-                {form.permissions.length} of {ALL_PERMISSIONS.length} permissions selected
+              <div className="px-4 py-2 bg-gray-50 dark:bg-[#2C2C2E] border-t border-gray-200 dark:border-[rgba(84,84,88,0.65)] flex items-center justify-between text-xs text-gray-400">
+                <span>{form.permissions.length} of {ALL_PERMISSIONS.length} permissions selected</span>
+                <span className="text-blue-500 dark:text-[#0A84FF]">✓ Changes apply when user next opens the app</span>
               </div>
             </div>
           )}
