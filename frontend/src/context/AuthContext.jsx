@@ -199,10 +199,7 @@ export function AuthProvider({ children }) {
   const can = (feature) => {
     if (!currentUser) return false;
     if (currentUser.role === 'admin') return true;
-    const perms = parsePerms(currentUser.permissions);
-    // If user has no permissions stored yet (legacy account), fall back to defaults
-    const effective = perms.length > 0 ? perms : USER_PERMS;
-    return effective.includes(feature);
+    return parsePerms(currentUser.permissions).includes(feature);
   };
 
   return (

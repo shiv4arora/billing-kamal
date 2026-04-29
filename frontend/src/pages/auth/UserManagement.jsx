@@ -13,7 +13,7 @@ const DEFAULT_USER_PERMS = [
   'crm',
 ];
 
-const BLANK = { name: '', username: '', password: '', role: 'user', permissions: [...DEFAULT_USER_PERMS] };
+const BLANK = { name: '', username: '', password: '', role: 'user', permissions: [] };
 
 const PERM_GROUPS = ALL_PERMISSIONS.reduce((acc, p) => {
   if (!acc[p.group]) acc[p.group] = [];
@@ -52,8 +52,7 @@ export default function UserManagement() {
   };
 
   const openEdit = (u) => {
-    const perms = Array.isArray(u.permissions) && u.permissions.length > 0
-      ? u.permissions : [...DEFAULT_USER_PERMS];
+    const perms = Array.isArray(u.permissions) ? u.permissions : [];
     setForm({ name: u.name, username: u.username, password: '', role: u.role, permissions: perms });
     setErr(''); setSuccess(''); setShowPw(false);
     setPanel(u);
@@ -166,9 +165,7 @@ export default function UserManagement() {
               <select value={form.role}
                 onChange={e => {
                   const role = e.target.value;
-                  setForm(p => role === p.role ? p
-                    : role === 'admin' ? { ...p, role, permissions: [] }
-                    : { ...p, role, permissions: p.permissions.length > 0 ? p.permissions : [...DEFAULT_USER_PERMS] });
+                  setForm(p => role === p.role ? p : { ...p, role, permissions: [] });
                 }}
                 className={inputCls}>
                 <option value="admin">Admin — Full access to everything</option>
