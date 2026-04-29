@@ -8,7 +8,7 @@
 API_URL="https://billing-kamal-production.up.railway.app"
 ADMIN_USER="admin"
 ADMIN_PASS="admin123"
-BACKUP_DIR="$HOME/billing-backups"
+BACKUP_DIR="/Users/shiv/Documents/Claude projects/billing-kamal/backups"
 KEEP_DAYS=30
 # ─────────────────────────────────────────────────────────────
 
