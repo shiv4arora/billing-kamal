@@ -76,6 +76,7 @@ export default function Sidebar({ isOpen, onClose }) {
           section: 'Config',
           items: [
             ...(can('settings') ? [{ to: '/settings',     label: 'Settings',     icon: '⚙️' }] : []),
+            ...(isAdmin         ? [{ to: '/users',        label: 'Users',        icon: '👤' }] : []),
             ...(isAdmin         ? [{ to: '/activity-log', label: 'Activity Log', icon: '📋' }] : []),
           ],
         }]
