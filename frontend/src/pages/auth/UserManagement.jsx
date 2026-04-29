@@ -98,7 +98,9 @@ export default function UserManagement() {
       } else {
         await api(`/users/${panel.id}`, { method: 'PUT', body });
       }
-      setSuccess(`Saved! ${role === 'admin' ? 'Admin (full access)' : `${finalPerms.length} permissions granted`}`);
+      setSuccess(panel === 'add'
+        ? `User created! ${role === 'admin' ? 'Admin (full access)' : `${finalPerms.length} permissions granted`}`
+        : `Saved! ${role === 'admin' ? 'Admin (full access)' : `${finalPerms.length} permissions granted`} — user must re-login to see changes`);
       await load();
       setTimeout(closePanel, 1200);
     } catch (e) {

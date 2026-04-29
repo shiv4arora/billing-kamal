@@ -91,7 +91,7 @@ export function AuthProvider({ children }) {
 
   // Refresh permissions from server when window regains focus — picks up admin changes immediately
   useEffect(() => {
-    const onFocus = () => {
+    const refresh = () => {
       if (!isApiAvailable()) return;
       const stored = localStorage.getItem('bms_jwt');
       if (!stored) return;
@@ -99,8 +99,10 @@ export function AuthProvider({ children }) {
         .then(user => setCurrentUser({ ...user, permissions: parsePerms(user.permissions) }))
         .catch(() => {});
     };
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
+    window.addEventListener('focus', refresh);
+    // Also poll every 60 s so permissions update even without a focus event
+    const timer = setInterval(refresh, 60_000);
+    return () => { window.removeEventListener('focus', refresh); clearInterval(timer); };
   }, []);
 
   const login = async (username, password) => {
