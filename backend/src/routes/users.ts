@@ -9,7 +9,7 @@ router.use(requireAdmin);
 
 // permissions stored as JSON string in SQLite
 const serializePerms = (p: any) => Array.isArray(p) ? JSON.stringify(p) : (typeof p === 'string' ? p : '[]');
-const parsePerms = (p: any) => { try { return JSON.parse(p || '[]'); } catch { return []; } };
+const parsePerms = (p: any) => { if (Array.isArray(p)) return p; try { return JSON.parse(p || '[]'); } catch { return []; } };
 const safeUser = (u: any) => ({ ...u, password: undefined, permissions: parsePerms(u.permissions) });
 
 router.get('/', async (_req, res, next) => {

@@ -30,8 +30,9 @@ router.post('/login', async (req, res, next) => {
     }
     if (!valid) return res.status(401).json({ error: 'Invalid username or password' });
 
-    const parsedPerms = (() => { try { return JSON.parse(user.permissions || '[]'); } catch { return []; } })();
-    const token = signToken({ id: user.id, role: user.role, permissions: user.permissions });
+    const rawPerms: any = user.permissions;
+    const parsedPerms: string[] = Array.isArray(rawPerms) ? rawPerms : (() => { try { return JSON.parse(rawPerms || '[]'); } catch { return []; } })();
+    const token = signToken({ id: user.id, role: user.role, permissions: user.permissions as any });
     res.json({
       token,
       user: { id: user.id, username: user.username, name: user.name, role: user.role, permissions: parsedPerms },
@@ -43,7 +44,8 @@ router.get('/me', verifyJWT, async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
     if (!user || !user.isActive) return res.status(401).json({ error: 'User not found' });
-    const perms = (() => { try { return JSON.parse(user.permissions || '[]'); } catch { return []; } })();
+    const rawP: any = user.permissions;
+    const perms: string[] = Array.isArray(rawP) ? rawP : (() => { try { return JSON.parse(rawP || '[]'); } catch { return []; } })();
     res.json({ id: user.id, username: user.username, name: user.name, role: user.role, permissions: perms });
   } catch (err) { next(err); }
 });
