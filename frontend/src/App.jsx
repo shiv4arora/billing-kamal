@@ -35,7 +35,6 @@ import Settings from './pages/Settings';
 import VendorSalesReport from './pages/reports/VendorSalesReport';
 import ProductionReport from './pages/reports/ProductionReport';
 import LoginPage from './pages/auth/LoginPage';
-import UserManagement from './pages/auth/UserManagement';
 import ActivityLog from './pages/auth/ActivityLog';
 import CrmList from './pages/crm/CrmList';
 import CrmForm from './pages/crm/CrmForm';
@@ -121,7 +120,6 @@ function LayoutRoutes() {
           {can('reports') && <Route path="/reports/vendor-sales" element={<VendorSalesReport />} />}
           {can('reports') && <Route path="/reports/production" element={<ProductionReport />} />}
           {can('settings') && <Route path="/settings" element={<Settings />} />}
-          {can('users_manage') && <Route path="/users" element={<UserManagement />} />}
           {isAdmin && <Route path="/activity-log" element={<ActivityLog />} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

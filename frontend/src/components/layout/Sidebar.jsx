@@ -71,13 +71,12 @@ export default function Sidebar({ isOpen, onClose }) {
           ],
         }]
       : []),
-    ...((can('settings') || can('users_manage') || isAdmin)
+    ...((can('settings') || isAdmin)
       ? [{
           section: 'Config',
           items: [
-            ...(can('settings')      ? [{ to: '/settings',     label: 'Settings',        icon: '⚙️' }] : []),
-            ...(can('users_manage')  ? [{ to: '/users',        label: 'User Management', icon: '👤' }] : []),
-            ...(isAdmin              ? [{ to: '/activity-log', label: 'Activity Log',    icon: '📋' }] : []),
+            ...(can('settings') ? [{ to: '/settings',     label: 'Settings',     icon: '⚙️' }] : []),
+            ...(isAdmin         ? [{ to: '/activity-log', label: 'Activity Log', icon: '📋' }] : []),
           ],
         }]
       : []),
