@@ -445,8 +445,12 @@ export default function SaleInvoiceCreate() {
                   ref={skuInputRef}
                   value={skuQuickAdd}
                   onChange={e => setSkuQuickAdd(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && skuQuickAdd.trim()) { e.preventDefault(); addProductBySku(skuQuickAdd); } }}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addProductBySku(skuQuickAdd); } }}
                   placeholder="📷 Scan / type SKU + ↵"
+                  enterKeyHint="go"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck="false"
                   className="flex-1 border border-blue-200 bg-blue-50 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder:text-blue-300 min-w-0"
                 />
                 <button
