@@ -203,12 +203,14 @@ export default function SaleInvoicePrint() {
               <th className="border border-gray-300 px-2 py-1.5 text-left">Description</th>
               <th className="border border-gray-300 px-2 py-1.5 text-right">Qty</th>
               <th className="border border-gray-300 px-2 py-1.5 text-right">Rate</th>
-              {hasDiscount && <th className="border border-gray-300 px-2 py-1.5 text-right">Disc%</th>}
               <th className="border border-gray-300 px-2 py-1.5 text-right">Total</th>
+              {hasDiscount && <th className="border border-gray-300 px-2 py-1.5 text-right">Disc%</th>}
+              {hasDiscount && <th className="border border-gray-300 px-2 py-1.5 text-right">Amount</th>}
             </tr>
           </thead>
           <tbody>
             {items.map((item, i) => {
+              const gross = item.quantity * item.unitPrice;
               const taxable = item.taxableAmount ?? item.lineTotal;
               return (
                 <tr key={i}>
@@ -219,8 +221,9 @@ export default function SaleInvoicePrint() {
                   </td>
                   <td className="border border-gray-300 px-2 py-1 text-right">{item.quantity} {item.unit}</td>
                   <td className="border border-gray-300 px-2 py-1 text-right">{formatCurrency(item.unitPrice)}</td>
+                  <td className="border border-gray-300 px-2 py-1 text-right font-semibold">{formatCurrency(gross)}</td>
                   {hasDiscount && <td className="border border-gray-300 px-2 py-1 text-right">{item.discountPct || 0}%</td>}
-                  <td className="border border-gray-300 px-2 py-1 text-right font-semibold">{formatCurrency(taxable)}</td>
+                  {hasDiscount && <td className="border border-gray-300 px-2 py-1 text-right font-semibold">{formatCurrency(taxable)}</td>}
                 </tr>
               );
             })}
@@ -230,8 +233,9 @@ export default function SaleInvoicePrint() {
               <td colSpan={2} className="border border-gray-300 px-2 py-1.5 text-right">Total</td>
               <td className="border border-gray-300 px-2 py-1.5 text-right">{totalQty}</td>
               <td className="border border-gray-300 px-2 py-1.5"></td>
+              <td className="border border-gray-300 px-2 py-1.5 text-right">{formatCurrency(items.reduce((s, i) => s + i.quantity * i.unitPrice, 0))}</td>
               {hasDiscount && <td className="border border-gray-300 px-2 py-1.5"></td>}
-              <td className="border border-gray-300 px-2 py-1.5 text-right">{formatCurrency(totalTaxable)}</td>
+              {hasDiscount && <td className="border border-gray-300 px-2 py-1.5 text-right">{formatCurrency(totalTaxable)}</td>}
             </tr>
           </tfoot>
         </table>

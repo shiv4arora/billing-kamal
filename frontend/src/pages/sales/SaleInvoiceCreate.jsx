@@ -388,8 +388,9 @@ export default function SaleInvoiceCreate() {
                 <th className="px-3 py-2 text-left w-20">SKU</th>
                 <th className="px-3 py-2 text-right w-20">Qty</th>
                 <th className="px-3 py-2 text-right w-28">Rate (₹)</th>
-                {showDiscCol && <th className="px-3 py-2 text-right w-20">Disc%</th>}
                 <th className="px-3 py-2 text-right w-28">Total</th>
+                {showDiscCol && <th className="px-3 py-2 text-right w-20">Disc%</th>}
+                {showDiscCol && <th className="px-3 py-2 text-right w-28">Amount</th>}
                 <th className="px-3 py-2 w-8"></th>
               </tr></thead>
               <tbody>
@@ -473,8 +474,9 @@ export default function SaleInvoiceCreate() {
                           <span className="text-sm font-medium text-gray-700 w-24 inline-block">{item.unitPrice ? formatCurrency(item.unitPrice) : '—'}</span>
                         )}
                       </td>
+                      <td className="px-3 py-2 text-right font-medium">{(item.productId || item.isFreeText) ? formatCurrency(gross) : '-'}</td>
                       {showDiscCol && <td className="px-3 py-2"><input type="number" min="0" max="100" value={item.discountPct} onChange={e => updateItem(idx, 'discountPct', +e.target.value)} onWheel={e => e.target.blur()} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>}
-                      <td className="px-3 py-2 text-right font-medium">{(item.productId || item.isFreeText) ? formatCurrency(lineTotal) : '-'}</td>
+                      {showDiscCol && <td className="px-3 py-2 text-right font-medium text-green-700">{(item.productId || item.isFreeText) ? formatCurrency(taxable) : '-'}</td>}
                       <td className="px-3 py-2">
                         {pendingDelete === idx ? (
                           <div className="flex items-center gap-1 whitespace-nowrap">
