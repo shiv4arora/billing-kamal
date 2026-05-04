@@ -61,18 +61,29 @@ export default function SaleInvoicePrint() {
     } finally {
       if (wasDark) document.documentElement.classList.add('dark');
     }
-    const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 10; // mm on each side
+    const margin = 12; // mm on all 4 sides
     const contentW = pageW - margin * 2;
-    const imgH = (canvas.height * contentW) / canvas.width;
-    let y = 0;
-    while (y < imgH) {
-      pdf.addImage(imgData, 'PNG', margin, margin - y, contentW, imgH);
-      y += pageH - margin * 2;
-      if (y < imgH) pdf.addPage();
+    const contentH = pageH - margin * 2;
+
+    // px height of one page's content area (canvas is scaled to contentW mm wide)
+    const pxPerMm = canvas.width / contentW;
+    const contentH_px = Math.round(contentH * pxPerMm);
+    const totalPages = Math.ceil(canvas.height / contentH_px);
+
+    for (let page = 0; page < totalPages; page++) {
+      if (page > 0) pdf.addPage();
+      // Slice this page's strip from the full canvas
+      const strip = document.createElement('canvas');
+      strip.width = canvas.width;
+      strip.height = contentH_px;
+      const ctx = strip.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, strip.width, strip.height);
+      ctx.drawImage(canvas, 0, page * contentH_px, canvas.width, contentH_px, 0, 0, canvas.width, contentH_px);
+      pdf.addImage(strip.toDataURL('image/png'), 'PNG', margin, margin, contentW, contentH);
     }
     return pdf.output('blob');
   };
