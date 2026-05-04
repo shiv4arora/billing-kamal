@@ -44,6 +44,7 @@ export default function SaleInvoiceCreate() {
   const [skuQuickAdd, setSkuQuickAdd] = useState('');
   const [bulkDiscount, setBulkDiscount] = useState('');
   const [bulkGst, setBulkGst] = useState('');
+  const [vendorDiscounts, setVendorDiscounts] = useState({});
   const [extraCharges, setExtraCharges] = useState({ packing: '', shipping: '' });
   const dropdownRefs = useRef({});
   const searchInputRefs = useRef({});
@@ -143,6 +144,20 @@ export default function SaleInvoiceCreate() {
     setItems(prev => prev.map(item => ({ ...item, gstRate: rate })));
     setIsDirty(true);
   };
+
+  const applyVendorDiscount = (vendorCode) => {
+    const pct = parseFloat(vendorDiscounts[vendorCode]);
+    if (isNaN(pct) || pct < 0 || pct > 100) return;
+    setItems(prev => prev.map(item =>
+      item.vendorCode === vendorCode ? { ...item, discountPct: pct } : item
+    ));
+    setIsDirty(true);
+  };
+
+  // Unique vendors present in current items (exclude free-text rows)
+  const uniqueVendors = [...new Set(
+    items.filter(i => i.productId && i.vendorCode).map(i => i.vendorCode)
+  )];
 
   const addItem = () => setItems(prev => [...prev, { ...BLANK_ITEM }]);
   const insertAfter = (idx) => {
@@ -313,6 +328,30 @@ export default function SaleInvoiceCreate() {
                   </button>
                 </div>
               </div>
+              {uniqueVendors.length > 0 && (
+                <div className="col-span-2">
+                  <label className="text-sm font-medium text-gray-700 block mb-2">Discount % by Vendor</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {uniqueVendors.map(vendor => (
+                      <div key={vendor} className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-gray-500 w-16 truncate" title={vendor}>{vendor}</span>
+                        <input
+                          type="number" min="0" max="100"
+                          value={vendorDiscounts[vendor] ?? ''}
+                          onChange={e => setVendorDiscounts(p => ({ ...p, [vendor]: e.target.value }))}
+                          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyVendorDiscount(vendor); e.target.blur(); } }}
+                          placeholder="0%"
+                          className="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <button type="button" onClick={() => applyVendorDiscount(vendor)}
+                          className="px-3 py-1.5 bg-gray-200 text-gray-700 text-xs rounded-lg hover:bg-gray-300 font-medium whitespace-nowrap">
+                          Apply
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="text-sm font-medium text-gray-700 block mb-1">GST % (all items)</label>
                 <div className="flex gap-2">
