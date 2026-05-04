@@ -63,6 +63,9 @@ export default function SaleInvoiceCreate() {
         setAmountPaid(inv.amountPaid || '');
         setPaymentMethod(inv.paymentMethod || 'cash');
         setExtraCharges({ packing: inv.packingCharges || '', shipping: inv.shippingCharges || '' });
+        // Restore bulk GST from first item that has a rate set
+        const firstGst = (inv.items || []).find(i => i.gstRate > 0)?.gstRate;
+        if (firstGst != null) setBulkGst(String(firstGst));
       }
     }
   }, [id]);
@@ -362,8 +365,7 @@ export default function SaleInvoiceCreate() {
                   const gross = item.quantity * item.unitPrice;
                   const disc = (gross * (item.discountPct || 0)) / 100;
                   const taxable = gross - disc;
-                  const gst = (taxable * (item.gstRate || 0)) / 100;
-                  const lineTotal = taxable + gst;
+                  const lineTotal = taxable; // GST shown only in totals, not per item
                   const search = productSearch[idx] ?? item.productName ?? '';
                   return (
                     <tr key={idx} className="border-b hover:bg-gray-50">
