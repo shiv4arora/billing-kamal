@@ -43,6 +43,7 @@ export default function SaleInvoiceCreate() {
   const [dropdownPos, setDropdownPos] = useState({});
   const [skuQuickAdd, setSkuQuickAdd] = useState('');
   const [bulkDiscount, setBulkDiscount] = useState('');
+  const [bulkGst, setBulkGst] = useState('');
   const dropdownRefs = useRef({});
   const searchInputRefs = useRef({});
 
@@ -129,6 +130,12 @@ export default function SaleInvoiceCreate() {
     const pct = parseFloat(bulkDiscount);
     if (isNaN(pct) || pct < 0 || pct > 100) return;
     setItems(prev => prev.map(item => ({ ...item, discountPct: pct })));
+    setIsDirty(true);
+  };
+  const applyBulkGst = (val) => {
+    const rate = parseFloat(val ?? bulkGst);
+    if (isNaN(rate)) return;
+    setItems(prev => prev.map(item => ({ ...item, gstRate: rate })));
     setIsDirty(true);
   };
 
@@ -280,7 +287,7 @@ export default function SaleInvoiceCreate() {
                 <option value="cash">Cash</option><option value="upi">UPI</option><option value="bank">Bank Transfer</option><option value="credit">Credit</option>
               </Select>
               <Input label="Amount Paid (₹)" type="number" min="0" value={amountPaid} onChange={e => setAmountPaid(e.target.value)} placeholder="0" />
-              <div className="col-span-2">
+              <div>
                 <label className="text-sm font-medium text-gray-700 block mb-1">Discount % (all items)</label>
                 <div className="flex gap-2">
                   <input
@@ -295,6 +302,19 @@ export default function SaleInvoiceCreate() {
                     className="px-4 py-2 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300 font-medium">
                     Apply to all
                   </button>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">GST % (all items)</label>
+                <div className="flex gap-2">
+                  <select
+                    value={bulkGst}
+                    onChange={e => { setBulkGst(e.target.value); applyBulkGst(e.target.value); }}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="">Select GST</option>
+                    {GST_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
+                  </select>
                 </div>
               </div>
             </div>
@@ -386,7 +406,7 @@ export default function SaleInvoiceCreate() {
                         )}
                       </td>
                       <td className="px-3 py-2">
-                        <input ref={el => qtyRefs.current[idx] = el} type="number" min="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', +e.target.value)} onWheel={e => e.target.blur()} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } }} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                        <input ref={el => qtyRefs.current[idx] = el} type="number" min="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', +e.target.value)} onWheel={e => e.target.blur()} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); skuInputRef.current?.focus(); skuInputRef.current?.select(); } }} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" />
                         {item.unit && <p className="text-xs text-gray-400 text-right mt-0.5">{item.unit}</p>}
                       </td>
                       <td className="px-3 py-2 text-right">
