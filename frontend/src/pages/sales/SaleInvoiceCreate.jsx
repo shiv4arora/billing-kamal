@@ -381,17 +381,17 @@ export default function SaleInvoiceCreate() {
             <h3 className="font-semibold text-gray-800">Items</h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[780px] text-sm">
+            <table className="w-full min-w-[700px] text-sm table-fixed">
               <thead><tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
-                <th className="px-3 py-2 text-center w-8">#</th>
+                <th className="px-2 py-2 text-center w-7">#</th>
                 <th className="px-3 py-2 text-left">Product</th>
-                <th className="px-3 py-2 text-left w-20">SKU</th>
-                <th className="px-3 py-2 text-right w-20">Qty</th>
-                <th className="px-3 py-2 text-right w-24">Rate (₹)</th>
-                <th className="px-3 py-2 text-right w-24">Total</th>
-                {showDiscCol && <th className="px-3 py-2 text-right w-16">Disc%</th>}
-                {showDiscCol && <th className="px-3 py-2 text-right w-24">Amount</th>}
-                <th className="px-3 py-2 w-8"></th>
+                <th className="px-2 py-2 text-left w-16">SKU</th>
+                <th className="px-2 py-2 text-right w-16">Qty</th>
+                <th className="px-2 py-2 text-right w-20">Rate (₹)</th>
+                <th className="px-2 py-2 text-right w-20">Total</th>
+                {showDiscCol && <th className="px-2 py-2 text-right w-14">Disc%</th>}
+                {showDiscCol && <th className="px-2 py-2 text-right w-20">Amount</th>}
+                <th className="px-2 py-2 w-7"></th>
               </tr></thead>
               <tbody>
                 {items.map((item, idx) => {
