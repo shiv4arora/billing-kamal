@@ -65,11 +65,13 @@ export default function SaleInvoicePrint() {
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
-    const imgH = (canvas.height * pageW) / canvas.width;
+    const margin = 10; // mm on each side
+    const contentW = pageW - margin * 2;
+    const imgH = (canvas.height * contentW) / canvas.width;
     let y = 0;
     while (y < imgH) {
-      pdf.addImage(imgData, 'PNG', 0, -y, pageW, imgH);
-      y += pageH;
+      pdf.addImage(imgData, 'PNG', margin, margin - y, contentW, imgH);
+      y += pageH - margin * 2;
       if (y < imgH) pdf.addPage();
     }
     return pdf.output('blob');
@@ -148,7 +150,7 @@ export default function SaleInvoicePrint() {
         </button>
       </div>
 
-      <div ref={invoiceRef} className="p-8 max-w-[210mm] mx-auto text-[13px]">
+      <div ref={invoiceRef} className="p-8 max-w-[210mm] mx-auto text-[13px] border border-gray-300 rounded">
         {/* Header */}
         <div className="flex justify-between items-start mb-6 pb-4 border-b-2 border-gray-800">
           <div>
