@@ -57,7 +57,7 @@ export default function SaleInvoicePrint() {
     let canvas;
     try {
       const el = invoiceRef.current;
-      canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      canvas = await html2canvas(el, { scale: 1.5, useCORS: true, backgroundColor: '#ffffff' });
     } finally {
       if (wasDark) document.documentElement.classList.add('dark');
     }
@@ -83,7 +83,7 @@ export default function SaleInvoicePrint() {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, strip.width, strip.height);
       ctx.drawImage(canvas, 0, page * contentH_px, canvas.width, contentH_px, 0, 0, canvas.width, contentH_px);
-      pdf.addImage(strip.toDataURL('image/png'), 'PNG', margin, margin, contentW, contentH);
+      pdf.addImage(strip.toDataURL('image/jpeg', 0.82), 'JPEG', margin, margin, contentW, contentH);
     }
     return pdf.output('blob');
   };
