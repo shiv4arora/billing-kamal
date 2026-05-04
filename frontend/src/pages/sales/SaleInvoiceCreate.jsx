@@ -145,6 +145,19 @@ export default function SaleInvoiceCreate() {
     setIsDirty(true);
   };
 
+  const handleApplyDiscount = () => {
+    const pct = parseFloat(vendorDiscounts['__input__']);
+    if (isNaN(pct) || pct < 0 || pct > 100) return;
+    if (bulkDiscount === 'all') {
+      setItems(prev => prev.map(item => ({ ...item, discountPct: pct })));
+    } else {
+      setItems(prev => prev.map(item =>
+        item.vendorCode === bulkDiscount ? { ...item, discountPct: pct } : item
+      ));
+    }
+    setIsDirty(true);
+  };
+
   const applyVendorDiscount = (vendorCode) => {
     const pct = parseFloat(vendorDiscounts[vendorCode]);
     if (isNaN(pct) || pct < 0 || pct > 100) return;
@@ -315,17 +328,25 @@ export default function SaleInvoiceCreate() {
               </Select>
               <Input label="Amt Paid (₹)" type="number" min="0" value={amountPaid} onChange={e => setAmountPaid(e.target.value)} placeholder="0" />
 
-              {/* Row 3: disc + gst inline */}
-              <div>
-                <p className="text-xs font-medium text-gray-500 mb-1">Disc % · All Items</p>
+              {/* Discount — unified dropdown */}
+              <div className="col-span-2">
+                <p className="text-xs font-medium text-gray-500 mb-1">Discount %</p>
                 <div className="flex gap-1.5">
-                  <input type="number" min="0" max="100" value={bulkDiscount}
-                    onChange={e => setBulkDiscount(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyBulkDiscount(); e.target.blur(); } }}
-                    placeholder="0" className="w-16 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  <button type="button" onClick={applyBulkDiscount} className="flex-1 py-1.5 bg-gray-100 text-gray-600 text-xs rounded-lg hover:bg-gray-200 font-medium">Apply</button>
+                  <select value={bulkDiscount} onChange={e => setBulkDiscount(e.target.value)}
+                    className="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                    <option value="all">All Items</option>
+                    {uniqueVendors.map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                  <input type="number" min="0" max="100" value={vendorDiscounts['__input__'] ?? ''}
+                    onChange={e => setVendorDiscounts(p => ({ ...p, '__input__': e.target.value }))}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleApplyDiscount(); e.target.blur(); } }}
+                    placeholder="0%" className="w-20 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <button type="button" onClick={handleApplyDiscount}
+                    className="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs rounded-lg hover:bg-gray-200 font-medium">Apply</button>
                 </div>
               </div>
+
+              {/* GST + packing + shipping */}
               <div>
                 <p className="text-xs font-medium text-gray-500 mb-1">GST % · All Items</p>
                 <select value={bulkGst} onChange={e => { setBulkGst(e.target.value); applyBulkGst(e.target.value); }}
@@ -334,8 +355,7 @@ export default function SaleInvoiceCreate() {
                   {GST_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
                 </select>
               </div>
-
-              {/* Row 4: packing + shipping */}
+              <div>{/* spacer */}</div>
               <div>
                 <p className="text-xs font-medium text-gray-500 mb-1">Packing (₹)</p>
                 <input type="number" min="0" value={extraCharges.packing}
@@ -350,27 +370,6 @@ export default function SaleInvoiceCreate() {
                   placeholder="0" onWheel={e => e.target.blur()}
                   className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-
-              {/* Vendor-wise discount — only shown when multiple vendors */}
-              {uniqueVendors.length > 0 && (
-                <div className="col-span-2 pt-1 border-t border-gray-100">
-                  <p className="text-xs font-medium text-gray-500 mb-1.5">Disc % by Vendor</p>
-                  <div className="flex flex-wrap gap-2">
-                    {uniqueVendors.map(vendor => (
-                      <div key={vendor} className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1">
-                        <span className="text-xs font-semibold text-gray-600 max-w-[60px] truncate" title={vendor}>{vendor}</span>
-                        <input type="number" min="0" max="100"
-                          value={vendorDiscounts[vendor] ?? ''}
-                          onChange={e => setVendorDiscounts(p => ({ ...p, [vendor]: e.target.value }))}
-                          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyVendorDiscount(vendor); e.target.blur(); } }}
-                          placeholder="%" className="w-12 border border-gray-300 rounded px-1.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                        <button type="button" onClick={() => applyVendorDiscount(vendor)}
-                          className="text-xs text-blue-600 font-medium hover:text-blue-800">✓</button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
             </div>
           </Card>
