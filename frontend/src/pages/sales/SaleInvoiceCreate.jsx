@@ -42,7 +42,7 @@ export default function SaleInvoiceCreate() {
   const [showDropdown, setShowDropdown] = useState({});
   const [dropdownPos, setDropdownPos] = useState({});
   const [skuQuickAdd, setSkuQuickAdd] = useState('');
-  const [bulkDiscount, setBulkDiscount] = useState('');
+  const [bulkDiscount, setBulkDiscount] = useState('all');
   const [bulkGst, setBulkGst] = useState('');
   const [vendorDiscounts, setVendorDiscounts] = useState({});
   const [extraCharges, setExtraCharges] = useState({ packing: '', shipping: '' });
@@ -178,7 +178,7 @@ export default function SaleInvoiceCreate() {
     setPendingDelete(null);
   };
 
-  const showDiscCol = bulkDiscount !== '' || items.some(i => (i.discountPct || 0) > 0);
+  const showDiscCol = items.some(i => (i.discountPct || 0) > 0);
   const validItems = items.filter(i => (i.productId || (i.isFreeText && i.productName?.trim())) && i.quantity > 0);
   const totals = buildInvoiceTotals(validItems, settings.tax.intraState === false);
   const packingAmt = parseFloat(extraCharges.packing) || 0;
