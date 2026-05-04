@@ -58,7 +58,7 @@ export default function SaleInvoiceCreate() {
         if (cust) setCustomerSearch(formatCustomerDisplay(cust));
         setDate(inv.date);
         setDueDate(inv.dueDate || '');
-        setItems((inv.items || [{ ...BLANK_ITEM }]).map(i => ({ ...BLANK_ITEM, ...i, isFreeText: false })));
+        setItems((inv.items || [{ ...BLANK_ITEM }]).map(i => ({ ...BLANK_ITEM, ...i, isFreeText: !i.productId && !!i.productName })));
         setNotes(inv.notes || '');
         setAmountPaid(inv.amountPaid || '');
         setPaymentMethod(inv.paymentMethod || 'cash');
