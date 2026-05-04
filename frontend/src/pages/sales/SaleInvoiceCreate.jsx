@@ -387,10 +387,10 @@ export default function SaleInvoiceCreate() {
                 <th className="px-3 py-2 text-left">Product</th>
                 <th className="px-3 py-2 text-left w-20">SKU</th>
                 <th className="px-3 py-2 text-right w-20">Qty</th>
-                <th className="px-3 py-2 text-right w-28">Rate (₹)</th>
-                <th className="px-3 py-2 text-right w-28">Total</th>
-                {showDiscCol && <th className="px-3 py-2 text-right w-20">Disc%</th>}
-                {showDiscCol && <th className="px-3 py-2 text-right w-28">Amount</th>}
+                <th className="px-3 py-2 text-right w-24">Rate (₹)</th>
+                <th className="px-3 py-2 text-right w-24">Total</th>
+                {showDiscCol && <th className="px-3 py-2 text-right w-16">Disc%</th>}
+                {showDiscCol && <th className="px-3 py-2 text-right w-24">Amount</th>}
                 <th className="px-3 py-2 w-8"></th>
               </tr></thead>
               <tbody>
