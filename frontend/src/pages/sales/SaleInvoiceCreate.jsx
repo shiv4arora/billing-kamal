@@ -72,7 +72,7 @@ export default function SaleInvoiceCreate() {
 
   const customer = customers.find(c => c.id === customerId);
 
-  const confirmLeave = useUnsavedChanges(isDirty);
+  const { confirmLeave, SavePrompt } = useUnsavedChanges(isDirty);
 
   const handleCustomerChange = (cid) => {
     setIsDirty(true);
@@ -238,6 +238,7 @@ export default function SaleInvoiceCreate() {
 
   return (
     <>
+      <SavePrompt />
       <div className="max-w-5xl space-y-5">
         <div className="flex items-center gap-3">
           <button onClick={() => { if (confirmLeave()) navigate('/sales'); }} className="text-gray-400 hover:text-gray-600">←</button>
