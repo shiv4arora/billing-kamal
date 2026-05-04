@@ -28,6 +28,13 @@ router.put('/:id', async (req, res, next) => {
   try {
     const { balance, ...rest } = req.body; // don't let clients overwrite balance directly
     const c = await prisma.customer.update({ where: { id: req.params.id }, data: rest });
+    // Sync name change to all existing invoices
+    if (rest.name) {
+      await prisma.saleInvoice.updateMany({
+        where: { customerId: req.params.id },
+        data: { customerName: rest.name },
+      });
+    }
     res.json(c);
   } catch (err) { next(err); }
 });
