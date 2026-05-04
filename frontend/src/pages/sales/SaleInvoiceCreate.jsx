@@ -44,6 +44,7 @@ export default function SaleInvoiceCreate() {
   const [skuQuickAdd, setSkuQuickAdd] = useState('');
   const [bulkDiscount, setBulkDiscount] = useState('');
   const [bulkGst, setBulkGst] = useState('');
+  const [extraCharges, setExtraCharges] = useState({ packing: '', shipping: '' });
   const dropdownRefs = useRef({});
   const searchInputRefs = useRef({});
 
@@ -61,6 +62,7 @@ export default function SaleInvoiceCreate() {
         setNotes(inv.notes || '');
         setAmountPaid(inv.amountPaid || '');
         setPaymentMethod(inv.paymentMethod || 'cash');
+        setExtraCharges({ packing: inv.packingCharges || '', shipping: inv.shippingCharges || '' });
       }
     }
   }, [id]);
@@ -148,6 +150,9 @@ export default function SaleInvoiceCreate() {
   const showDiscCol = bulkDiscount !== '' || items.some(i => (i.discountPct || 0) > 0);
   const validItems = items.filter(i => (i.productId || (i.isFreeText && i.productName?.trim())) && i.quantity > 0);
   const totals = buildInvoiceTotals(validItems, settings.tax.intraState === false);
+  const packingAmt = parseFloat(extraCharges.packing) || 0;
+  const shippingAmt = parseFloat(extraCharges.shipping) || 0;
+  const finalTotal = totals.grandTotal + packingAmt + shippingAmt;
 
   const handleSave = async (status) => {
     if (!customerId) { toast.error('Please select a customer'); return; }
@@ -159,10 +164,10 @@ export default function SaleInvoiceCreate() {
 
     try {
       const paid = +amountPaid || 0;
-      const payStatus = paid >= totals.grandTotal ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
+      const payStatus = paid >= finalTotal ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
       const dueD = dueDate || (() => { const d = new Date(date); d.setDate(d.getDate() + (settings.invoice?.defaultDueDays || 14)); return d.toISOString().slice(0,10); })();
 
-      const invData = { date, dueDate: dueD, customerId, customerName: customer?.name || '', customerPlace: customer?.place || '', customerType, customerAddress: customer?.address || '', customerGstin: customer?.gstin || '', items: totals.items, ...totals, amountPaid: paid, paymentMethod, paymentStatus: payStatus, paymentDate: paid > 0 ? today() : null, notes, status: 'draft' };
+      const invData = { date, dueDate: dueD, customerId, customerName: customer?.name || '', customerPlace: customer?.place || '', customerType, customerAddress: customer?.address || '', customerGstin: customer?.gstin || '', items: totals.items, ...totals, grandTotal: finalTotal, packingCharges: packingAmt, shippingCharges: shippingAmt, amountPaid: paid, paymentMethod, paymentStatus: payStatus, paymentDate: paid > 0 ? today() : null, notes, status: 'draft' };
 
       setIsDirty(false);
       if (isEdit) {
@@ -317,6 +322,20 @@ export default function SaleInvoiceCreate() {
                   </select>
                 </div>
               </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Packing Charges (₹)</label>
+                <input type="number" min="0" value={extraCharges.packing}
+                  onChange={e => { setExtraCharges(p => ({ ...p, packing: e.target.value })); setIsDirty(true); }}
+                  placeholder="0" onWheel={e => e.target.blur()}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Shipping Charges (₹)</label>
+                <input type="number" min="0" value={extraCharges.shipping}
+                  onChange={e => { setExtraCharges(p => ({ ...p, shipping: e.target.value })); setIsDirty(true); }}
+                  placeholder="0" onWheel={e => e.target.blur()}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
             </div>
           </Card>
         </div>
@@ -335,7 +354,6 @@ export default function SaleInvoiceCreate() {
                 <th className="px-3 py-2 text-right w-20">Qty</th>
                 <th className="px-3 py-2 text-right w-28">Rate (₹)</th>
                 {showDiscCol && <th className="px-3 py-2 text-right w-20">Disc%</th>}
-                <th className="px-3 py-2 text-right w-20">GST%</th>
                 <th className="px-3 py-2 text-right w-28">Total</th>
                 <th className="px-3 py-2 w-8"></th>
               </tr></thead>
@@ -422,11 +440,6 @@ export default function SaleInvoiceCreate() {
                         )}
                       </td>
                       {showDiscCol && <td className="px-3 py-2"><input type="number" min="0" max="100" value={item.discountPct} onChange={e => updateItem(idx, 'discountPct', +e.target.value)} onWheel={e => e.target.blur()} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>}
-                      <td className="px-3 py-2">
-                        <select value={item.gstRate} onChange={e => updateItem(idx, 'gstRate', +e.target.value)} className="w-16 border border-gray-200 rounded px-1 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white">
-                          {GST_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
-                        </select>
-                      </td>
                       <td className="px-3 py-2 text-right font-medium">{(item.productId || item.isFreeText) ? formatCurrency(lineTotal) : '-'}</td>
                       <td className="px-3 py-2">
                         {pendingDelete === idx ? (
@@ -493,9 +506,11 @@ export default function SaleInvoiceCreate() {
               {totals.totalSGST > 0 && <div className="flex justify-between"><span className="text-gray-500">SGST</span><span>{formatCurrency(totals.totalSGST)}</span></div>}
               {totals.totalIGST > 0 && <div className="flex justify-between"><span className="text-gray-500">IGST</span><span>{formatCurrency(totals.totalIGST)}</span></div>}
               {totals.roundOff !== 0 && <div className="flex justify-between"><span className="text-gray-500">Round Off</span><span>{formatCurrency(totals.roundOff)}</span></div>}
-              <div className="flex justify-between font-bold text-base border-t pt-2"><span>Grand Total</span><span className="text-blue-700">{formatCurrency(totals.grandTotal)}</span></div>
+              {packingAmt > 0 && <div className="flex justify-between"><span className="text-gray-500">Packing</span><span>{formatCurrency(packingAmt)}</span></div>}
+              {shippingAmt > 0 && <div className="flex justify-between"><span className="text-gray-500">Shipping</span><span>{formatCurrency(shippingAmt)}</span></div>}
+              <div className="flex justify-between font-bold text-base border-t pt-2"><span>Grand Total</span><span className="text-blue-700">{formatCurrency(finalTotal)}</span></div>
               {+amountPaid > 0 && <div className="flex justify-between text-green-600"><span>Paid</span><span>{formatCurrency(+amountPaid)}</span></div>}
-              {+amountPaid < totals.grandTotal && +amountPaid >= 0 && <div className="flex justify-between text-red-600 font-medium"><span>Balance</span><span>{formatCurrency(totals.grandTotal - (+amountPaid || 0))}</span></div>}
+              {+amountPaid < finalTotal && +amountPaid >= 0 && <div className="flex justify-between text-red-600 font-medium"><span>Balance</span><span>{formatCurrency(finalTotal - (+amountPaid || 0))}</span></div>}
             </div>
           </div>
         </Card>

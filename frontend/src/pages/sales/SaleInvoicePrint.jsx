@@ -245,6 +245,8 @@ export default function SaleInvoicePrint() {
                 <span>Total Tax</span><span>{formatCurrency(totalTax)}</span>
               </div>
             )}
+            {inv.packingCharges > 0 && <div className="flex justify-between py-0.5"><span>Packing</span><span>{formatCurrency(inv.packingCharges)}</span></div>}
+            {inv.shippingCharges > 0 && <div className="flex justify-between py-0.5"><span>Shipping</span><span>{formatCurrency(inv.shippingCharges)}</span></div>}
             <div className="flex justify-between font-bold text-sm border-t border-gray-400 mt-1 pt-1">
               <span>Grand Total</span><span>{formatCurrency(inv.grandTotal)}</span>
             </div>
