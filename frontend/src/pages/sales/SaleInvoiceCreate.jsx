@@ -8,7 +8,7 @@ import { useLedger } from '../../context/LedgerContext';
 import { Button, Input, Select, Textarea, Card } from '../../components/ui';
 import { useGlobalToast } from '../../context/ToastContext';
 import { buildInvoiceTotals, formatCurrency, getPrice, nextInvoiceNumber, today, formatCustomerDisplay } from '../../utils/helpers';
-import { GST_RATES } from '../../constants';
+import { GST_RATES, UNITS } from '../../constants';
 import { useInvoiceLock } from '../../hooks/useInvoiceLock';
 import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedChanges.jsx';
 
@@ -179,7 +179,7 @@ export default function SaleInvoiceCreate() {
   };
 
   const showDiscCol = items.some(i => (i.discountPct || 0) > 0);
-  const validItems = items.filter(i => (i.productId || (i.isFreeText && i.productName?.trim())) && i.quantity > 0);
+  const validItems = items.filter(i => i.productId || (i.isFreeText && i.productName?.trim()));
   const totals = buildInvoiceTotals(validItems, settings.tax.intraState === false);
   const packingAmt = parseFloat(extraCharges.packing) || 0;
   const shippingAmt = parseFloat(extraCharges.shipping) || 0;
@@ -383,15 +383,15 @@ export default function SaleInvoiceCreate() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[700px] text-sm table-fixed">
               <thead><tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
-                <th className="px-2 py-2 text-center w-7">#</th>
-                <th className="px-3 py-2 text-left">Product</th>
-                <th className="px-2 py-2 text-left w-16">SKU</th>
-                <th className="px-2 py-2 text-right w-16">Qty</th>
-                <th className="px-2 py-2 text-right w-20">Rate (₹)</th>
-                <th className="px-2 py-2 text-right w-20">Total</th>
-                {showDiscCol && <th className="px-2 py-2 text-right w-14">Disc%</th>}
-                {showDiscCol && <th className="px-2 py-2 text-right w-20">Amount</th>}
-                <th className="px-2 py-2 w-7"></th>
+                <th className="px-3 py-3 text-center w-7">#</th>
+                <th className="px-3 py-3 text-left w-72">Product</th>
+                <th className="px-3 py-3 text-left w-12">SKU</th>
+                <th className="px-3 py-3 text-right w-20">Qty</th>
+                <th className="px-3 py-3 text-right w-24">Rate (₹)</th>
+                <th className="px-3 py-3 text-right w-24">Total</th>
+                {showDiscCol && <th className="px-3 py-3 text-right w-16">Disc%</th>}
+                {showDiscCol && <th className="px-3 py-3 text-right w-24">Amount</th>}
+                <th className="px-2 py-3 w-7"></th>
               </tr></thead>
               <tbody>
                 {items.map((item, idx) => {
@@ -402,8 +402,8 @@ export default function SaleInvoiceCreate() {
                   const search = productSearch[idx] ?? item.productName ?? '';
                   return (
                     <tr key={idx} className="border-b hover:bg-gray-50">
-                      <td className="px-3 py-2 text-center text-xs text-gray-400 font-medium">{idx + 1}</td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-3 text-center text-xs text-gray-400 font-medium">{idx + 1}</td>
+                      <td className="px-3 py-3">
                         {item.isFreeText ? (
                           <input
                             value={item.productName}
@@ -448,7 +448,7 @@ export default function SaleInvoiceCreate() {
                           </>
                         )}
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-3">
                         {item.sku ? (
                           <div className="space-y-0.5">
                             <span className="text-xs font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded block w-fit">{item.sku}</span>
@@ -458,34 +458,37 @@ export default function SaleInvoiceCreate() {
                           <span className="text-xs text-gray-300">—</span>
                         )}
                       </td>
-                      <td className="px-3 py-2">
-                        <input ref={el => qtyRefs.current[idx] = el} type="number" min="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', +e.target.value)} onWheel={e => e.target.blur()} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); skuInputRef.current?.focus(); skuInputRef.current?.select(); } }} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                        {item.unit && <p className="text-xs text-gray-400 text-right mt-0.5">{item.unit}</p>}
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col items-center gap-1">
+                          <input ref={el => qtyRefs.current[idx] = el} type="number" min="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', +e.target.value)} onWheel={e => e.target.blur()} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); skuInputRef.current?.focus(); skuInputRef.current?.select(); } }} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                          <select value={item.unit || 'Pcs'} onChange={e => updateItem(idx, 'unit', e.target.value)} className="w-16 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded px-1 py-0.5 focus:outline-none cursor-pointer text-center">
+                            {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                          </select>
+                        </div>
                       </td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="px-4 py-3 text-right">
                         {item.isFreeText ? (
                           <input
                             type="number" min="0" value={item.unitPrice}
                             onChange={e => updateItem(idx, 'unitPrice', +e.target.value)}
                             onWheel={e => e.target.blur()}
-                            className="w-24 border border-orange-200 bg-orange-50 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-orange-400 dark:bg-[rgba(255,159,10,0.1)] dark:border-[rgba(255,159,10,0.4)] dark:text-white"
+                            className="w-full border border-orange-200 bg-orange-50 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-orange-400"
                           />
                         ) : (
-                          <span className="text-sm font-medium text-gray-700 w-24 inline-block">{item.unitPrice ? formatCurrency(item.unitPrice) : '—'}</span>
+                          <span className="text-sm font-medium text-gray-700">{item.unitPrice ? formatCurrency(item.unitPrice) : '—'}</span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-right font-medium">{(item.productId || item.isFreeText) ? formatCurrency(gross) : '-'}</td>
-                      {showDiscCol && <td className="px-3 py-2"><input type="number" min="0" max="100" value={item.discountPct} onChange={e => updateItem(idx, 'discountPct', +e.target.value)} onWheel={e => e.target.blur()} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>}
-                      {showDiscCol && <td className="px-3 py-2 text-right font-medium text-green-700">{(item.productId || item.isFreeText) ? formatCurrency(taxable) : '-'}</td>}
-                      <td className="px-3 py-2">
-                        {pendingDelete === idx ? (
-                          <div className="flex items-center gap-1 whitespace-nowrap">
-                            <button onClick={() => removeItem(idx)} className="px-1.5 py-0.5 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 font-medium">Del</button>
-                            <button onClick={() => replaceItem(idx)} className="px-1.5 py-0.5 text-xs bg-amber-100 text-amber-700 rounded hover:bg-amber-200 font-medium">Replace</button>
-                            <button onClick={() => setPendingDelete(null)} className="text-gray-300 hover:text-gray-500 text-xs">✕</button>
+                      <td className="px-4 py-3 text-right font-medium">{(item.productId || item.isFreeText) ? formatCurrency(gross) : '-'}</td>
+                      {showDiscCol && <td className="px-3 py-3"><input type="number" min="0" max="100" value={item.discountPct} onChange={e => updateItem(idx, 'discountPct', +e.target.value)} onWheel={e => e.target.blur()} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>}
+                      {showDiscCol && <td className="px-3 py-3 text-right font-medium text-green-700">{(item.productId || item.isFreeText) ? formatCurrency(taxable) : '-'}</td>}
+                      <td className="px-2 py-3 relative">
+                        <button onClick={() => setPendingDelete(idx)} className="text-gray-300 hover:text-red-500">✕</button>
+                        {pendingDelete === idx && (
+                          <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg shadow-lg px-2 py-1.5 z-20 whitespace-nowrap">
+                            <button onClick={() => removeItem(idx)} className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 font-medium">Delete</button>
+                            <button onClick={() => replaceItem(idx)} className="px-2 py-1 text-xs bg-amber-500 text-white rounded hover:bg-amber-600 font-medium">Replace</button>
+                            <button onClick={() => setPendingDelete(null)} className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200 font-medium">Cancel</button>
                           </div>
-                        ) : (
-                          <button onClick={() => setPendingDelete(idx)} className="text-gray-300 hover:text-red-500">✕</button>
                         )}
                       </td>
                     </tr>

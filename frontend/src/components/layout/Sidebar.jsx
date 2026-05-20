@@ -26,7 +26,10 @@ export default function Sidebar({ isOpen, onClose }) {
   const navSections = [
     {
       section: 'Overview',
-      items: [{ to: '/', label: 'Dashboard', icon: '📊' }],
+      items: [
+        { to: '/', label: 'Dashboard', icon: '📊' },
+        { to: '/shiv', label: 'Shiv', icon: '⭐' },
+      ],
     },
     {
       section: 'Transactions',
