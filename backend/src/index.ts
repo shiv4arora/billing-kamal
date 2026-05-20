@@ -37,11 +37,15 @@ app.use(helmet({
 }));
 
 // CORS (only needed when frontend is served separately, e.g. local dev)
-const corsOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',').map(s => s.trim());
+const corsOrigins = (process.env.CORS_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean);
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || corsOrigins.includes(origin) || corsOrigins.includes('*')) cb(null, true);
-    else cb(new Error('Not allowed by CORS'));
+    if (!origin) return cb(null, true);
+    if (corsOrigins.length === 0 || corsOrigins.includes('*')) return cb(null, true);
+    if (corsOrigins.includes(origin)) return cb(null, true);
+    // Allow any localhost origin in development
+    if (/^http:\/\/localhost(:\d+)?$/.test(origin)) return cb(null, true);
+    cb(new Error('Not allowed by CORS'));
   },
   credentials: true,
 }));

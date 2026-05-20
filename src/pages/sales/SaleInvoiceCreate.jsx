@@ -7,9 +7,9 @@ import { useSettings } from '../../context/SettingsContext';
 import { useLedger } from '../../context/LedgerContext';
 import { Button, Input, Select, Textarea, Card, useToast, Toast } from '../../components/ui';
 import { buildInvoiceTotals, formatCurrency, getPrice, nextInvoiceNumber, today, formatCustomerDisplay } from '../../utils/helpers';
-import { GST_RATES } from '../../constants';
+import { GST_RATES, UNITS } from '../../constants';
 
-const BLANK_ITEM = { productId: '', productName: '', sku: '', hsnCode: '', unit: 'Pcs', quantity: 1, unitPrice: 0, discountPct: 0, gstRate: 0 };
+const BLANK_ITEM = { productId: '', productName: '', sku: '', category: '', hsnCode: '', unit: 'Pcs', quantity: 1, unitPrice: 0, discountPct: 0, gstRate: 0 };
 
 export default function SaleInvoiceCreate() {
   const { id } = useParams();
@@ -71,7 +71,7 @@ export default function SaleInvoiceCreate() {
     const price = getPrice(prod, customerType);
     setItems(prev => prev.map((item, i) => i === idx ? {
       ...item,
-      productId: prod.id, productName: prod.name, sku: prod.sku || '',
+      productId: prod.id, productName: prod.name, sku: prod.sku || '', category: prod.category || '',
       hsnCode: prod.hsnCode || '', unit: prod.unit, unitPrice: price, gstRate: prod.gstRate || 0,
     } : item));
     setProductSearch(p => ({ ...p, [idx]: prod.name }));
@@ -134,7 +134,7 @@ export default function SaleInvoiceCreate() {
     const price = getPrice(prod, customerType);
     setItems(prev => [...prev, {
       ...BLANK_ITEM,
-      productId: prod.id, productName: prod.name, sku: prod.sku || '',
+      productId: prod.id, productName: prod.name, sku: prod.sku || '', category: prod.category || '',
       hsnCode: prod.hsnCode || '', unit: prod.unit,
       unitPrice: price, gstRate: prod.gstRate || 0,
     }]);
@@ -181,53 +181,34 @@ export default function SaleInvoiceCreate() {
 
         {/* Line Items */}
         <Card padding={false}>
-          <div className="p-4 border-b flex items-center justify-between gap-3 flex-wrap">
+          <div className="p-4 border-b">
             <h3 className="font-semibold text-gray-800">Items</h3>
-            {/* SKU Quick-Add */}
-            <div className="flex items-center gap-2 flex-1 max-w-xs">
-              <div className="relative flex-1">
-                <input
-                  value={skuQuickAdd}
-                  onChange={e => setSkuQuickAdd(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addProductBySku(skuQuickAdd); } }}
-                  placeholder="Scan / type SKU code + ↵"
-                  className="w-full border border-blue-200 bg-blue-50 rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder:text-blue-300"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => addProductBySku(skuQuickAdd)}
-                className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 font-medium"
-              >
-                Add
-              </button>
-            </div>
-            <Button size="sm" variant="secondary" onClick={addItem}>+ Add Row</Button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
-                <th className="px-3 py-2 text-left w-64">Product</th>
-                <th className="px-3 py-2 text-right w-20">Qty</th>
-                <th className="px-3 py-2 text-right w-28">Rate (₹)</th>
-                <th className="px-3 py-2 text-right w-20">Disc%</th>
-                <th className="px-3 py-2 text-right w-20">GST%</th>
-                <th className="px-3 py-2 text-right w-28">Total</th>
-                <th className="px-3 py-2 w-8"></th>
+              <thead><tr className="border-b text-xs text-gray-400 uppercase tracking-wide">
+                <th className="px-4 py-3 text-left w-10">#</th>
+                <th className="px-4 py-3 text-left w-52">Product</th>
+                <th className="px-4 py-3 text-center w-24">SKU</th>
+                <th className="px-4 py-3 text-center w-32">QTY</th>
+                <th className="px-4 py-3 text-right w-28">Rate (₹)</th>
+                <th className="px-4 py-3 text-right w-28">Total</th>
+                <th className="px-4 py-3 text-center w-24">Disc%</th>
+                <th className="px-4 py-3 text-right w-28">Amount</th>
+                <th className="w-8"></th>
               </tr></thead>
               <tbody>
                 {items.map((item, idx) => {
                   const gross = item.quantity * item.unitPrice;
                   const disc = (gross * (item.discountPct || 0)) / 100;
-                  const taxable = gross - disc;
-                  const gst = (taxable * (item.gstRate || 0)) / 100;
-                  const lineTotal = taxable + gst;
+                  const amount = gross - disc;
                   const search = productSearch[idx] ?? item.productName ?? '';
                   return (
                     <tr key={idx} className="border-b hover:bg-gray-50">
-                      <td className="px-3 py-2 relative">
+                      <td className="px-4 py-3 text-gray-400 text-sm">{idx + 1}</td>
+                      <td className="px-4 py-3 relative">
                         <input value={search} onChange={e => { setProductSearch(p => ({ ...p, [idx]: e.target.value })); setShowDropdown(p => ({ ...p, [idx]: true })); }} onFocus={() => setShowDropdown(p => ({ ...p, [idx]: true }))}
-                          placeholder="Search product…" className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                          placeholder="Search product…" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400" />
                         {showDropdown[idx] && filteredProducts(search).length > 0 && (
                           <div ref={el => dropdownRefs.current[idx] = el} className="absolute z-30 top-full left-0 w-80 bg-white border border-gray-200 rounded-lg shadow-xl mt-1">
                             {filteredProducts(search).map(p => (
@@ -242,21 +223,55 @@ export default function SaleInvoiceCreate() {
                           </div>
                         )}
                       </td>
-                      <td className="px-3 py-2"><input type="number" min="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', +e.target.value)} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
-                      <td className="px-3 py-2"><input type="number" min="0" step="0.01" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', +e.target.value)} className="w-24 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
-                      <td className="px-3 py-2"><input type="number" min="0" max="100" value={item.discountPct} onChange={e => updateItem(idx, 'discountPct', +e.target.value)} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>
-                      <td className="px-3 py-2">
-                        <select value={item.gstRate} onChange={e => updateItem(idx, 'gstRate', +e.target.value)} className="w-16 border border-gray-200 rounded px-1 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white">
-                          {GST_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
-                        </select>
+                      <td className="px-4 py-3 text-center">
+                        {item.sku ? (
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className="text-blue-600 font-semibold text-sm bg-blue-50 px-2 py-0.5 rounded">{item.sku}</span>
+                            {item.category && <span className="text-gray-400 text-xs">{item.category}</span>}
+                          </div>
+                        ) : <span className="text-gray-200">—</span>}
                       </td>
-                      <td className="px-3 py-2 text-right font-medium">{item.productId ? formatCurrency(lineTotal) : '-'}</td>
-                      <td className="px-3 py-2"><button onClick={() => removeItem(idx)} className="text-gray-300 hover:text-red-500">✕</button></td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <input type="number" min="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', +e.target.value)} className="w-20 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                          <select value={item.unit} onChange={e => updateItem(idx, 'unit', e.target.value)} className="text-xs text-gray-400 bg-transparent border-0 focus:outline-none cursor-pointer">
+                            {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                          </select>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <input type="number" min="0" step="0.01" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', +e.target.value)} className="w-24 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-700">
+                        {item.unitPrice > 0 ? formatCurrency(gross) : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <input type="number" min="0" max="100" value={item.discountPct} onChange={e => updateItem(idx, 'discountPct', +e.target.value)} className="w-16 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-green-600">
+                        {item.unitPrice > 0 ? formatCurrency(amount) : '—'}
+                      </td>
+                      <td className="px-4 py-3"><button onClick={() => removeItem(idx)} className="text-gray-300 hover:text-red-500 text-lg leading-none">×</button></td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
+          </div>
+          {/* Footer actions */}
+          <div className="flex items-stretch border-t text-sm">
+            <button type="button" onClick={addItem} className="flex-1 py-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 border-r transition-colors font-medium">+ Add Item</button>
+            <button type="button" onClick={addItem} className="flex-1 py-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 border-r transition-colors font-medium">+ Free Text</button>
+            <div className="flex items-center gap-2 px-4 py-2 flex-1">
+              <input
+                value={skuQuickAdd}
+                onChange={e => setSkuQuickAdd(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addProductBySku(skuQuickAdd); } }}
+                placeholder="Scan / type SKU + ↵"
+                className="flex-1 border border-blue-200 bg-blue-50 rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder:text-blue-300"
+              />
+              <button type="button" onClick={() => addProductBySku(skuQuickAdd)} className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 font-medium">Add</button>
+            </div>
           </div>
           {/* Totals */}
           <div className="flex justify-end p-5 border-t">
