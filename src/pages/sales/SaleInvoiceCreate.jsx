@@ -185,7 +185,7 @@ export default function SaleInvoiceCreate() {
             <h3 className="font-semibold text-gray-800">Items</h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[780px] text-sm">
               <thead><tr className="border-b text-xs text-gray-400 uppercase tracking-wide">
                 <th className="px-4 py-3 text-left w-10">#</th>
                 <th className="px-4 py-3 text-left w-52">Product</th>
