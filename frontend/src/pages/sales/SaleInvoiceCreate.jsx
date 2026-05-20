@@ -231,9 +231,9 @@ export default function SaleInvoiceCreate() {
     const prod = products.find(p => p.sku === trimmed || p.sku?.toLowerCase() === trimmed.toLowerCase());
     if (!prod) { toast.error(`No product with code "${trimmed}"`); setSkuQuickAdd(''); return; }
     const price = getPrice(prod, customerType);
-    // Find if last item is blank — reuse it; otherwise append
+    // Find if last item is blank (not a free-text row) — reuse it; otherwise append
     const lastIdx = items.length - 1;
-    const lastIsBlank = !items[lastIdx]?.productId;
+    const lastIsBlank = !items[lastIdx]?.productId && !items[lastIdx]?.isFreeText;
     const newIdx = lastIsBlank ? lastIdx : items.length;
     setItems(prev => {
       const newItem = { ...BLANK_ITEM, productId: prod.id, productName: prod.name, sku: prod.sku || '', hsnCode: prod.hsnCode || '', unit: prod.unit, unitPrice: price, gstRate: prod.gstRate || 0, vendorCode: prod.supplier?.code || prod.supplier?.name || '' };
@@ -461,9 +461,13 @@ export default function SaleInvoiceCreate() {
                       <td className="px-4 py-3">
                         <div className="flex flex-col items-center gap-1">
                           <input ref={el => qtyRefs.current[idx] = el} type="number" min="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', +e.target.value)} onWheel={e => e.target.blur()} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); skuInputRef.current?.focus(); skuInputRef.current?.select(); } }} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                          <select value={item.unit || 'Pcs'} onChange={e => updateItem(idx, 'unit', e.target.value)} className="w-16 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded px-1 py-0.5 focus:outline-none cursor-pointer text-center">
-                            {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                          </select>
+                          {item.isFreeText ? (
+                            <select value={item.unit || 'Pcs'} onChange={e => updateItem(idx, 'unit', e.target.value)} className="w-16 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded px-1 py-0.5 focus:outline-none cursor-pointer text-center">
+                              {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                          ) : (
+                            <span className="text-xs text-gray-400">{item.unit}</span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right">

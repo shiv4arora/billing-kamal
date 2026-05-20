@@ -63,7 +63,10 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
   const selectExisting = (prod) => {
     setSearch(prod.name);
     setShowDrop(false);
-    const pricing = calcSellingPrices(prod.costPrice || 0, supplier?.margin, supplier?.discount);
+    // Use previously saved pricing if available; otherwise calculate from supplier margin
+    const pricing = (prod.pricing?.wholesale || prod.pricing?.shop)
+      ? { wholesale: prod.pricing.wholesale ?? '', shop: prod.pricing.shop ?? '' }
+      : calcSellingPrices(prod.costPrice || 0, supplier?.margin, supplier?.discount);
     onUpdate('_bulk', {
       isNew: false, productId: prod.id, productName: prod.name,
       sku: prod.sku || '', category: prod.category || '',
@@ -369,9 +372,11 @@ export default function PurchaseInvoiceCreate() {
             ((sku && p.sku === sku) || p.name?.toLowerCase() === name.toLowerCase())
           );
 
-          const pricing = calcSellingPrices(cost || (existing?.costPrice || 0), sup?.margin, sup?.discount);
-
           if (existing) {
+            // Use previously saved pricing if available; otherwise calculate
+            const pricing = (existing.pricing?.wholesale || existing.pricing?.shop)
+              ? { wholesale: existing.pricing.wholesale ?? '', shop: existing.pricing.shop ?? '' }
+              : calcSellingPrices(cost || existing.costPrice || 0, sup?.margin, sup?.discount);
             return {
               ...BLANK_ITEM,
               isNew: false,
@@ -387,6 +392,7 @@ export default function PurchaseInvoiceCreate() {
               pricing,
             };
           } else {
+            const pricing = calcSellingPrices(cost, sup?.margin, sup?.discount);
             return {
               ...BLANK_ITEM,
               isNew: true,
