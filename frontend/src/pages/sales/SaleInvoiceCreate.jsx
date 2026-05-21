@@ -132,6 +132,12 @@ export default function SaleInvoiceCreate() {
     setShowDropdown(p => ({ ...p, [idx]: false }));
     setPendingDelete(null);
   };
+  const replaceWithFreeText = (idx) => {
+    setItems(prev => prev.map((item, i) => i === idx ? { ...BLANK_ITEM, isFreeText: true } : item));
+    setProductSearch(p => ({ ...p, [idx]: '' }));
+    setShowDropdown(p => ({ ...p, [idx]: false }));
+    setPendingDelete(null);
+  };
   const applyBulkDiscount = () => {
     const pct = parseFloat(bulkDiscount);
     if (isNaN(pct) || pct < 0 || pct > 100) return;
@@ -491,6 +497,7 @@ export default function SaleInvoiceCreate() {
                           <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg shadow-lg px-2 py-1.5 z-20 whitespace-nowrap">
                             <button onClick={() => removeItem(idx)} className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 font-medium">Delete</button>
                             <button onClick={() => replaceItem(idx)} className="px-2 py-1 text-xs bg-amber-500 text-white rounded hover:bg-amber-600 font-medium">Replace</button>
+                            <button onClick={() => replaceWithFreeText(idx)} className="px-2 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 font-medium">Free Text</button>
                             <button onClick={() => setPendingDelete(null)} className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200 font-medium">Cancel</button>
                           </div>
                         )}
