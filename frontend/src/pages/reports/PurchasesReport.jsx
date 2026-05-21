@@ -46,7 +46,7 @@ export default function PurchasesReport() {
       .map(([label, spend]) => ({ label, spend }));
   }, [filtered, groupBy]);
 
-  // --- Spend by supplier (top 8) ---
+  // --- Spend by supplier (all vendors) ---
   const supplierSpendData = useMemo(() => {
     const map = {};
     filtered.forEach(inv => {
@@ -55,7 +55,6 @@ export default function PurchasesReport() {
     });
     return Object.entries(map)
       .sort(([, a], [, b]) => b - a)
-      .slice(0, 8)
       .map(([name, spend]) => ({ name, spend }));
   }, [filtered]);
 
@@ -87,10 +86,11 @@ export default function PurchasesReport() {
       inv.items.forEach(item => {
         const key = item.productId || item.productName || 'Unknown';
         if (!map[key]) {
-          map[key] = { name: item.productName || item.description || key, sku: item.sku || item.productId || '', qty: 0, value: 0 };
+          map[key] = { name: item.productName || item.description || key, sku: item.sku || '', vendorCode: item.vendorCode || '', qty: 0, value: 0 };
         }
-        map[key].qty   += Number(item.quantity  || 0);
-        map[key].value += Number(item.lineTotal  || (item.quantity * item.unitPrice) || 0);
+        map[key].qty       += Number(item.quantity || 0);
+        map[key].value     += Number(item.lineTotal || (item.quantity * item.unitPrice) || 0);
+        if (!map[key].vendorCode && item.vendorCode) map[key].vendorCode = item.vendorCode;
       });
     });
     return Object.values(map)
@@ -120,6 +120,12 @@ export default function PurchasesReport() {
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-500">To</label>
             <input type="date" value={end} onChange={e => setEnd(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+          </div>
+          <div className="flex flex-col gap-1 justify-end">
+            <button onClick={() => { setStart(''); setEnd(today()); }} className="px-3 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium whitespace-nowrap">All Time</button>
+          </div>
+          <div className="flex flex-col gap-1 justify-end">
+            <button onClick={() => { setStart(thisMonthStart()); setEnd(today()); }} className="px-3 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium whitespace-nowrap">This Month</button>
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-500">Supplier</label>
@@ -167,7 +173,7 @@ export default function PurchasesReport() {
             <BarChart data={trendData} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
+              <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
               <Tooltip formatter={v => formatCurrency(v)} labelStyle={{ fontSize: 12 }} contentStyle={{ fontSize: 12 }} />
               <Bar dataKey="spend" fill="#22c55e" radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -178,11 +184,11 @@ export default function PurchasesReport() {
       {/* Spend by supplier */}
       {supplierSpendData.length > 0 && (
         <Card>
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">Spend by Supplier (Top 8)</h2>
-          <ResponsiveContainer width="100%" height={supplierSpendData.length * 40 + 20}>
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">Spend by Supplier</h2>
+          <ResponsiveContainer width="100%" height={Math.max(200, supplierSpendData.length * 40 + 20)}>
             <BarChart data={supplierSpendData} layout="vertical" margin={{ top: 4, right: 60, left: 8, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
-              <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
+              <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} width={140} />
               <Tooltip formatter={v => formatCurrency(v)} contentStyle={{ fontSize: 12 }} />
               <Bar dataKey="spend" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
@@ -227,17 +233,19 @@ export default function PurchasesReport() {
                 <tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
                   <th className="px-4 py-2 text-left">Product</th>
                   <th className="px-4 py-2 text-left">SKU</th>
+                  <th className="px-4 py-2 text-left">Vendor</th>
                   <th className="px-4 py-2 text-right">Qty</th>
                   <th className="px-4 py-2 text-right">Value</th>
                 </tr>
               </thead>
               <tbody>
                 {topProducts.length === 0 ? (
-                  <tr><td colSpan="4" className="text-center py-8 text-gray-400">No product data</td></tr>
+                  <tr><td colSpan="5" className="text-center py-8 text-gray-400">No product data</td></tr>
                 ) : topProducts.map((p, idx) => (
                   <tr key={idx} className="border-b hover:bg-gray-50">
                     <td className="px-4 py-2 text-gray-800">{p.name}</td>
                     <td className="px-4 py-2 font-mono text-xs text-gray-500">{p.sku || '—'}</td>
+                    <td className="px-4 py-2 text-xs text-gray-500">{p.vendorCode || '—'}</td>
                     <td className="px-4 py-2 text-right font-medium">{p.qty}</td>
                     <td className="px-4 py-2 text-right text-gray-700">{formatCurrency(p.value)}</td>
                   </tr>

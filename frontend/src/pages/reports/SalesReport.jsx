@@ -36,26 +36,15 @@ export default function SalesReport() {
   const [custType,    setCustType]    = useState('');
   const [sortTotal,   setSortTotal]   = useState(''); // '', 'asc', 'desc'
   const [minAmount,   setMinAmount]   = useState('');
-  const [newCustOnly, setNewCustOnly] = useState(false);
-
-  // Customer IDs that bought at least once BEFORE the current start date
-  const prePeriodCustomerIds = useMemo(() => {
-    const ids = new Set();
-    saleInvoices
-      .filter(i => i.status !== 'void' && i.date < start)
-      .forEach(i => { if (i.customerId) ids.add(i.customerId); });
-    return ids;
-  }, [saleInvoices, start]);
 
   const filtered = useMemo(() => {
     let list = dateRangeFilter(saleInvoices.filter(i => i.status !== 'void'), 'date', start, end);
-    if (custSearch)  list = list.filter(i => (i.customerName || '').toLowerCase().includes(custSearch.toLowerCase()));
-    if (payFilter)   list = list.filter(i => i.paymentStatus === payFilter);
-    if (custType)    list = list.filter(i => i.customerType === custType);
-    if (minAmount)   list = list.filter(i => (i.grandTotal || 0) >= parseFloat(minAmount));
-    if (newCustOnly) list = list.filter(i => i.customerId && !prePeriodCustomerIds.has(i.customerId));
+    if (custSearch) list = list.filter(i => (i.customerName || '').toLowerCase().includes(custSearch.toLowerCase()));
+    if (payFilter)  list = list.filter(i => i.paymentStatus === payFilter);
+    if (custType)   list = list.filter(i => i.customerType === custType);
+    if (minAmount)  list = list.filter(i => (i.grandTotal || 0) >= parseFloat(minAmount));
     return list;
-  }, [saleInvoices, start, end, custSearch, payFilter, custType, minAmount, newCustOnly, prePeriodCustomerIds]);
+  }, [saleInvoices, start, end, custSearch, payFilter, custType, minAmount]);
 
   const sortedFiltered = useMemo(() => {
     if (!sortTotal) return filtered;
@@ -106,7 +95,7 @@ export default function SalesReport() {
         const val = item.lineTotal != null
           ? item.lineTotal
           : (item.quantity || 0) * (item.unitPrice || 0) * (1 - ((item.discountPct || 0) / 100));
-        if (!map[id]) map[id] = { name: item.productName || item.description || 'Unknown', sku: item.sku || item.productId || '', qty: 0, value: 0 };
+        if (!map[id]) map[id] = { name: item.productName || item.description || 'Unknown', sku: item.sku || '', vendorCode: item.vendorCode || '', qty: 0, value: 0 };
         map[id].qty   += item.quantity || 0;
         map[id].value += val;
       });
@@ -153,6 +142,12 @@ export default function SalesReport() {
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex flex-col gap-1"><label className="text-xs font-medium text-gray-500">From</label><input type="date" value={start} onChange={e => setStart(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm" /></div>
           <div className="flex flex-col gap-1"><label className="text-xs font-medium text-gray-500">To</label><input type="date" value={end} onChange={e => setEnd(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm" /></div>
+          <div className="flex flex-col gap-1 justify-end">
+            <button onClick={() => { setStart(''); setEnd(today()); }} className="px-3 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium whitespace-nowrap">All Time</button>
+          </div>
+          <div className="flex flex-col gap-1 justify-end">
+            <button onClick={() => { setStart(thisMonthStart()); setEnd(today()); }} className="px-3 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium whitespace-nowrap">This Month</button>
+          </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-500">Customer</label>
             <input type="text" value={custSearch} onChange={e => setCustSearch(e.target.value)} placeholder="Search name…" className="border border-gray-300 rounded-lg px-3 py-2 text-sm min-w-[150px]" />
@@ -189,20 +184,9 @@ export default function SalesReport() {
               className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-32 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <div className="flex flex-col gap-1 justify-end">
-            <label className="flex items-center gap-2 cursor-pointer select-none pb-2">
-              <input
-                type="checkbox"
-                checked={newCustOnly}
-                onChange={e => setNewCustOnly(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-sm text-gray-700 font-medium whitespace-nowrap">New customers only</span>
-            </label>
-          </div>
-          {(custSearch || payFilter || custType || minAmount || newCustOnly) && (
+          {(custSearch || payFilter || custType || minAmount) && (
             <button
-              onClick={() => { setCustSearch(''); setPayFilter(''); setCustType(''); setMinAmount(''); setNewCustOnly(false); }}
+              onClick={() => { setCustSearch(''); setPayFilter(''); setCustType(''); setMinAmount(''); }}
               className="text-xs text-gray-400 hover:text-gray-600 mt-4"
             >✕ Clear filters</button>
           )}
@@ -278,18 +262,20 @@ export default function SalesReport() {
                   <th className="px-4 py-2 text-left w-6">#</th>
                   <th className="px-4 py-2 text-left">Product</th>
                   <th className="px-4 py-2 text-left">SKU</th>
+                  <th className="px-4 py-2 text-left">Vendor</th>
                   <th className="px-4 py-2 text-right">Qty</th>
                   <th className="px-4 py-2 text-right">Value</th>
                 </tr>
               </thead>
               <tbody>
                 {topProducts.length === 0
-                  ? <tr><td colSpan="5" className="text-center py-6 text-gray-400">No data</td></tr>
+                  ? <tr><td colSpan="6" className="text-center py-6 text-gray-400">No data</td></tr>
                   : topProducts.map((p, idx) => (
                     <tr key={idx} className="border-b hover:bg-gray-50">
                       <td className="px-4 py-2 text-gray-400 text-xs">{idx + 1}</td>
                       <td className="px-4 py-2 font-medium text-gray-800">{p.name}</td>
-                      <td className="px-4 py-2 text-xs font-mono text-gray-400">{p.sku}</td>
+                      <td className="px-4 py-2 text-xs font-mono text-gray-400">{p.sku || '—'}</td>
+                      <td className="px-4 py-2 text-xs text-gray-500">{p.vendorCode || '—'}</td>
                       <td className="px-4 py-2 text-right text-gray-600">{p.qty % 1 === 0 ? p.qty : p.qty.toFixed(2)}</td>
                       <td className="px-4 py-2 text-right font-semibold text-blue-700">{formatCurrency(p.value)}</td>
                     </tr>

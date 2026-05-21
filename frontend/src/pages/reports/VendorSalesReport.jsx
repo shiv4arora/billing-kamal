@@ -55,6 +55,13 @@ export default function VendorSalesReport() {
   const [end, setEnd] = useState(today());
   const [vendorFilter, setVendorFilter] = useState('');
   const [skuSearch, setSkuSearch] = useState('');
+  const [collapsed, setCollapsed] = useState(new Set()); // supplierId keys
+
+  const toggleCollapse = (id) => setCollapsed(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
 
   const productMap = useMemo(() => {
     const m = {};
@@ -139,23 +146,6 @@ export default function VendorSalesReport() {
     [allVendorData]
   );
 
-  // Slow movers — only when no vendorFilter or skuSearch
-  const slowMovers = useMemo(() => {
-    if (vendorFilter || skuSearch.trim()) return [];
-    const rows = [];
-    allVendorData.forEach(v => {
-      if (v.products.length === 0) return;
-      const avgQty = v.totalQty / v.products.length;
-      const threshold = Math.max(2, avgQty * 0.3);
-      v.products.forEach(p => {
-        if (p.qty <= threshold) {
-          rows.push({ vendorName: v.supplierName, ...p });
-        }
-      });
-    });
-    return rows;
-  }, [allVendorData, vendorFilter, skuSearch]);
-
   const handleExport = () => {
     const rows = [];
     allVendorData.forEach(v => {
@@ -212,99 +202,62 @@ export default function VendorSalesReport() {
         </div>
       </div>
 
-      {/* Charts — only when there is data */}
+      {/* Vendor Share % — full width */}
       {pieData.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Pie chart */}
-          <Card>
-            <p className="text-sm font-semibold text-gray-700 mb-3">Vendor Share %</p>
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={90}
-                  label={renderPieLabel}
-                  labelLine={true}
-                >
-                  {pieData.map((entry, i) => (
-                    <Cell key={entry.name} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => formatCurrency(value)} />
-              </PieChart>
-            </ResponsiveContainer>
-          </Card>
-
-          {/* Horizontal bar chart */}
-          <Card>
-            <p className="text-sm font-semibold text-gray-700 mb-3">Vendor Sales Comparison</p>
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart
-                data={barData}
-                layout="vertical"
-                margin={{ top: 4, right: 16, bottom: 4, left: 100 }}
+        <Card>
+          <p className="text-sm font-semibold text-gray-700 mb-3">Vendor Share %</p>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={pieData}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={110}
+                label={renderPieLabel}
+                labelLine={true}
               >
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                <XAxis
-                  type="number"
-                  tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`}
-                  tick={{ fontSize: 11 }}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  width={96}
-                  tick={{ fontSize: 11 }}
-                />
-                <Tooltip formatter={(value) => formatCurrency(value)} />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                  {barData.map((entry, i) => (
-                    <Cell key={entry.name} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-        </div>
+                {pieData.map((entry) => (
+                  <Cell key={entry.name} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value) => formatCurrency(value)} />
+            </PieChart>
+          </ResponsiveContainer>
+        </Card>
       )}
 
-      {/* Slow Movers */}
-      {slowMovers.length > 0 && (
-        <Card padding={false}>
-          <div className="px-5 py-3 border-b bg-orange-50 flex items-center gap-3">
-            <h3 className="font-semibold text-gray-800 text-sm">Slow Movers</h3>
-            <span className="text-xs bg-orange-100 text-orange-700 border border-orange-200 rounded-full px-2 py-0.5 font-medium">
-              low qty sold
-            </span>
-          </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-xs text-gray-500 uppercase border-b bg-white">
-                <th className="px-4 py-2 text-left">Vendor</th>
-                <th className="px-4 py-2 text-left">Product</th>
-                <th className="px-4 py-2 text-left w-24">SKU</th>
-                <th className="px-4 py-2 text-right w-24">Qty Sold</th>
-                <th className="px-4 py-2 text-right w-32">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {slowMovers.map((row, idx) => (
-                <tr key={idx} className="border-b hover:bg-orange-50">
-                  <td className="px-4 py-2.5 text-gray-600 text-xs">{row.vendorName}</td>
-                  <td className="px-4 py-2.5 font-medium text-gray-800">{row.name}</td>
-                  <td className="px-4 py-2.5 font-mono text-blue-600 text-xs">
-                    {row.sku ? `#${row.sku}` : '—'}
-                  </td>
-                  <td className="px-4 py-2.5 text-right text-gray-600">{row.qty.toLocaleString('en-IN')}</td>
-                  <td className="px-4 py-2.5 text-right font-semibold text-gray-900">{formatCurrency(row.value)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Vendor Comparison — full width */}
+      {barData.length > 0 && (
+        <Card>
+          <p className="text-sm font-semibold text-gray-700 mb-3">Vendor Sales Comparison</p>
+          <ResponsiveContainer width="100%" height={Math.max(200, barData.length * 44 + 20)}>
+            <BarChart
+              data={barData}
+              layout="vertical"
+              margin={{ top: 4, right: 60, bottom: 4, left: 120 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+              <XAxis
+                type="number"
+                tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`}
+                tick={{ fontSize: 11 }}
+              />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={116}
+                tick={{ fontSize: 11 }}
+              />
+              <Tooltip formatter={(value) => formatCurrency(value)} />
+              <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                {barData.map((entry) => (
+                  <Cell key={entry.name} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </Card>
       )}
 
@@ -363,64 +316,58 @@ export default function VendorSalesReport() {
         </Card>
       ) : (
         vendorData.map(vendor => {
-          const pct =
-            grandTotal > 0
-              ? ((vendor.totalValue / grandTotal) * 100).toFixed(1)
-              : null;
+          const pct = grandTotal > 0 ? ((vendor.totalValue / grandTotal) * 100).toFixed(1) : null;
+          const isCollapsed = collapsed.has(vendor.supplierId);
           return (
             <Card key={vendor.supplierId} padding={false}>
-              <div className="px-5 py-4 border-b flex items-center justify-between bg-gray-50">
+              <button
+                onClick={() => toggleCollapse(vendor.supplierId)}
+                className="w-full px-5 py-4 border-b flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+              >
                 <div>
-                  <h3 className="font-semibold text-gray-900">{vendor.supplierName}</h3>
+                  <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <span className="text-gray-400 text-xs">{isCollapsed ? '▶' : '▼'}</span>
+                    {vendor.supplierName}
+                  </h3>
                   <p className="text-xs text-gray-500 mt-0.5">
                     {vendor.products.length} product(s)
-                    {pct !== null && (
-                      <span className="ml-2 text-blue-500 font-medium">{pct}% of total</span>
-                    )}
+                    {pct !== null && <span className="ml-2 text-blue-500 font-medium">{pct}% of total</span>}
                   </p>
                 </div>
-                <div className="text-right">
+                <div className="text-right shrink-0">
                   <p className="text-sm font-bold text-green-700">{formatCurrency(vendor.totalValue)}</p>
                   <p className="text-xs text-gray-400">{vendor.totalQty} units sold</p>
                 </div>
-              </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-gray-500 uppercase border-b bg-white">
-                    <th className="px-4 py-2 text-left w-24">SKU</th>
-                    <th className="px-4 py-2 text-left">Product Name</th>
-                    <th className="px-4 py-2 text-right w-24">Qty Sold</th>
-                    <th className="px-4 py-2 text-right w-32">Total Value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {vendor.products.map(p => (
-                    <tr key={p.productId || p.name} className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-2.5 font-mono text-blue-600 text-xs">
-                        {p.sku ? `#${p.sku}` : '—'}
-                      </td>
-                      <td className="px-4 py-2.5 font-medium text-gray-800">{p.name}</td>
-                      <td className="px-4 py-2.5 text-right text-gray-600">
-                        {p.qty.toLocaleString('en-IN')}
-                      </td>
-                      <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
-                        {formatCurrency(p.value)}
-                      </td>
+              </button>
+              {!isCollapsed && (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-gray-500 uppercase border-b bg-white">
+                      <th className="px-4 py-2 text-left w-24">SKU</th>
+                      <th className="px-4 py-2 text-left">Product Name</th>
+                      <th className="px-4 py-2 text-right w-24">Qty Sold</th>
+                      <th className="px-4 py-2 text-right w-32">Total Value</th>
                     </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-gray-100 border-t-2 border-gray-300 font-bold text-sm">
-                    <td colSpan="2" className="px-4 py-2.5 text-gray-600">Vendor Total</td>
-                    <td className="px-4 py-2.5 text-right text-gray-700">
-                      {vendor.totalQty.toLocaleString('en-IN')}
-                    </td>
-                    <td className="px-4 py-2.5 text-right text-green-700">
-                      {formatCurrency(vendor.totalValue)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+                  </thead>
+                  <tbody>
+                    {vendor.products.map(p => (
+                      <tr key={p.productId || p.name} className="border-b hover:bg-gray-50">
+                        <td className="px-4 py-2.5 font-mono text-blue-600 text-xs">{p.sku ? `#${p.sku}` : '—'}</td>
+                        <td className="px-4 py-2.5 font-medium text-gray-800">{p.name}</td>
+                        <td className="px-4 py-2.5 text-right text-gray-600">{p.qty.toLocaleString('en-IN')}</td>
+                        <td className="px-4 py-2.5 text-right font-semibold text-gray-900">{formatCurrency(p.value)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-gray-100 border-t-2 border-gray-300 font-bold text-sm">
+                      <td colSpan="2" className="px-4 py-2.5 text-gray-600">Vendor Total</td>
+                      <td className="px-4 py-2.5 text-right text-gray-700">{vendor.totalQty.toLocaleString('en-IN')}</td>
+                      <td className="px-4 py-2.5 text-right text-green-700">{formatCurrency(vendor.totalValue)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
             </Card>
           );
         })
