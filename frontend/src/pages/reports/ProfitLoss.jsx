@@ -1,11 +1,28 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useInvoices } from '../../context/InvoiceContext';
 import { useProducts } from '../../context/ProductContext';
 import { Card, Button } from '../../components/ui';
 import { formatCurrency, dateRangeFilter, exportToCSV, thisMonthStart, today } from '../../utils/helpers';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LineChart, Line, ReferenceLine } from 'recharts';
+import { api } from '../../hooks/useApi';
 
-function buildData(saleInvoices, purchaseInvoices, productMap, start, end) {
+const MFG_MARGIN = 0.20; // manufactured goods margin assumption
+
+// Compute COGS for a single line item.
+// Manufactured products (in mfgProductIds) → COGS = revenue × (1 - MFG_MARGIN)
+// Purchased products → COGS = costPrice × qty
+function itemCogs(item, prod, mfgProductIds) {
+  const qty      = item.quantity || 0;
+  const revenue  = item.lineTotal != null
+    ? item.lineTotal
+    : qty * (item.unitPrice || 0) * (1 - (item.discountPct || 0) / 100);
+  if (item.productId && mfgProductIds.has(item.productId)) {
+    return { revenue, cost: revenue * (1 - MFG_MARGIN), isMfg: true };
+  }
+  return { revenue, cost: (prod?.costPrice || 0) * qty, isMfg: false };
+}
+
+function buildData(saleInvoices, purchaseInvoices, productMap, start, end, mfgProductIds) {
   const sales     = dateRangeFilter(saleInvoices.filter(i => i.status !== 'void'), 'date', start, end);
   const purchases = dateRangeFilter(purchaseInvoices.filter(i => i.status !== 'void'), 'date', start, end);
 
@@ -19,7 +36,7 @@ function buildData(saleInvoices, purchaseInvoices, productMap, start, end) {
   sales.forEach(inv => {
     (inv.items || []).forEach(item => {
       const prod = productMap[item.productId];
-      cogs += (prod?.costPrice || 0) * (item.quantity || 0);
+      cogs += itemCogs(item, prod, mfgProductIds).cost;
     });
   });
 
@@ -34,7 +51,8 @@ function buildData(saleInvoices, purchaseInvoices, productMap, start, end) {
     if (!monthMap[m]) monthMap[m] = { month: m.slice(5), fullMonth: m, revenue: 0, cogs: 0 };
     monthMap[m].revenue += inv.grandTotal || 0;
     (inv.items || []).forEach(item => {
-      monthMap[m].cogs += (productMap[item.productId]?.costPrice || 0) * (item.quantity || 0);
+      const prod = productMap[item.productId];
+      monthMap[m].cogs += itemCogs(item, prod, mfgProductIds).cost;
     });
   });
   const chartData = Object.values(monthMap)
@@ -49,12 +67,14 @@ function buildData(saleInvoices, purchaseInvoices, productMap, start, end) {
       const prod = productMap[item.productId];
       if (!prod) return;
       const key = item.productId;
-      const qty      = item.quantity || 0;
-      const revenue  = item.lineTotal != null ? item.lineTotal : qty * (item.unitPrice || 0) * (1 - (item.discountPct || 0) / 100);
-      const cost     = (prod.costPrice || 0) * qty;
-      const profit   = revenue - cost;
-      if (!prodProfitMap[key]) prodProfitMap[key] = { name: prod.name, sku: prod.sku || '', vendorCode: prod.supplier?.code || prod.supplier?.name || '', qty: 0, revenue: 0, cost: 0, profit: 0 };
-      prodProfitMap[key].qty     += qty;
+      const { revenue, cost, isMfg } = itemCogs(item, prod, mfgProductIds);
+      const profit = revenue - cost;
+      if (!prodProfitMap[key]) prodProfitMap[key] = {
+        name: prod.name, sku: prod.sku || '',
+        vendorCode: prod.supplier?.code || prod.supplier?.name || '',
+        isMfg, qty: 0, revenue: 0, cost: 0, profit: 0,
+      };
+      prodProfitMap[key].qty     += item.quantity || 0;
       prodProfitMap[key].revenue += revenue;
       prodProfitMap[key].cost    += cost;
       prodProfitMap[key].profit  += profit;
@@ -79,10 +99,24 @@ export default function ProfitLoss() {
   const { products } = useProducts();
   const [start, setStart] = useState(thisMonthStart());
   const [end,   setEnd]   = useState(today());
+  const [productionEntries, setProductionEntries] = useState([]);
+
+  useEffect(() => {
+    api('/production').then(d => setProductionEntries(d)).catch(() => {});
+  }, []);
 
   const productMap = useMemo(() => Object.fromEntries(products.map(p => [p.id, p])), [products]);
 
-  const data = useMemo(() => buildData(saleInvoices, purchaseInvoices, productMap, start, end), [saleInvoices, purchaseInvoices, productMap, start, end]);
+  // Set of product IDs that are manufactured (appear as outputs in any production run)
+  const mfgProductIds = useMemo(() => {
+    const ids = new Set();
+    productionEntries.forEach(entry => {
+      (entry.outputs || []).forEach(o => { if (o.productId) ids.add(o.productId); });
+    });
+    return ids;
+  }, [productionEntries]);
+
+  const data = useMemo(() => buildData(saleInvoices, purchaseInvoices, productMap, start, end, mfgProductIds), [saleInvoices, purchaseInvoices, productMap, start, end, mfgProductIds]);
 
   // Previous period for MoM comparison
   const prevData = useMemo(() => {
@@ -94,8 +128,8 @@ export default function ProfitLoss() {
     const prevStart = new Date(startDate - spanMs - 1);
     const ps = prevStart.toISOString().slice(0, 10);
     const pe = prevEnd.toISOString().slice(0, 10);
-    return buildData(saleInvoices, purchaseInvoices, productMap, ps, pe);
-  }, [saleInvoices, purchaseInvoices, productMap, start, end]);
+    return buildData(saleInvoices, purchaseInvoices, productMap, ps, pe, mfgProductIds);
+  }, [saleInvoices, purchaseInvoices, productMap, start, end, mfgProductIds]);
 
   const momRevenue = prevData && prevData.totalRevenue > 0
     ? ((data.totalRevenue - prevData.totalRevenue) / prevData.totalRevenue) * 100 : null;
@@ -214,6 +248,13 @@ export default function ProfitLoss() {
               </div>
             ))}
           </div>
+          {mfgProductIds.size > 0 && (
+            <div className="mt-3 pt-3 border-t border-purple-100">
+              <p className="text-xs text-purple-600 bg-purple-50 rounded-lg px-3 py-2">
+                ⚙ <span className="font-medium">{mfgProductIds.size} manufactured product{mfgProductIds.size !== 1 ? 's' : ''}</span> — COGS estimated at {Math.round((1 - MFG_MARGIN) * 100)}% of revenue ({MFG_MARGIN * 100}% margin assumed)
+              </p>
+            </div>
+          )}
           {prevData && (
             <div className="mt-4 pt-4 border-t border-gray-100 text-xs text-gray-400 space-y-1">
               <p className="font-medium text-gray-500 mb-1">vs Previous Period</p>
@@ -277,6 +318,7 @@ export default function ProfitLoss() {
                   <th className="px-4 py-2 text-left">Product</th>
                   <th className="px-4 py-2 text-left">SKU</th>
                   <th className="px-4 py-2 text-left">Vendor</th>
+                  <th className="px-4 py-2 text-left">Type</th>
                   <th className="px-4 py-2 text-right">Qty</th>
                   <th className="px-4 py-2 text-right">Revenue</th>
                   <th className="px-4 py-2 text-right">COGS</th>
@@ -291,6 +333,12 @@ export default function ProfitLoss() {
                     <td className="px-4 py-2.5 font-medium text-gray-800 max-w-[180px] truncate">{p.name}</td>
                     <td className="px-4 py-2.5 font-mono text-xs text-blue-600">{p.sku ? `#${p.sku}` : '—'}</td>
                     <td className="px-4 py-2.5 text-xs text-gray-500">{p.vendorCode || '—'}</td>
+                    <td className="px-4 py-2.5">
+                      {p.isMfg
+                        ? <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">Mfg</span>
+                        : <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Purchased</span>
+                      }
+                    </td>
                     <td className="px-4 py-2.5 text-right text-gray-600">{p.qty}</td>
                     <td className="px-4 py-2.5 text-right text-gray-700">{formatCurrency(p.revenue)}</td>
                     <td className="px-4 py-2.5 text-right text-red-600">{formatCurrency(p.cost)}</td>

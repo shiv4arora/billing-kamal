@@ -242,14 +242,14 @@ export default function SalesReport() {
             <h3 className="font-semibold text-gray-800">Sales by Place</h3>
             <span className="text-xs text-gray-400">{placeData.length} location{placeData.length !== 1 ? 's' : ''}</span>
           </div>
-          <div className="flex flex-col lg:flex-row">
-            {/* Bar chart */}
-            <div className="flex-1 min-w-0">
-              <ResponsiveContainer width="100%" height={Math.max(160, placeData.length * 38 + 20)}>
+          <div className="flex flex-row" style={{ height: 300 }}>
+            {/* Bar chart — scrollable if many places */}
+            <div className="flex-1 min-w-0 overflow-y-auto">
+              <ResponsiveContainer width="100%" height={Math.max(300, placeData.length * 36 + 24)}>
                 <BarChart
                   data={placeData}
                   layout="vertical"
-                  margin={{ top: 4, right: 80, bottom: 4, left: 130 }}
+                  margin={{ top: 4, right: 16, bottom: 4, left: 120 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                   <XAxis
@@ -260,7 +260,7 @@ export default function SalesReport() {
                   <YAxis
                     type="category"
                     dataKey="place"
-                    width={126}
+                    width={116}
                     tick={{ fontSize: 11 }}
                   />
                   <Tooltip
@@ -277,30 +277,28 @@ export default function SalesReport() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            {/* Table */}
-            <div className="lg:w-72 border-t lg:border-t-0 lg:border-l border-gray-100">
+            {/* Table — same fixed height, scrollable */}
+            <div className="w-64 shrink-0 border-l border-gray-100 overflow-y-auto">
               <table className="w-full text-sm">
-                <thead>
+                <thead className="sticky top-0 z-10">
                   <tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
-                    <th className="px-4 py-2 text-left">Place</th>
-                    <th className="px-4 py-2 text-right">Revenue</th>
-                    <th className="px-4 py-2 text-right w-12">%</th>
-                    <th className="px-4 py-2 text-right w-12">Bills</th>
+                    <th className="px-3 py-2 text-left">Place</th>
+                    <th className="px-3 py-2 text-right">Revenue</th>
+                    <th className="px-3 py-2 text-right w-10">%</th>
                   </tr>
                 </thead>
                 <tbody>
                   {placeData.map((row, i) => (
                     <tr key={row.place} className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-2 flex items-center gap-2">
+                      <td className="px-3 py-2 flex items-center gap-1.5">
                         <span
                           className="inline-block w-2 h-2 rounded-full shrink-0"
                           style={{ backgroundColor: PLACE_COLORS[i % PLACE_COLORS.length] }}
                         />
-                        <span className="text-gray-800 font-medium truncate">{row.place}</span>
+                        <span className="text-gray-800 font-medium truncate text-xs">{row.place}</span>
                       </td>
-                      <td className="px-4 py-2 text-right font-semibold text-blue-700">{formatCurrency(row.revenue)}</td>
-                      <td className="px-4 py-2 text-right text-gray-500 text-xs">{row.pct}%</td>
-                      <td className="px-4 py-2 text-right text-gray-500">{row.count}</td>
+                      <td className="px-3 py-2 text-right font-semibold text-blue-700 text-xs">{formatCurrency(row.revenue)}</td>
+                      <td className="px-3 py-2 text-right text-gray-500 text-xs">{row.pct}%</td>
                     </tr>
                   ))}
                 </tbody>
