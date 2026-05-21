@@ -13,6 +13,7 @@ import { useInvoiceLock } from '../../hooks/useInvoiceLock';
 import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedChanges.jsx';
 
 const BLANK_ITEM = { isFreeText: false, productId: '', productName: '', sku: '', hsnCode: '', unit: 'Pcs', quantity: 1, unitPrice: 0, discountPct: 0, gstRate: 0, vendorCode: '' };
+const BLANK_CUSTOMER = { name: '', phone: '', place: '', type: 'shop', gstin: '' };
 
 export default function SaleInvoiceCreate() {
   const { id } = useParams();
@@ -20,7 +21,7 @@ export default function SaleInvoiceCreate() {
   const toast = useGlobalToast();
   const { addSaleInvoice, issueSaleInvoice, updateSaleInvoice, getSaleInvoice, addStockEntry } = useInvoices();
   const { active: products, updateStock } = useProducts();
-  const { active: customers, updateBalance } = useCustomers();
+  const { active: customers, updateBalance, add: addCustomer } = useCustomers();
   const { settings, bumpSaleNo } = useSettings();
   const { addSaleEntry, addPaymentIn } = useLedger();
   const isEdit = !!id;
@@ -120,6 +121,35 @@ export default function SaleInvoiceCreate() {
   };
 
   const [pendingDelete, setPendingDelete] = useState(null);
+
+  // ── New Customer inline modal ────────────────────────────────────────────────
+  const [showNewCust, setShowNewCust] = useState(false);
+  const [newCust, setNewCust] = useState(BLANK_CUSTOMER);
+  const [newCustErrors, setNewCustErrors] = useState({});
+  const [savingCust, setSavingCust] = useState(false);
+
+  const handleNewCustSave = async () => {
+    const errs = {};
+    if (!newCust.name.trim())  errs.name  = 'Name is required';
+    if (!newCust.phone.trim()) errs.phone = 'Phone is required';
+    else if (!/^\d{10}$/.test(newCust.phone.trim())) errs.phone = '10-digit number required';
+    if (!newCust.place.trim()) errs.place = 'Place is required';
+    if (Object.keys(errs).length) { setNewCustErrors(errs); return; }
+    setSavingCust(true);
+    try {
+      const created = await addCustomer({ ...newCust, isActive: true });
+      handleCustomerChange(created.id);
+      setCustomerSearch(formatCustomerDisplay(created));
+      setShowNewCust(false);
+      setNewCust(BLANK_CUSTOMER);
+      setNewCustErrors({});
+      toast.success(`Customer "${created.name}" added`);
+    } catch (e) {
+      toast.error(e.message || 'Failed to add customer');
+    } finally {
+      setSavingCust(false);
+    }
+  };
 
   const removeItem = (idx) => {
     setItems(prev => prev.filter((_, i) => i !== idx));
@@ -281,7 +311,79 @@ export default function SaleInvoiceCreate() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <Card>
-            <h3 className="font-semibold text-gray-800 mb-4">Customer</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-800">Customer</h3>
+              <button
+                type="button"
+                onClick={() => { setShowNewCust(v => !v); setNewCust(BLANK_CUSTOMER); setNewCustErrors({}); }}
+                className="text-xs px-2.5 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 font-medium transition-colors"
+              >
+                {showNewCust ? '✕ Cancel' : '+ New Customer'}
+              </button>
+            </div>
+
+            {/* ── Inline new-customer form ── */}
+            {showNewCust && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl space-y-2">
+                <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1">Quick Add Customer</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="col-span-2">
+                    <input
+                      value={newCust.name}
+                      onChange={e => setNewCust(p => ({ ...p, name: e.target.value }))}
+                      placeholder="Customer name *"
+                      className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 ${newCustErrors.name ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white'}`}
+                    />
+                    {newCustErrors.name && <p className="text-xs text-red-500 mt-0.5">{newCustErrors.name}</p>}
+                  </div>
+                  <div>
+                    <input
+                      value={newCust.phone}
+                      onChange={e => setNewCust(p => ({ ...p, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
+                      placeholder="Phone (10 digits) *"
+                      className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 ${newCustErrors.phone ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white'}`}
+                    />
+                    {newCustErrors.phone && <p className="text-xs text-red-500 mt-0.5">{newCustErrors.phone}</p>}
+                  </div>
+                  <div>
+                    <input
+                      value={newCust.place}
+                      onChange={e => setNewCust(p => ({ ...p, place: e.target.value }))}
+                      placeholder="Place / city *"
+                      className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 ${newCustErrors.place ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white'}`}
+                    />
+                    {newCustErrors.place && <p className="text-xs text-red-500 mt-0.5">{newCustErrors.place}</p>}
+                  </div>
+                  <div>
+                    <select
+                      value={newCust.type}
+                      onChange={e => setNewCust(p => ({ ...p, type: e.target.value }))}
+                      className="w-full border border-gray-300 bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                    >
+                      <option value="shop">Shop</option>
+                      <option value="wholesale">Wholesale</option>
+                    </select>
+                  </div>
+                  <div>
+                    <input
+                      value={newCust.gstin}
+                      onChange={e => setNewCust(p => ({ ...p, gstin: e.target.value }))}
+                      placeholder="GSTIN (optional)"
+                      className="w-full border border-gray-300 bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleNewCustSave}
+                  disabled={savingCust}
+                  className="w-full py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors mt-1"
+                >
+                  {savingCust ? 'Saving…' : 'Save & Select Customer'}
+                </button>
+              </div>
+            )}
+
             <div className="relative">
               <label className="text-sm font-medium text-gray-700 block mb-1">Select Customer *</label>
               <input
