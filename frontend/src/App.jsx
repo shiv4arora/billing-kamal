@@ -53,7 +53,7 @@ import QuotationList from './pages/quotations/QuotationList';
 import QuotationCreate from './pages/quotations/QuotationCreate';
 import QuotationView from './pages/quotations/QuotationView';
 import QuotationPrint from './pages/quotations/QuotationPrint';
-import Shiv from './pages/Shiv';
+import FreeTextItems from './pages/FreeTextItems';
 
 /** Redirect to / if already logged in */
 function PublicRoute({ children }) {
@@ -124,7 +124,7 @@ function LayoutRoutes() {
           {can('settings') && <Route path="/settings" element={<Settings />} />}
           {isAdmin && <Route path="/users" element={<UserManagement />} />}
           {isAdmin && <Route path="/activity-log" element={<ActivityLog />} />}
-          <Route path="/shiv" element={<Shiv />} />
+          <Route path="/free-text-items" element={<FreeTextItems />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </MainLayout>

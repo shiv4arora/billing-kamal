@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import {
-  PieChart, Pie, Cell, Tooltip,
+  PieChart, Pie, Cell, Tooltip, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
 } from 'recharts';
 import { useInvoices } from '../../context/InvoiceContext';
@@ -55,9 +55,9 @@ export default function VendorSalesReport() {
   const [end, setEnd] = useState(today());
   const [vendorFilter, setVendorFilter] = useState('');
   const [skuSearch, setSkuSearch] = useState('');
-  const [collapsed, setCollapsed] = useState(new Set()); // supplierId keys
+  const [expanded, setExpanded] = useState(new Set()); // supplierId keys — all collapsed by default
 
-  const toggleCollapse = (id) => setCollapsed(prev => {
+  const toggleCollapse = (id) => setExpanded(prev => {
     const next = new Set(prev);
     next.has(id) ? next.delete(id) : next.add(id);
     return next;
@@ -160,7 +160,19 @@ export default function VendorSalesReport() {
     );
   };
 
-  const renderPieLabel = ({ name, pct }) => `${name} (${pct}%)`;
+  const renderPieLegend = (props) => {
+    const { payload } = props;
+    return (
+      <ul className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-2 px-4">
+        {payload.map((entry, i) => (
+          <li key={i} className="flex items-center gap-1.5 text-xs text-gray-600">
+            <span className="inline-block w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: entry.color }} />
+            <span>{entry.value} ({pieData.find(p => p.name === entry.value)?.pct ?? 0}%)</span>
+          </li>
+        ))}
+      </ul>
+    );
+  };
 
   return (
     <div className="max-w-5xl space-y-5">
@@ -206,23 +218,27 @@ export default function VendorSalesReport() {
       {pieData.length > 0 && (
         <Card>
           <p className="text-sm font-semibold text-gray-700 mb-3">Vendor Share %</p>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={320}>
             <PieChart>
               <Pie
                 data={pieData}
                 dataKey="value"
                 nameKey="name"
                 cx="50%"
-                cy="50%"
-                outerRadius={110}
-                label={renderPieLabel}
-                labelLine={true}
+                cy="45%"
+                outerRadius={120}
+                label={false}
+                labelLine={false}
               >
                 {pieData.map((entry) => (
                   <Cell key={entry.name} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value) => formatCurrency(value)} />
+              <Tooltip formatter={(value, name) => {
+                const item = pieData.find(p => p.name === name);
+                return [`${formatCurrency(value)} (${item?.pct ?? 0}%)`, name];
+              }} />
+              <Legend content={renderPieLegend} />
             </PieChart>
           </ResponsiveContainer>
         </Card>
@@ -317,7 +333,7 @@ export default function VendorSalesReport() {
       ) : (
         vendorData.map(vendor => {
           const pct = grandTotal > 0 ? ((vendor.totalValue / grandTotal) * 100).toFixed(1) : null;
-          const isCollapsed = collapsed.has(vendor.supplierId);
+          const isCollapsed = !expanded.has(vendor.supplierId);
           return (
             <Card key={vendor.supplierId} padding={false}>
               <button

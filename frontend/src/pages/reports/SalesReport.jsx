@@ -2,7 +2,9 @@ import { useState, useMemo } from 'react';
 import { useInvoices } from '../../context/InvoiceContext';
 import { Card, Button, Badge } from '../../components/ui';
 import { formatCurrency, formatDate, dateRangeFilter, exportToCSV, thisMonthStart, today, formatCustomerDisplay } from '../../utils/helpers';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+
+const PLACE_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#6366f1'];
 
 const payColor = { paid: 'green', partial: 'yellow', unpaid: 'red' };
 
@@ -103,6 +105,21 @@ export default function SalesReport() {
     return Object.values(map)
       .sort((a, b) => b.value - a.value)
       .slice(0, 10);
+  }, [filtered]);
+
+  // Sales by Place — group by customerPlace
+  const placeData = useMemo(() => {
+    const map = {};
+    filtered.forEach(inv => {
+      const place = (inv.customerPlace || '').trim() || '— Unknown —';
+      if (!map[place]) map[place] = { place, revenue: 0, count: 0 };
+      map[place].revenue += inv.grandTotal || 0;
+      map[place].count   += 1;
+    });
+    const total = Object.values(map).reduce((s, v) => s + v.revenue, 0);
+    return Object.values(map)
+      .sort((a, b) => b.revenue - a.revenue)
+      .map(v => ({ ...v, pct: total > 0 ? ((v.revenue / total) * 100).toFixed(1) : '0.0' }));
   }, [filtered]);
 
   // Aging buckets — unpaid/partial only, based on dueDate or invoice date
@@ -215,6 +232,81 @@ export default function SalesReport() {
               <Bar dataKey="revenue" fill="#3b82f6" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+        </Card>
+      )}
+
+      {/* Sales by Place */}
+      {placeData.length > 0 && (
+        <Card padding={false}>
+          <div className="px-5 pt-4 pb-2 flex items-center justify-between">
+            <h3 className="font-semibold text-gray-800">Sales by Place</h3>
+            <span className="text-xs text-gray-400">{placeData.length} location{placeData.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="flex flex-col lg:flex-row">
+            {/* Bar chart */}
+            <div className="flex-1 min-w-0">
+              <ResponsiveContainer width="100%" height={Math.max(160, placeData.length * 38 + 20)}>
+                <BarChart
+                  data={placeData}
+                  layout="vertical"
+                  margin={{ top: 4, right: 80, bottom: 4, left: 130 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`}
+                    tick={{ fontSize: 11 }}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="place"
+                    width={126}
+                    tick={{ fontSize: 11 }}
+                  />
+                  <Tooltip
+                    formatter={(value, _name, props) => [
+                      `${formatCurrency(value)} (${props.payload.pct}%)`,
+                      'Revenue',
+                    ]}
+                  />
+                  <Bar dataKey="revenue" radius={[0, 4, 4, 0]}>
+                    {placeData.map((_, i) => (
+                      <Cell key={i} fill={PLACE_COLORS[i % PLACE_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            {/* Table */}
+            <div className="lg:w-72 border-t lg:border-t-0 lg:border-l border-gray-100">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
+                    <th className="px-4 py-2 text-left">Place</th>
+                    <th className="px-4 py-2 text-right">Revenue</th>
+                    <th className="px-4 py-2 text-right w-12">%</th>
+                    <th className="px-4 py-2 text-right w-12">Bills</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {placeData.map((row, i) => (
+                    <tr key={row.place} className="border-b hover:bg-gray-50">
+                      <td className="px-4 py-2 flex items-center gap-2">
+                        <span
+                          className="inline-block w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: PLACE_COLORS[i % PLACE_COLORS.length] }}
+                        />
+                        <span className="text-gray-800 font-medium truncate">{row.place}</span>
+                      </td>
+                      <td className="px-4 py-2 text-right font-semibold text-blue-700">{formatCurrency(row.revenue)}</td>
+                      <td className="px-4 py-2 text-right text-gray-500 text-xs">{row.pct}%</td>
+                      <td className="px-4 py-2 text-right text-gray-500">{row.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </Card>
       )}
 
