@@ -78,25 +78,6 @@ export default function PurchasesReport() {
     return buckets;
   }, [filtered]);
 
-  // --- Most purchased products (top 10 by qty) ---
-  const topProducts = useMemo(() => {
-    const map = {};
-    filtered.forEach(inv => {
-      if (!Array.isArray(inv.items)) return;
-      inv.items.forEach(item => {
-        const key = item.productId || item.productName || 'Unknown';
-        if (!map[key]) {
-          map[key] = { name: item.productName || item.description || key, sku: item.sku || '', vendorCode: item.vendorCode || '', qty: 0, value: 0 };
-        }
-        map[key].qty       += Number(item.quantity || 0);
-        map[key].value     += Number(item.lineTotal || (item.quantity * item.unitPrice) || 0);
-        if (!map[key].vendorCode && item.vendorCode) map[key].vendorCode = item.vendorCode;
-      });
-    });
-    return Object.values(map)
-      .sort((a, b) => b.qty - a.qty)
-      .slice(0, 10);
-  }, [filtered]);
 
   const handleExport = () => exportToCSV('purchases_report.csv',
     ['Invoice #', 'Supplier', 'Supplier Ref', 'Date', 'Subtotal', 'GST', 'Grand Total', 'Payment Status'],
@@ -222,38 +203,6 @@ export default function PurchasesReport() {
           </div>
         </Card>
 
-        {/* Most purchased products */}
-        <Card padding={false}>
-          <div className="px-4 pt-4 pb-2">
-            <h2 className="text-sm font-semibold text-gray-700">Most Purchased Products (Top 10)</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
-                  <th className="px-4 py-2 text-left">Product</th>
-                  <th className="px-4 py-2 text-left">SKU</th>
-                  <th className="px-4 py-2 text-left">Vendor</th>
-                  <th className="px-4 py-2 text-right">Qty</th>
-                  <th className="px-4 py-2 text-right">Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topProducts.length === 0 ? (
-                  <tr><td colSpan="5" className="text-center py-8 text-gray-400">No product data</td></tr>
-                ) : topProducts.map((p, idx) => (
-                  <tr key={idx} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-2 text-gray-800">{p.name}</td>
-                    <td className="px-4 py-2 font-mono text-xs text-gray-500">{p.sku || '—'}</td>
-                    <td className="px-4 py-2 text-xs text-gray-500">{p.vendorCode || '—'}</td>
-                    <td className="px-4 py-2 text-right font-medium">{p.qty}</td>
-                    <td className="px-4 py-2 text-right text-gray-700">{formatCurrency(p.value)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
       </div>
 
       {/* Invoice table */}

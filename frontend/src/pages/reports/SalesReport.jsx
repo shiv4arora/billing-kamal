@@ -88,26 +88,6 @@ export default function SalesReport() {
       .slice(0, 10);
   }, [filtered]);
 
-  // Top Products — group by productId/productName, sum qty and value (includes free text items)
-  const topProducts = useMemo(() => {
-    const map = {};
-    filtered.forEach(inv => {
-      (inv.items || []).forEach(item => {
-        const isFt = item.isFreeText || (!item.productId && item.productName?.trim());
-        if (!item.productId && !isFt) return;
-        const id  = item.productId || `ft:${(item.productName || '').trim().toLowerCase()}`;
-        const val = item.lineTotal != null
-          ? item.lineTotal
-          : (item.quantity || 0) * (item.unitPrice || 0) * (1 - ((item.discountPct || 0) / 100));
-        if (!map[id]) map[id] = { name: item.productName || item.description || 'Unknown', sku: item.sku || '', vendorCode: item.vendorCode || '', isFreeText: !!isFt, qty: 0, value: 0 };
-        map[id].qty   += item.quantity || 0;
-        map[id].value += val;
-      });
-    });
-    return Object.values(map)
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 10);
-  }, [filtered]);
 
   // Sales by Place — group by customerPlace
   const placeData = useMemo(() => {
@@ -310,79 +290,37 @@ export default function SalesReport() {
         </Card>
       )}
 
-      {/* Top Customers + Top Products side-by-side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Top Customers */}
-        <Card padding={false}>
-          <div className="px-5 pt-4 pb-2"><h3 className="font-semibold text-gray-800">Top Customers</h3></div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
-                  <th className="px-4 py-2 text-left w-6">#</th>
-                  <th className="px-4 py-2 text-left">Customer</th>
-                  <th className="px-4 py-2 text-right">Revenue</th>
-                  <th className="px-4 py-2 text-right">Bills</th>
-                  <th className="px-4 py-2 text-right">Avg Order</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topCustomers.length === 0
-                  ? <tr><td colSpan="5" className="text-center py-6 text-gray-400">No data</td></tr>
-                  : topCustomers.map((c, idx) => (
-                    <tr key={idx} className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-2 text-gray-400 text-xs">{idx + 1}</td>
-                      <td className="px-4 py-2 font-medium text-gray-800">{c.name}</td>
-                      <td className="px-4 py-2 text-right font-semibold text-blue-700">{formatCurrency(c.revenue)}</td>
-                      <td className="px-4 py-2 text-right text-gray-600">{c.count}</td>
-                      <td className="px-4 py-2 text-right text-gray-600">{formatCurrency(c.count ? c.revenue / c.count : 0)}</td>
-                    </tr>
-                  ))
-                }
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        {/* Top Products */}
-        <Card padding={false}>
-          <div className="px-5 pt-4 pb-2"><h3 className="font-semibold text-gray-800">Top Products Sold</h3></div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
-                  <th className="px-4 py-2 text-left w-6">#</th>
-                  <th className="px-4 py-2 text-left">Product</th>
-                  <th className="px-4 py-2 text-left">SKU</th>
-                  <th className="px-4 py-2 text-left">Vendor</th>
-                  <th className="px-4 py-2 text-right">Qty</th>
-                  <th className="px-4 py-2 text-right">Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topProducts.length === 0
-                  ? <tr><td colSpan="6" className="text-center py-6 text-gray-400">No data</td></tr>
-                  : topProducts.map((p, idx) => (
-                    <tr key={idx} className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-2 text-gray-400 text-xs">{idx + 1}</td>
-                      <td className="px-4 py-2 font-medium text-gray-800">
-                        <div className="flex items-center gap-1.5">
-                          {p.name}
-                          {p.isFreeText && <span className="text-xs px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium shrink-0">Free Text</span>}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 text-xs font-mono text-gray-400">{p.sku || '—'}</td>
-                      <td className="px-4 py-2 text-xs text-gray-500">{p.vendorCode || '—'}</td>
-                      <td className="px-4 py-2 text-right text-gray-600">{p.qty % 1 === 0 ? p.qty : p.qty.toFixed(2)}</td>
-                      <td className="px-4 py-2 text-right font-semibold text-blue-700">{formatCurrency(p.value)}</td>
-                    </tr>
-                  ))
-                }
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      </div>
+      {/* Top Customers */}
+      <Card padding={false}>
+        <div className="px-5 pt-4 pb-2"><h3 className="font-semibold text-gray-800">Top Customers</h3></div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
+                <th className="px-4 py-2 text-left w-6">#</th>
+                <th className="px-4 py-2 text-left">Customer</th>
+                <th className="px-4 py-2 text-right">Revenue</th>
+                <th className="px-4 py-2 text-right">Bills</th>
+                <th className="px-4 py-2 text-right">Avg Order</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topCustomers.length === 0
+                ? <tr><td colSpan="5" className="text-center py-6 text-gray-400">No data</td></tr>
+                : topCustomers.map((c, idx) => (
+                  <tr key={idx} className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-2 text-gray-400 text-xs">{idx + 1}</td>
+                    <td className="px-4 py-2 font-medium text-gray-800">{c.name}</td>
+                    <td className="px-4 py-2 text-right font-semibold text-blue-700">{formatCurrency(c.revenue)}</td>
+                    <td className="px-4 py-2 text-right text-gray-600">{c.count}</td>
+                    <td className="px-4 py-2 text-right text-gray-600">{formatCurrency(c.count ? c.revenue / c.count : 0)}</td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       {/* Outstanding Aging */}
       <div>

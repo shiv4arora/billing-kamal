@@ -54,7 +54,6 @@ export default function Shiv() {
 
   const grandQty    = grouped.reduce((s, g) => s + g.totalQty, 0);
   const grandAmount = grouped.reduce((s, g) => s + g.totalAmount, 0);
-  const EST_PROFIT_PCT = 0.20; // 20% estimated margin on free text items
 
   const selectedGroup = selected ? grouped.find(g => g.displayName.toLowerCase() === selected.toLowerCase()) : null;
 
@@ -129,10 +128,6 @@ export default function Shiv() {
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Total Revenue</p>
           <p className="text-3xl font-bold text-green-700 mt-1">{formatCurrency(grandAmount)}</p>
         </Card>
-        <Card>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Est. Profit (20%)</p>
-          <p className="text-3xl font-bold text-purple-700 mt-1">{formatCurrency(grandAmount * EST_PROFIT_PCT)}</p>
-        </Card>
       </div>
 
       {grouped.length === 0 ? (
@@ -158,7 +153,6 @@ export default function Shiv() {
                     <th className="px-4 py-3 text-left">Item</th>
                     <th className="px-4 py-3 text-right">Qty</th>
                     <th className="px-4 py-3 text-right">Amount</th>
-                    <th className="px-4 py-3 text-right">Est. Profit</th>
                     <th className="px-4 py-3 text-right">Entries</th>
                   </tr>
                 </thead>
@@ -179,7 +173,6 @@ export default function Shiv() {
                       </td>
                       <td className="px-4 py-3 text-right font-semibold text-blue-700">{g.totalQty}</td>
                       <td className="px-4 py-3 text-right font-semibold text-green-700">{formatCurrency(g.totalAmount)}</td>
-                      <td className="px-4 py-3 text-right text-purple-600 font-medium">{formatCurrency(g.totalAmount * EST_PROFIT_PCT)}</td>
                       <td className="px-4 py-3 text-right text-gray-400">{g.invoiceCount}</td>
                     </tr>
                   ))}
@@ -189,7 +182,6 @@ export default function Shiv() {
                     <td className="px-4 py-3 text-gray-700">Total</td>
                     <td className="px-4 py-3 text-right text-blue-700">{grandQty}</td>
                     <td className="px-4 py-3 text-right text-green-700">{formatCurrency(grandAmount)}</td>
-                    <td className="px-4 py-3 text-right text-purple-600">{formatCurrency(grandAmount * EST_PROFIT_PCT)}</td>
                     <td className="px-4 py-3 text-right text-gray-400">{allFreeTextLines.length}</td>
                   </tr>
                 </tfoot>
