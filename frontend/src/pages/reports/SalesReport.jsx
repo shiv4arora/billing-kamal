@@ -88,16 +88,18 @@ export default function SalesReport() {
       .slice(0, 10);
   }, [filtered]);
 
-  // Top Products — group by productId/productName, sum qty and value
+  // Top Products — group by productId/productName, sum qty and value (includes free text items)
   const topProducts = useMemo(() => {
     const map = {};
     filtered.forEach(inv => {
       (inv.items || []).forEach(item => {
-        const id  = item.productId || item.productName || item.description || 'Unknown';
+        const isFt = item.isFreeText || (!item.productId && item.productName?.trim());
+        if (!item.productId && !isFt) return;
+        const id  = item.productId || `ft:${(item.productName || '').trim().toLowerCase()}`;
         const val = item.lineTotal != null
           ? item.lineTotal
           : (item.quantity || 0) * (item.unitPrice || 0) * (1 - ((item.discountPct || 0) / 100));
-        if (!map[id]) map[id] = { name: item.productName || item.description || 'Unknown', sku: item.sku || '', vendorCode: item.vendorCode || '', qty: 0, value: 0 };
+        if (!map[id]) map[id] = { name: item.productName || item.description || 'Unknown', sku: item.sku || '', vendorCode: item.vendorCode || '', isFreeText: !!isFt, qty: 0, value: 0 };
         map[id].qty   += item.quantity || 0;
         map[id].value += val;
       });
@@ -249,7 +251,7 @@ export default function SalesReport() {
                 <BarChart
                   data={placeData}
                   layout="vertical"
-                  margin={{ top: 4, right: 12, bottom: 4, left: 100 }}
+                  margin={{ top: 4, right: 16, bottom: 4, left: 0 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                   <XAxis
@@ -260,7 +262,7 @@ export default function SalesReport() {
                   <YAxis
                     type="category"
                     dataKey="place"
-                    width={96}
+                    width={90}
                     tick={{ fontSize: 11 }}
                   />
                   <Tooltip
@@ -363,7 +365,12 @@ export default function SalesReport() {
                   : topProducts.map((p, idx) => (
                     <tr key={idx} className="border-b hover:bg-gray-50">
                       <td className="px-4 py-2 text-gray-400 text-xs">{idx + 1}</td>
-                      <td className="px-4 py-2 font-medium text-gray-800">{p.name}</td>
+                      <td className="px-4 py-2 font-medium text-gray-800">
+                        <div className="flex items-center gap-1.5">
+                          {p.name}
+                          {p.isFreeText && <span className="text-xs px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium shrink-0">Free Text</span>}
+                        </div>
+                      </td>
                       <td className="px-4 py-2 text-xs font-mono text-gray-400">{p.sku || '—'}</td>
                       <td className="px-4 py-2 text-xs text-gray-500">{p.vendorCode || '—'}</td>
                       <td className="px-4 py-2 text-right text-gray-600">{p.qty % 1 === 0 ? p.qty : p.qty.toFixed(2)}</td>

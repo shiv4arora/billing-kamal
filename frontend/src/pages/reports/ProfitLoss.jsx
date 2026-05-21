@@ -10,16 +10,20 @@ const MFG_MARGIN = 0.20; // manufactured goods margin assumption
 
 // Compute COGS for a single line item.
 // Manufactured products (in mfgProductIds) → COGS = revenue × (1 - MFG_MARGIN)
-// Purchased products → COGS = costPrice × qty
+// Free text items (no productId)            → COGS = revenue × (1 - MFG_MARGIN) (estimated)
+// Purchased products                        → COGS = costPrice × qty
 function itemCogs(item, prod, mfgProductIds) {
   const qty      = item.quantity || 0;
   const revenue  = item.lineTotal != null
     ? item.lineTotal
     : qty * (item.unitPrice || 0) * (1 - (item.discountPct || 0) / 100);
-  if (item.productId && mfgProductIds.has(item.productId)) {
-    return { revenue, cost: revenue * (1 - MFG_MARGIN), isMfg: true };
+  if (item.isFreeText || !item.productId) {
+    return { revenue, cost: revenue * (1 - MFG_MARGIN), isMfg: false, isFreeText: true };
   }
-  return { revenue, cost: (prod?.costPrice || 0) * qty, isMfg: false };
+  if (mfgProductIds.has(item.productId)) {
+    return { revenue, cost: revenue * (1 - MFG_MARGIN), isMfg: true, isFreeText: false };
+  }
+  return { revenue, cost: (prod?.costPrice || 0) * qty, isMfg: false, isFreeText: false };
 }
 
 function buildData(saleInvoices, purchaseInvoices, productMap, start, end, mfgProductIds) {
@@ -59,20 +63,22 @@ function buildData(saleInvoices, purchaseInvoices, productMap, start, end, mfgPr
     .sort((a, b) => a.fullMonth.localeCompare(b.fullMonth))
     .map(m => ({ ...m, profit: m.revenue - m.cogs }));
 
-  // Top profitable products
+  // Top profitable products (includes free text items)
   const prodProfitMap = {};
   sales.forEach(inv => {
     (inv.items || []).forEach(item => {
-      if (!item.productId) return;
-      const prod = productMap[item.productId];
-      if (!prod) return;
-      const key = item.productId;
-      const { revenue, cost, isMfg } = itemCogs(item, prod, mfgProductIds);
+      const isFt = item.isFreeText || (!item.productId && item.productName?.trim());
+      if (!item.productId && !isFt) return;
+      const prod = item.productId ? productMap[item.productId] : null;
+      if (item.productId && !prod) return;
+      const key = item.productId || `ft:${(item.productName || '').trim().toLowerCase()}`;
+      const name = prod ? prod.name : (item.productName || 'Free Text Item');
+      const { revenue, cost, isMfg, isFreeText } = itemCogs(item, prod, mfgProductIds);
       const profit = revenue - cost;
       if (!prodProfitMap[key]) prodProfitMap[key] = {
-        name: prod.name, sku: prod.sku || '',
-        vendorCode: prod.supplier?.code || prod.supplier?.name || '',
-        isMfg, qty: 0, revenue: 0, cost: 0, profit: 0,
+        name, sku: item.sku || prod?.sku || '',
+        vendorCode: prod?.supplier?.code || prod?.supplier?.name || '',
+        isMfg, isFreeText, qty: 0, revenue: 0, cost: 0, profit: 0,
       };
       prodProfitMap[key].qty     += item.quantity || 0;
       prodProfitMap[key].revenue += revenue;
@@ -248,13 +254,16 @@ export default function ProfitLoss() {
               </div>
             ))}
           </div>
-          {mfgProductIds.size > 0 && (
-            <div className="mt-3 pt-3 border-t border-purple-100">
+          <div className="mt-3 pt-3 border-t border-gray-100 space-y-1.5">
+            {mfgProductIds.size > 0 && (
               <p className="text-xs text-purple-600 bg-purple-50 rounded-lg px-3 py-2">
-                ⚙ <span className="font-medium">{mfgProductIds.size} manufactured product{mfgProductIds.size !== 1 ? 's' : ''}</span> — COGS estimated at {Math.round((1 - MFG_MARGIN) * 100)}% of revenue ({MFG_MARGIN * 100}% margin assumed)
+                ⚙ <span className="font-medium">{mfgProductIds.size} manufactured product{mfgProductIds.size !== 1 ? 's' : ''}</span> — COGS at {Math.round((1 - MFG_MARGIN) * 100)}% of revenue ({MFG_MARGIN * 100}% margin)
               </p>
-            </div>
-          )}
+            )}
+            <p className="text-xs text-orange-600 bg-orange-50 rounded-lg px-3 py-2">
+              📝 <span className="font-medium">Free text items</span> — COGS estimated at {Math.round((1 - MFG_MARGIN) * 100)}% of revenue ({MFG_MARGIN * 100}% margin assumed)
+            </p>
+          </div>
           {prevData && (
             <div className="mt-4 pt-4 border-t border-gray-100 text-xs text-gray-400 space-y-1">
               <p className="font-medium text-gray-500 mb-1">vs Previous Period</p>
@@ -334,9 +343,11 @@ export default function ProfitLoss() {
                     <td className="px-4 py-2.5 font-mono text-xs text-blue-600">{p.sku ? `#${p.sku}` : '—'}</td>
                     <td className="px-4 py-2.5 text-xs text-gray-500">{p.vendorCode || '—'}</td>
                     <td className="px-4 py-2.5">
-                      {p.isMfg
-                        ? <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">Mfg</span>
-                        : <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Purchased</span>
+                      {p.isFreeText
+                        ? <span className="text-xs px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">Free Text</span>
+                        : p.isMfg
+                          ? <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">Mfg</span>
+                          : <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Purchased</span>
                       }
                     </td>
                     <td className="px-4 py-2.5 text-right text-gray-600">{p.qty}</td>
