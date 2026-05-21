@@ -28,7 +28,7 @@ export default function Sidebar({ isOpen, onClose }) {
       section: 'Overview',
       items: [
         { to: '/', label: 'Dashboard', icon: '📊' },
-        { to: '/shiv', label: 'Shiv', icon: '⭐' },
+        { to: '/shiv', label: 'Free Text Items', icon: '📝' },
       ],
     },
     {
