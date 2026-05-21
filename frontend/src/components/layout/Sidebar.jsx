@@ -28,7 +28,6 @@ export default function Sidebar({ isOpen, onClose }) {
       section: 'Overview',
       items: [
         { to: '/', label: 'Dashboard', icon: '📊' },
-        { to: '/shiv', label: 'Free Text Items', icon: '📝' },
       ],
     },
     {
@@ -38,6 +37,7 @@ export default function Sidebar({ isOpen, onClose }) {
         ...(can('purchases_view') ? [{ to: '/purchases', label: 'Purchase Invoices', icon: '📦' }] : []),
         ...(can('quotations') ? [{ to: '/quotations', label: 'Estimates',  icon: '📋' }] : []),
         ...(can('production') ? [{ to: '/production', label: 'Production', icon: '⚙️' }] : []),
+        { to: '/shiv', label: 'Free Text Items', icon: '📝' },
       ],
     },
     {
