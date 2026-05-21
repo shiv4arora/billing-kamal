@@ -32,6 +32,7 @@ import Settings from './pages/Settings';
 import VendorSalesReport from './pages/reports/VendorSalesReport';
 import LoginPage from './pages/auth/LoginPage';
 import UserManagement from './pages/auth/UserManagement';
+import Shiv from './pages/Shiv';
 
 /** Redirect to / if already logged in */
 function PublicRoute({ children }) {
@@ -81,6 +82,7 @@ function LayoutRoutes() {
           {isAdmin && <Route path="/reports/vendor-sales" element={<VendorSalesReport />} />}
           {isAdmin && <Route path="/settings" element={<Settings />} />}
           {isAdmin && <Route path="/users" element={<UserManagement />} />}
+          <Route path="/shiv" element={<Shiv />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </MainLayout>

@@ -85,11 +85,11 @@ export default function SaleInvoiceCreate() {
   const removeItem = (idx) => setItems(prev => prev.filter((_, i) => i !== idx));
   const addItem = () => setItems(prev => [...prev, { ...BLANK_ITEM }]);
 
-  const totals = buildInvoiceTotals(items.filter(i => i.productId && i.quantity > 0), settings.tax.intraState === false);
+  const totals = buildInvoiceTotals(items.filter(i => i.productId), settings.tax.intraState === false);
 
   const handleSave = (status) => {
     if (!customerId) { toast.error('Please select a customer'); return; }
-    if (totals.items.length === 0) { toast.error('Add at least one item'); return; }
+    if (totals.items.filter(i => i.quantity > 0).length === 0) { toast.error('Add at least one item'); return; }
     setSaving(true);
 
     const paid = +amountPaid || 0;
@@ -105,7 +105,7 @@ export default function SaleInvoiceCreate() {
     } else {
       const saved = addSaleInvoice(inv);
       if (status === 'issued') {
-        totals.items.forEach(item => {
+        totals.items.filter(item => item.quantity > 0).forEach(item => {
           updateStock(item.productId, -item.quantity);
           addStockEntry({ productId: item.productId, date, movementType: 'sale', quantity: -item.quantity, referenceId: saved.id, referenceNo: invNo });
         });
@@ -185,16 +185,16 @@ export default function SaleInvoiceCreate() {
             <h3 className="font-semibold text-gray-800">Items</h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[780px] text-sm">
+            <table className="table-fixed w-full min-w-[960px] text-sm">
               <thead><tr className="border-b text-xs text-gray-400 uppercase tracking-wide">
-                <th className="px-4 py-3 text-left w-10">#</th>
-                <th className="px-4 py-3 text-left w-52">Product</th>
-                <th className="px-4 py-3 text-center w-24">SKU</th>
+                <th className="px-4 py-3 text-left w-8">#</th>
+                <th className="px-4 py-3 text-left w-44">Product</th>
+                <th className="px-4 py-3 text-center w-28">SKU</th>
                 <th className="px-4 py-3 text-center w-32">QTY</th>
-                <th className="px-4 py-3 text-right w-28">Rate (₹)</th>
-                <th className="px-4 py-3 text-right w-28">Total</th>
+                <th className="px-4 py-3 text-right w-32">Rate (₹)</th>
+                <th className="px-4 py-3 text-right w-32">Total</th>
                 <th className="px-4 py-3 text-center w-24">Disc%</th>
-                <th className="px-4 py-3 text-right w-28">Amount</th>
+                <th className="px-4 py-3 text-right w-32">Amount</th>
                 <th className="w-8"></th>
               </tr></thead>
               <tbody>
@@ -240,7 +240,7 @@ export default function SaleInvoiceCreate() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <input type="number" min="0" step="0.01" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', +e.target.value)} className="w-24 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                        <input type="number" min="0" step="0.01" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', +e.target.value)} className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" />
                       </td>
                       <td className="px-4 py-3 text-right font-medium text-gray-700">
                         {item.unitPrice > 0 ? formatCurrency(gross) : '—'}

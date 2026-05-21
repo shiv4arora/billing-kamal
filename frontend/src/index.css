@@ -96,6 +96,13 @@
   .dark .bg-purple-50, .dark .bg-purple-100 { background-color: rgba(191,90,242,0.15) !important; }
 }
 
+/* ── Mobile / Touch UX ──────────────────────────────────────────────────── */
+/* Prevent text scaling on orientation change */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 @media print {
   .no-print { display: none !important; }
   .print-only { display: block !important; }

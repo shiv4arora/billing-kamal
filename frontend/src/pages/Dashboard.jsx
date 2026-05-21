@@ -72,15 +72,15 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <div className="flex gap-3">
-          <Link to="/sales/new" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">+ Sale Invoice</Link>
-          <Link to="/purchases/new" className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200">+ Purchase</Link>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Dashboard</h1>
+        <div className="flex gap-2 sm:gap-3">
+          <Link to="/sales/new" className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 whitespace-nowrap">+ Sale Invoice</Link>
+          <Link to="/purchases/new" className="bg-gray-100 text-gray-700 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 whitespace-nowrap">+ Purchase</Link>
         </div>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard title="Today's Revenue" value={formatCurrency(stats.todayRevenue)} icon="💵" color="green" />
         <StatCard title="Month Revenue" value={formatCurrency(stats.monthRevenue)} icon="📈" color="blue" />
         <StatCard title="Outstanding" value={formatCurrency(stats.outstanding)} icon="⏳" color="orange" />
@@ -169,12 +169,12 @@ export default function Dashboard() {
             {stats.recentSales.length === 0 ? (
               <p className="text-center py-8 text-gray-400 text-sm">No invoices yet</p>
             ) : stats.recentSales.map(inv => (
-              <div key={inv.id} className="px-5 py-3 flex items-center justify-between hover:bg-gray-50">
-                <div>
-                  <p className="text-sm font-medium text-gray-800">{inv.invoiceNumber}</p>
-                  <p className="text-xs text-gray-500">{formatCustomerDisplay(inv.customerName, inv.customerPlace, inv.customerType)} · {formatDate(inv.date)}</p>
+              <div key={inv.id} className="px-4 sm:px-5 py-3 flex items-center justify-between gap-2 hover:bg-gray-50">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-800 truncate">{inv.invoiceNumber}</p>
+                  <p className="text-xs text-gray-500 truncate">{formatCustomerDisplay(inv.customerName, inv.customerPlace, inv.customerType)} · {formatDate(inv.date)}</p>
                 </div>
-                <div className="text-right">
+                <div className="text-right shrink-0">
                   <p className="text-sm font-semibold text-gray-900">{formatCurrency(inv.grandTotal)}</p>
                   <Badge color={payColor[inv.paymentStatus] || 'gray'}>{inv.paymentStatus}</Badge>
                 </div>

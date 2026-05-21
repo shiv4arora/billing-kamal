@@ -249,8 +249,8 @@ export default function SaleInvoiceCreate() {
     return (
       <div className="max-w-5xl">
         <div className="flex items-center gap-3 mb-5">
-          <button onClick={() => navigate('/sales')} className="text-gray-400 hover:text-gray-600">←</button>
-          <h1 className="text-2xl font-bold text-gray-900">Sale Invoice (View Only)</h1>
+          <button onClick={() => navigate('/sales')} className="text-gray-400 hover:text-gray-600 p-1 -ml-1 text-lg">←</button>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Sale Invoice (View Only)</h1>
         </div>
         <div className="bg-amber-50 border border-amber-300 rounded-xl p-5 flex items-start gap-4">
           <span className="text-3xl">🔒</span>
@@ -267,10 +267,10 @@ export default function SaleInvoiceCreate() {
   return (
     <>
       {savePromptJsx}
-      <div className="max-w-5xl space-y-5">
+      <div className="max-w-5xl space-y-5 pb-4">
         <div className="flex items-center gap-3">
-          <button onClick={() => { if (confirmLeave()) navigate('/sales'); }} className="text-gray-400 hover:text-gray-600">←</button>
-          <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Sale Invoice' : 'New Sale Invoice'}</h1>
+          <button onClick={() => { if (confirmLeave()) navigate('/sales'); }} className="text-gray-400 hover:text-gray-600 text-lg leading-none p-1 -ml-1">←</button>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{isEdit ? 'Edit Sale Invoice' : 'New Sale Invoice'}</h1>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -316,10 +316,10 @@ export default function SaleInvoiceCreate() {
             )}
           </Card>
           <Card>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2">
 
               {/* Row 1: dates */}
-              <Input label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} />
+              <Input label="Invoice Date" type="date" value={date} onChange={e => setDate(e.target.value)} />
               <Input label="Due Date" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
 
               {/* Row 2: payment */}
@@ -329,7 +329,7 @@ export default function SaleInvoiceCreate() {
               <Input label="Amt Paid (₹)" type="number" min="0" value={amountPaid} onChange={e => setAmountPaid(e.target.value)} placeholder="0" />
 
               {/* Discount — unified dropdown */}
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <p className="text-xs font-medium text-gray-500 mb-1">Discount %</p>
                 <div className="flex gap-1.5">
                   <select value={bulkDiscount} onChange={e => setBulkDiscount(e.target.value)}
@@ -355,7 +355,7 @@ export default function SaleInvoiceCreate() {
                   {GST_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
                 </select>
               </div>
-              <div>{/* spacer */}</div>
+              <div className="hidden sm:block">{/* spacer */}</div>
               <div>
                 <p className="text-xs font-medium text-gray-500 mb-1">Packing (₹)</p>
                 <input type="number" min="0" value={extraCharges.packing}
@@ -500,48 +500,51 @@ export default function SaleInvoiceCreate() {
                 })}
               </tbody>
             </table>
-            <div className="grid border-t border-gray-200" style={{minHeight:'52px', gridTemplateColumns:'30% 30% 40%'}}>
-              {/* Col 1: Add Item */}
-              <button
-                onClick={addItem}
-                className="w-full h-full py-3 text-gray-400 hover:text-blue-500 hover:bg-blue-50 text-sm font-medium transition-colors border-r border-dashed border-gray-200"
-              >
-                + Add Item
-              </button>
-              {/* Col 2: Free Text */}
-              <button
-                onClick={() => setItems(prev => [...prev, { ...BLANK_ITEM, isFreeText: true, productName: 'Rakhi SP-11' }])}
-                className="w-full h-full py-3 text-gray-400 hover:text-orange-500 hover:bg-orange-50 text-sm font-medium transition-colors border-r border-dashed border-gray-200"
-              >
-                + Free Text
-              </button>
-              {/* Col 3: SKU scan */}
-              <div className="flex items-center gap-1 px-2 py-1.5">
-                <input
-                  ref={skuInputRef}
-                  value={skuQuickAdd}
-                  onChange={e => setSkuQuickAdd(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addProductBySku(skuQuickAdd); } }}
-                  placeholder="📷 Scan / type SKU + ↵"
-                  enterKeyHint="go"
-                  autoCapitalize="off"
-                  autoCorrect="off"
-                  spellCheck="false"
-                  className="flex-1 border border-blue-200 bg-blue-50 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder:text-blue-300 min-w-0"
-                />
+            <div className="border-t border-gray-200">
+              {/* Mobile: stack vertically; desktop: side-by-side */}
+              <div className="flex flex-col sm:flex-row sm:min-h-[52px]">
+                {/* Col 1: Add Item */}
                 <button
-                  type="button"
-                  onClick={() => addProductBySku(skuQuickAdd)}
-                  className="flex-shrink-0 px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 font-medium"
+                  onClick={addItem}
+                  className="py-3 text-gray-400 hover:text-blue-500 hover:bg-blue-50 text-sm font-medium transition-colors border-b sm:border-b-0 sm:border-r border-dashed border-gray-200 sm:flex-[3]"
                 >
-                  Add
+                  + Add Item
                 </button>
+                {/* Col 2: Free Text */}
+                <button
+                  onClick={() => setItems(prev => [...prev, { ...BLANK_ITEM, isFreeText: true, productName: 'Rakhi SP-11' }])}
+                  className="py-3 text-gray-400 hover:text-orange-500 hover:bg-orange-50 text-sm font-medium transition-colors border-b sm:border-b-0 sm:border-r border-dashed border-gray-200 sm:flex-[3]"
+                >
+                  + Free Text
+                </button>
+                {/* Col 3: SKU scan */}
+                <div className="flex items-center gap-1 px-2 py-1.5 sm:flex-[4]">
+                  <input
+                    ref={skuInputRef}
+                    value={skuQuickAdd}
+                    onChange={e => setSkuQuickAdd(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addProductBySku(skuQuickAdd); } }}
+                    placeholder="📷 Scan / type SKU + ↵"
+                    enterKeyHint="go"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    spellCheck="false"
+                    className="flex-1 border border-blue-200 bg-blue-50 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder:text-blue-300 min-w-0"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => addProductBySku(skuQuickAdd)}
+                    className="flex-shrink-0 px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 font-medium"
+                  >
+                    Add
+                  </button>
+                </div>
               </div>
             </div>
           </div>
           {/* Totals */}
-          <div className="flex justify-end p-5 border-t">
-            <div className="w-72 space-y-2 text-sm">
+          <div className="flex justify-end p-4 sm:p-5 border-t">
+            <div className="w-full sm:w-72 space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-gray-500">Total Items</span><span>{totals.items.length} items · {totals.items.reduce((s, i) => s + i.quantity, 0)} qty</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>{formatCurrency(totals.subtotal)}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Discount</span><span className={totals.totalDiscount > 0 ? 'text-red-600' : 'text-gray-400'}>-{formatCurrency(totals.totalDiscount)}</span></div>
@@ -562,10 +565,10 @@ export default function SaleInvoiceCreate() {
           <Textarea label="Notes" value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Any additional notes…" />
         </Card>
 
-        <div className="flex justify-end gap-3">
-          <Button variant="secondary" type="button" onClick={() => { if (confirmLeave()) navigate('/sales'); }}>Cancel</Button>
-          <Button variant="outline" onClick={() => handleSave('draft')} disabled={saving}>Save as Draft</Button>
-          <Button variant="success" onClick={() => handleSave('issued')} disabled={saving}>Issue Invoice</Button>
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 sticky bottom-0 bg-gray-50 dark:bg-black py-3 sm:py-0 sm:static sm:bg-transparent border-t sm:border-0 border-gray-200 dark:border-gray-700 -mx-4 sm:mx-0 px-4 sm:px-0">
+          <Button variant="secondary" type="button" onClick={() => { if (confirmLeave()) navigate('/sales'); }} className="justify-center">Cancel</Button>
+          <Button variant="outline" onClick={() => handleSave('draft')} disabled={saving} className="justify-center">Save as Draft</Button>
+          <Button variant="success" onClick={() => handleSave('issued')} disabled={saving} className="justify-center">Issue Invoice</Button>
         </div>
       </div>
     </>
