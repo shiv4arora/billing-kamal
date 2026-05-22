@@ -29,10 +29,43 @@ export default function SaleInvoiceView() {
   const [checkMode, setCheckMode] = useState(false);
   const [itemChecks, setItemChecks] = useState({});
   const [itemNotes, setItemNotes] = useState({});
+  const [itemCorrections, setItemCorrections] = useState({});
+  const [applying, setApplying] = useState(false);
+
   const toggleCheck = (idx, val) =>
     setItemChecks(p => ({ ...p, [idx]: p[idx] === val ? null : val }));
 
+  const setCorrection = (idx, qty) =>
+    setItemCorrections(p => ({ ...p, [idx]: { ...p[idx], qty } }));
+
   if (!inv) return <div className="p-8 text-center text-gray-400">Invoice not found.</div>;
+
+  const pendingFixes = (inv.items || []).filter((item, i) =>
+    itemChecks[i] === 'wrong' &&
+    itemCorrections[i]?.qty !== undefined &&
+    itemCorrections[i].qty !== item.quantity
+  ).length;
+
+  const applyCorrections = async () => {
+    setApplying(true);
+    try {
+      const correctedItems = (inv.items || []).map((item, i) => {
+        if (itemChecks[i] !== 'wrong') return item;
+        const newQty = itemCorrections[i]?.qty ?? item.quantity;
+        const gross = newQty * item.unitPrice;
+        const disc = (gross * (item.discountPct || 0)) / 100;
+        const taxable = gross - disc;
+        const gstAmt = (taxable * (item.gstRate || 0)) / 100;
+        return { ...item, quantity: newQty, lineTotal: taxable + gstAmt, taxableAmount: taxable };
+      });
+      const updated = await api(`/sales/${id}`, { method: 'PUT', body: { ...inv, items: correctedItems } });
+      updateSaleInvoiceLocal(id, updated);
+      toast.success(`${pendingFixes} correction${pendingFixes !== 1 ? 's' : ''} applied`);
+      setCheckMode(false);
+      setItemChecks({}); setItemNotes({}); setItemCorrections({});
+    } catch (e) { toast.error(e.message || 'Failed to apply corrections'); }
+    finally { setApplying(false); }
+  };
 
   const remaining = inv.grandTotal - (inv.amountPaid || 0);
 
@@ -311,13 +344,19 @@ export default function SaleInvoiceView() {
           const wrong = items.filter((_, i) => itemChecks[i] === 'wrong').length;
           const pending = items.length - ok - wrong;
           return (
-            <div className="flex items-center justify-between px-4 py-2.5 bg-blue-50 border-b border-blue-100">
-              <span className="text-sm font-semibold text-blue-700">🔍 Checking bill…</span>
-              <div className="flex items-center gap-3 text-xs font-semibold">
+            <div className="flex items-center justify-between px-4 py-2.5 bg-blue-50 border-b border-blue-100 gap-2">
+              <span className="text-sm font-semibold text-blue-700 shrink-0">🔍 Checking…</span>
+              <div className="flex items-center gap-2 text-xs font-semibold">
                 <span className="text-green-600">{ok} ✓</span>
                 <span className="text-red-500">{wrong} ✗</span>
                 {pending > 0 && <span className="text-gray-400">{pending} left</span>}
               </div>
+              {pendingFixes > 0 && (
+                <button onClick={applyCorrections} disabled={applying}
+                  className="shrink-0 ml-auto text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg font-semibold disabled:opacity-50 active:bg-blue-700 whitespace-nowrap">
+                  {applying ? 'Saving…' : `✓ Apply ${pendingFixes} fix${pendingFixes !== 1 ? 'es' : ''}`}
+                </button>
+              )}
             </div>
           );
         })()}
@@ -326,27 +365,25 @@ export default function SaleInvoiceView() {
             const checkState = itemChecks[i];
             return (
               <div key={i} className={`px-4 py-3 transition-colors ${checkState === 'ok' ? 'bg-green-50' : checkState === 'wrong' ? 'bg-red-50' : ''}`}>
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2.5">
+                  {/* Serial number */}
+                  <span className="text-xs font-bold text-gray-300 w-5 text-right shrink-0 mt-0.5">{i + 1}</span>
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-gray-900 text-sm">{item.productName}</p>
-                    {(item.sku || item.hsnCode) && (
-                      <div className="flex gap-1.5 mt-0.5 flex-wrap">
-                        {item.sku && <span className="text-xs font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">#{item.sku}</span>}
-                        {item.hsnCode && <span className="text-xs text-gray-400">HSN:{item.hsnCode}</span>}
-                      </div>
-                    )}
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-medium text-gray-900 text-sm leading-snug">{item.productName}</p>
+                      <p className="font-semibold text-gray-900 text-sm shrink-0">{formatCurrency(item.lineTotal)}</p>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      {item.sku && <span className="text-xs font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">#{item.sku}</span>}
+                      {item.hsnCode && <span className="text-xs text-gray-400">HSN:{item.hsnCode}</span>}
+                      <span className="text-xs text-gray-400">{item.quantity} {item.unit} × {formatCurrency(item.unitPrice)}{item.discountPct ? ` − ${item.discountPct}%` : ''}{item.gstRate ? ` + ${item.gstRate}% GST` : ''}</span>
+                    </div>
                   </div>
-                  <p className="font-semibold text-gray-900 text-sm shrink-0">{formatCurrency(item.lineTotal)}</p>
                 </div>
-                <p className="text-xs text-gray-400 mt-1">
-                  {item.quantity} {item.unit} × {formatCurrency(item.unitPrice)}
-                  {item.discountPct ? ` − ${item.discountPct}% disc` : ''}
-                  {item.gstRate ? ` + ${item.gstRate}% GST` : ''}
-                </p>
                 {/* Check buttons */}
                 {checkMode && (
                   <>
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex gap-2 mt-2 pl-7">
                       <button
                         onClick={() => toggleCheck(i, 'ok')}
                         className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${
@@ -367,16 +404,36 @@ export default function SaleInvoiceView() {
                       </button>
                     </div>
                     {checkState === 'wrong' && (
-                      <div className="flex items-center gap-2 mt-1.5">
-                        <span className="text-xs font-bold text-red-500 bg-red-100 rounded-full w-6 h-6 flex items-center justify-center shrink-0">
-                          {i + 1}
-                        </span>
-                        <input
-                          value={itemNotes[i] || ''}
-                          onChange={e => setItemNotes(p => ({ ...p, [i]: e.target.value }))}
-                          placeholder="Note what's wrong…"
-                          className="flex-1 border border-red-200 bg-red-50 rounded-lg px-3 py-2 text-xs text-red-700 placeholder:text-red-300 focus:outline-none focus:ring-1 focus:ring-red-400"
-                        />
+                      <div className="mt-1.5 space-y-1.5">
+                        {/* Note */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-red-500 bg-red-100 rounded-full w-6 h-6 flex items-center justify-center shrink-0">{i + 1}</span>
+                          <input
+                            value={itemNotes[i] || ''}
+                            onChange={e => setItemNotes(p => ({ ...p, [i]: e.target.value }))}
+                            placeholder="Note what's wrong…"
+                            className="flex-1 border border-red-200 bg-red-50 rounded-lg px-3 py-2 text-xs text-red-700 placeholder:text-red-300 focus:outline-none focus:ring-1 focus:ring-red-400"
+                          />
+                        </div>
+                        {/* Qty correction stepper */}
+                        <div className="flex items-center gap-2 pl-8">
+                          <span className="text-xs text-gray-500 shrink-0">Fix qty:</span>
+                          <div className="flex items-center border border-red-200 rounded-lg overflow-hidden bg-white text-sm">
+                            <button type="button" onClick={() => setCorrection(i, Math.max(0, (itemCorrections[i]?.qty ?? item.quantity) - 1))}
+                              className="px-2.5 py-1.5 text-gray-600 active:bg-gray-100 font-bold leading-none">−</button>
+                            <input type="number" min="0"
+                              value={itemCorrections[i]?.qty ?? item.quantity}
+                              onChange={e => setCorrection(i, +e.target.value)}
+                              onWheel={e => e.target.blur()}
+                              className="w-12 text-center py-1.5 border-x border-red-200 focus:outline-none text-sm" />
+                            <button type="button" onClick={() => setCorrection(i, (itemCorrections[i]?.qty ?? item.quantity) + 1)}
+                              className="px-2.5 py-1.5 text-gray-600 active:bg-gray-100 font-bold leading-none">+</button>
+                          </div>
+                          <span className="text-xs text-gray-400 shrink-0">{item.unit}</span>
+                          {(itemCorrections[i]?.qty ?? item.quantity) !== item.quantity && (
+                            <span className="text-xs text-orange-500 font-medium">was {item.quantity}</span>
+                          )}
+                        </div>
                       </div>
                     )}
                   </>
@@ -407,13 +464,19 @@ export default function SaleInvoiceView() {
           const wrong = items.filter((_, i) => itemChecks[i] === 'wrong').length;
           const pending = items.length - ok - wrong;
           return (
-            <div className="flex items-center justify-between px-5 py-2.5 bg-blue-50 border-b border-blue-100">
+            <div className="flex items-center justify-between px-5 py-2.5 bg-blue-50 border-b border-blue-100 gap-3">
               <span className="text-sm font-semibold text-blue-700">🔍 Checking bill…</span>
               <div className="flex items-center gap-4 text-sm font-semibold">
                 <span className="text-green-600">{ok} ✓ correct</span>
                 <span className="text-red-500">{wrong} ✗ wrong</span>
                 {pending > 0 && <span className="text-gray-400">{pending} unchecked</span>}
               </div>
+              {pendingFixes > 0 && (
+                <button onClick={applyCorrections} disabled={applying}
+                  className="ml-auto text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg font-semibold disabled:opacity-50 hover:bg-blue-700 whitespace-nowrap">
+                  {applying ? 'Saving…' : `✓ Apply ${pendingFixes} fix${pendingFixes !== 1 ? 'es' : ''}`}
+                </button>
+              )}
             </div>
           );
         })()}
@@ -462,14 +525,28 @@ export default function SaleInvoiceView() {
                           }`}>✗</button>
                       </div>
                       {checkState === 'wrong' && (
-                        <div className="flex items-center gap-1.5 mt-1.5">
-                          <span className="text-xs font-bold text-red-500 bg-red-100 rounded-full w-5 h-5 flex items-center justify-center shrink-0">{i + 1}</span>
-                          <input
-                            value={itemNotes[i] || ''}
-                            onChange={e => setItemNotes(p => ({ ...p, [i]: e.target.value }))}
-                            placeholder="Note…"
-                            className="flex-1 border border-red-200 bg-red-50 rounded px-2 py-1 text-xs text-red-700 placeholder:text-red-300 focus:outline-none focus:ring-1 focus:ring-red-400 min-w-0"
-                          />
+                        <div className="mt-1.5 space-y-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-red-500 bg-red-100 rounded-full w-5 h-5 flex items-center justify-center shrink-0">{i + 1}</span>
+                            <input value={itemNotes[i] || ''}
+                              onChange={e => setItemNotes(p => ({ ...p, [i]: e.target.value }))}
+                              placeholder="Note…"
+                              className="flex-1 border border-red-200 bg-red-50 rounded px-2 py-1 text-xs text-red-700 placeholder:text-red-300 focus:outline-none focus:ring-1 focus:ring-red-400 min-w-0" />
+                          </div>
+                          <div className="flex items-center gap-1 pl-6">
+                            <button type="button" onClick={() => setCorrection(i, Math.max(0, (itemCorrections[i]?.qty ?? item.quantity) - 1))}
+                              className="px-2 py-1 border border-red-200 rounded-l-lg bg-white text-gray-600 hover:bg-gray-100 text-xs font-bold">−</button>
+                            <input type="number" min="0"
+                              value={itemCorrections[i]?.qty ?? item.quantity}
+                              onChange={e => setCorrection(i, +e.target.value)}
+                              onWheel={e => e.target.blur()}
+                              className="w-12 text-center border-y border-red-200 py-1 text-xs focus:outline-none" />
+                            <button type="button" onClick={() => setCorrection(i, (itemCorrections[i]?.qty ?? item.quantity) + 1)}
+                              className="px-2 py-1 border border-red-200 rounded-r-lg bg-white text-gray-600 hover:bg-gray-100 text-xs font-bold">+</button>
+                            {(itemCorrections[i]?.qty ?? item.quantity) !== item.quantity && (
+                              <span className="text-xs text-orange-500 font-medium ml-1">was {item.quantity}</span>
+                            )}
+                          </div>
                         </div>
                       )}
                     </td>
