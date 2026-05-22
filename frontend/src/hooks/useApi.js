@@ -38,6 +38,13 @@ export async function api(path, options = {}) {
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({ error: res.statusText }));
   if (!res.ok) {
+    // Token expired or invalid — clear session and force re-login
+    if (res.status === 401) {
+      clearToken();
+      localStorage.removeItem('bms_jwt');
+      localStorage.removeItem('bms_local_user');
+      window.dispatchEvent(new Event('auth:expired'));
+    }
     const err = new Error(data?.error || `HTTP ${res.status}`);
     err.status = res.status;
     err.data = data;

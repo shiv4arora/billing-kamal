@@ -105,6 +105,17 @@ export function AuthProvider({ children }) {
     return () => { window.removeEventListener('focus', refresh); clearInterval(timer); };
   }, []);
 
+  // Auto-logout when any API call gets a 401 (token expired)
+  useEffect(() => {
+    const handleExpired = () => {
+      setCurrentUser(null);
+      setUsers([]);
+      window.location.href = '/login';
+    };
+    window.addEventListener('auth:expired', handleExpired);
+    return () => window.removeEventListener('auth:expired', handleExpired);
+  }, []);
+
   const login = async (username, password) => {
     const available = await checkApiAvailable();
     if (available) {
