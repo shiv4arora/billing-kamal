@@ -424,7 +424,7 @@ export default function SaleInvoiceCreate() {
             )}
           </Card>
           <Card>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
 
               {/* Row 1: dates */}
               <Input label="Invoice Date" type="date" value={date} onChange={e => setDate(e.target.value)} />
@@ -463,7 +463,7 @@ export default function SaleInvoiceCreate() {
                   {GST_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
                 </select>
               </div>
-              <div className="hidden sm:block">{/* spacer */}</div>
+              <div className="hidden">{/* spacer */}</div>
               <div>
                 <p className="text-xs font-medium text-gray-500 mb-1">Packing (₹)</p>
                 <input type="number" min="0" value={extraCharges.packing}
@@ -485,173 +485,305 @@ export default function SaleInvoiceCreate() {
 
         {/* Line Items */}
         <Card padding={false}>
-          <div className="p-4 border-b">
+          <div className="p-4 border-b flex items-center justify-between">
             <h3 className="font-semibold text-gray-800">Items</h3>
+            {validItems.length > 0 && <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{validItems.length} item{validItems.length !== 1 ? 's' : ''}</span>}
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[700px] text-sm table-fixed">
-              <thead><tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
-                <th className="px-3 py-3 text-center w-7">#</th>
-                <th className="px-3 py-3 text-left w-72">Product</th>
-                <th className="px-3 py-3 text-left w-12">SKU</th>
-                <th className="px-3 py-3 text-right w-20">Qty</th>
-                <th className="px-3 py-3 text-right w-24">Rate (₹)</th>
-                <th className="px-3 py-3 text-right w-24">Total</th>
-                {showDiscCol && <th className="px-3 py-3 text-right w-16">Disc%</th>}
-                {showDiscCol && <th className="px-3 py-3 text-right w-24">Amount</th>}
-                <th className="px-2 py-3 w-7"></th>
-              </tr></thead>
-              <tbody>
-                {items.map((item, idx) => {
-                  const gross = item.quantity * item.unitPrice;
-                  const disc = (gross * (item.discountPct || 0)) / 100;
-                  const taxable = gross - disc;
-                  const lineTotal = taxable; // GST shown only in totals, not per item
-                  const search = productSearch[idx] ?? item.productName ?? '';
-                  return (
-                    <tr key={idx} className="border-b hover:bg-gray-50">
-                      <td className="px-3 py-3 text-center text-xs text-gray-400 font-medium">{idx + 1}</td>
-                      <td className="px-3 py-3">
-                        {item.isFreeText ? (
+
+          {/* ── MOBILE ITEMS (card-based, no horizontal scroll) ────── */}
+          <div className="lg:hidden">
+            {/* SKU Scanner – large, prominent */}
+            <div className="p-3 bg-blue-50 border-b border-blue-100">
+              <div className="flex gap-2">
+                <input
+                  value={skuQuickAdd}
+                  onChange={e => setSkuQuickAdd(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addProductBySku(skuQuickAdd); } }}
+                  placeholder="📷 Scan / type SKU + ↵"
+                  enterKeyHint="go"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck="false"
+                  className="flex-1 border border-blue-200 bg-white rounded-xl px-3 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder:text-blue-300"
+                />
+                <button type="button" onClick={() => addProductBySku(skuQuickAdd)}
+                  className="px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm active:bg-blue-700">Add</button>
+              </div>
+            </div>
+
+            {/* Item cards */}
+            <div className="divide-y divide-gray-100">
+              {items.map((item, idx) => {
+                const gross = item.quantity * item.unitPrice;
+                const disc = (gross * (item.discountPct || 0)) / 100;
+                const taxable = gross - disc;
+                const search = productSearch[idx] ?? item.productName ?? '';
+                return (
+                  <div key={idx} className="p-3 space-y-2">
+                    {/* Product name row */}
+                    <div className="flex gap-2 items-start">
+                      <span className="text-xs text-gray-400 pt-2.5 w-5 shrink-0 text-center">{idx + 1}</span>
+                      {item.isFreeText ? (
+                        <input
+                          value={item.productName}
+                          onChange={e => updateItem(idx, 'productName', e.target.value)}
+                          placeholder="Item name"
+                          className="flex-1 border border-orange-300 bg-orange-50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-orange-400"
+                        />
+                      ) : (
+                        <div className="relative flex-1">
                           <input
-                            value={item.productName}
-                            onChange={e => updateItem(idx, 'productName', e.target.value)}
-                            placeholder="e.g. Rakhi SP-11"
-                            className="w-full border border-orange-300 bg-orange-50 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-orange-400 dark:bg-[rgba(255,159,10,0.1)] dark:border-[rgba(255,159,10,0.4)] dark:text-white"
+                            value={search}
+                            onChange={e => { setProductSearch(p => ({ ...p, [idx]: e.target.value })); setShowDropdown(p => ({ ...p, [idx]: true })); }}
+                            onFocus={() => setShowDropdown(p => ({ ...p, [idx]: true }))}
+                            onBlur={() => setTimeout(() => setShowDropdown(p => ({ ...p, [idx]: false })), 200)}
+                            placeholder="Search product…"
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
                           />
-                        ) : (
-                          <>
-                            <input
-                              ref={el => searchInputRefs.current[idx] = el}
-                              value={search}
-                              onChange={e => {
-                                setProductSearch(p => ({ ...p, [idx]: e.target.value }));
-                                setShowDropdown(p => ({ ...p, [idx]: true }));
-                                const rect = searchInputRefs.current[idx]?.getBoundingClientRect();
-                                if (rect) setDropdownPos(p => ({ ...p, [idx]: { top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: Math.max(rect.width, 320) } }));
-                              }}
-                              onFocus={e => {
-                                const rect = e.target.getBoundingClientRect();
-                                setDropdownPos(p => ({ ...p, [idx]: { top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: Math.max(rect.width, 320) } }));
-                                setShowDropdown(p => ({ ...p, [idx]: true }));
-                              }}
-                              onBlur={() => setTimeout(() => setShowDropdown(p => ({ ...p, [idx]: false })), 200)}
-                              placeholder="Search product…" className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                            {showDropdown[idx] && filteredProducts(search).length > 0 && dropdownPos[idx] && (
-                              <div ref={el => dropdownRefs.current[idx] = el} style={{ position: 'fixed', top: dropdownPos[idx].top + 4, left: dropdownPos[idx].left, width: dropdownPos[idx].width, zIndex: 9999 }} className="bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto">
-                                {filteredProducts(search).map(p => (
-                                  <div key={p.id} className="px-3 py-2.5 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0" onMouseDown={e => { e.preventDefault(); handleProductSelect(idx, p); }}>
-                                    <div className="flex items-center justify-between gap-2">
-                                      <p className="font-medium text-gray-800 text-sm truncate">{p.name}</p>
-                                      <div className="flex items-center gap-1 shrink-0">
-                                        {p.supplier && <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{p.supplier.code || p.supplier.name}</span>}
-                                        {p.sku && <span className="text-xs font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded font-mono">#{p.sku}</span>}
-                                      </div>
-                                    </div>
-                                    <p className="text-xs text-gray-400 mt-0.5">W:{formatCurrency(p.pricing?.wholesale||0)} · S:{formatCurrency(p.pricing?.shop||0)} · Stock:{p.currentStock||0}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </td>
-                      <td className="px-3 py-3">
-                        {item.sku ? (
-                          <div className="space-y-0.5">
-                            <span className="text-xs font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded block w-fit">{item.sku}</span>
-                            {item.vendorCode && <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded block w-fit">{item.vendorCode}</span>}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-gray-300">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col items-center gap-1">
-                          <input ref={el => qtyRefs.current[idx] = el} type="number" min="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', +e.target.value)} onWheel={e => e.target.blur()} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); skuInputRef.current?.focus(); skuInputRef.current?.select(); } }} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                          {item.isFreeText ? (
-                            <select value={item.unit || 'Pcs'} onChange={e => updateItem(idx, 'unit', e.target.value)} className="w-16 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded px-1 py-0.5 focus:outline-none cursor-pointer text-center">
-                              {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                            </select>
-                          ) : (
-                            <span className="text-xs text-gray-400">{item.unit}</span>
+                          {item.productId && !showDropdown[idx] && (
+                            <div className="mt-1 flex gap-1 flex-wrap">
+                              {item.sku && <span className="text-xs font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">#{item.sku}</span>}
+                              {item.vendorCode && <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{item.vendorCode}</span>}
+                            </div>
+                          )}
+                          {showDropdown[idx] && filteredProducts(search).length > 0 && (
+                            <div className="absolute z-30 top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-52 overflow-y-auto">
+                              {filteredProducts(search).map(p => (
+                                <div key={p.id}
+                                  className="px-3 py-2.5 active:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0"
+                                  onMouseDown={e => { e.preventDefault(); handleProductSelect(idx, p); }}>
+                                  <p className="font-medium text-gray-800 text-sm">{p.name}</p>
+                                  <p className="text-xs text-gray-400">{p.sku ? `#${p.sku} · ` : ''}W:{formatCurrency(p.pricing?.wholesale || 0)} · S:{formatCurrency(p.pricing?.shop || 0)} · Stock:{p.currentStock || 0}</p>
+                                </div>
+                              ))}
+                            </div>
                           )}
                         </div>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {item.isFreeText ? (
-                          <input
-                            type="number" min="0" value={item.unitPrice}
-                            onChange={e => updateItem(idx, 'unitPrice', +e.target.value)}
-                            onWheel={e => e.target.blur()}
-                            className="w-full border border-orange-200 bg-orange-50 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-orange-400"
-                          />
-                        ) : (
-                          <span className="text-sm font-medium text-gray-700">{item.unitPrice ? formatCurrency(item.unitPrice) : '—'}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium">{(item.productId || item.isFreeText) ? formatCurrency(gross) : '-'}</td>
-                      {showDiscCol && <td className="px-3 py-3"><input type="number" min="0" max="100" value={item.discountPct} onChange={e => updateItem(idx, 'discountPct', +e.target.value)} onWheel={e => e.target.blur()} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>}
-                      {showDiscCol && <td className="px-3 py-3 text-right font-medium text-green-700">{(item.productId || item.isFreeText) ? formatCurrency(taxable) : '-'}</td>}
-                      <td className="px-2 py-3 relative">
-                        <button onClick={() => setPendingDelete(idx)} className="text-gray-300 hover:text-red-500">✕</button>
-                        {pendingDelete === idx && (
-                          <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg shadow-lg px-2 py-1.5 z-20 whitespace-nowrap">
-                            <button onClick={() => removeItem(idx)} className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 font-medium">Delete</button>
-                            <button onClick={() => replaceItem(idx)} className="px-2 py-1 text-xs bg-amber-500 text-white rounded hover:bg-amber-600 font-medium">Replace</button>
-                            <button onClick={() => replaceWithFreeText(idx)} className="px-2 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 font-medium">Free Text</button>
-                            <button onClick={() => setPendingDelete(null)} className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200 font-medium">Cancel</button>
+                      )}
+                      <button onClick={() => setPendingDelete(idx)} className="text-gray-300 active:text-red-500 p-1.5 mt-0.5 shrink-0">✕</button>
+                    </div>
+
+                    {/* Qty stepper × Rate = Total */}
+                    <div className="flex items-center gap-2 pl-5">
+                      <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden bg-white text-sm">
+                        <button type="button" onClick={() => updateItem(idx, 'quantity', Math.max(0, item.quantity - 1))}
+                          className="px-2.5 py-2 text-gray-600 active:bg-gray-100 font-bold leading-none">−</button>
+                        <input ref={el => qtyRefs.current[idx] = el} type="number" value={item.quantity}
+                          onChange={e => updateItem(idx, 'quantity', +e.target.value)} min="0"
+                          onWheel={e => e.target.blur()}
+                          className="w-12 text-center py-2 text-sm focus:outline-none border-x border-gray-200" />
+                        <button type="button" onClick={() => updateItem(idx, 'quantity', item.quantity + 1)}
+                          className="px-2.5 py-2 text-gray-600 active:bg-gray-100 font-bold leading-none">+</button>
+                      </div>
+                      {item.isFreeText ? (
+                        <select value={item.unit || 'Pcs'} onChange={e => updateItem(idx, 'unit', e.target.value)}
+                          className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-1.5 py-2 focus:outline-none cursor-pointer">
+                          {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                        </select>
+                      ) : (
+                        <span className="text-xs text-gray-400 shrink-0">{item.unit || 'Pcs'}</span>
+                      )}
+                      <span className="text-gray-300 text-sm">×</span>
+                      {item.isFreeText ? (
+                        <input type="number" value={item.unitPrice}
+                          onChange={e => updateItem(idx, 'unitPrice', +e.target.value)}
+                          onWheel={e => e.target.blur()}
+                          placeholder="Rate"
+                          className="flex-1 border border-orange-200 bg-orange-50 rounded-lg px-2 py-2 text-sm text-right focus:outline-none focus:ring-1 focus:ring-orange-400 min-w-0"
+                        />
+                      ) : (
+                        <span className="flex-1 text-right text-sm font-medium text-gray-700">
+                          {item.unitPrice ? formatCurrency(item.unitPrice) : '—'}
+                        </span>
+                      )}
+                      <span className="text-gray-300 text-sm">=</span>
+                      <span className="font-bold text-gray-900 text-sm w-20 text-right shrink-0">
+                        {(item.productId || item.isFreeText) ? formatCurrency(taxable) : '—'}
+                      </span>
+                    </div>
+
+                    {/* Delete confirmation */}
+                    {pendingDelete === idx && (
+                      <div className="pl-5 flex gap-1.5 flex-wrap">
+                        <button onClick={() => removeItem(idx)} className="flex-1 px-3 py-2 text-xs bg-red-500 text-white rounded-lg font-medium">Delete</button>
+                        <button onClick={() => replaceItem(idx)} className="flex-1 px-3 py-2 text-xs bg-amber-500 text-white rounded-lg font-medium">Replace</button>
+                        <button onClick={() => replaceWithFreeText(idx)} className="flex-1 px-3 py-2 text-xs bg-orange-500 text-white rounded-lg font-medium">Free Text</button>
+                        <button onClick={() => setPendingDelete(null)} className="px-3 py-2 text-xs bg-gray-100 text-gray-600 rounded-lg font-medium">Cancel</button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Add item buttons */}
+            <div className="grid grid-cols-2 gap-2 p-3 border-t border-gray-100">
+              <button onClick={addItem}
+                className="py-3 bg-white border border-dashed border-gray-300 text-gray-500 text-sm rounded-xl active:bg-gray-50 font-medium">
+                + Add Product
+              </button>
+              <button onClick={() => { setItems(prev => [...prev, { ...BLANK_ITEM, isFreeText: true }]); setIsDirty(true); }}
+                className="py-3 bg-orange-50 border border-dashed border-orange-200 text-orange-600 text-sm rounded-xl active:bg-orange-100 font-medium">
+                + Free Text
+              </button>
+            </div>
+          </div>
+
+          {/* ── DESKTOP ITEMS (wide table, unchanged) ───────────────── */}
+          <div className="hidden lg:block">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[700px] text-sm table-fixed">
+                <thead><tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
+                  <th className="px-3 py-3 text-center w-7">#</th>
+                  <th className="px-3 py-3 text-left w-72">Product</th>
+                  <th className="px-3 py-3 text-left w-12">SKU</th>
+                  <th className="px-3 py-3 text-right w-20">Qty</th>
+                  <th className="px-3 py-3 text-right w-24">Rate (₹)</th>
+                  <th className="px-3 py-3 text-right w-24">Total</th>
+                  {showDiscCol && <th className="px-3 py-3 text-right w-16">Disc%</th>}
+                  {showDiscCol && <th className="px-3 py-3 text-right w-24">Amount</th>}
+                  <th className="px-2 py-3 w-7"></th>
+                </tr></thead>
+                <tbody>
+                  {items.map((item, idx) => {
+                    const gross = item.quantity * item.unitPrice;
+                    const disc = (gross * (item.discountPct || 0)) / 100;
+                    const taxable = gross - disc;
+                    const lineTotal = taxable; // GST shown only in totals, not per item
+                    const search = productSearch[idx] ?? item.productName ?? '';
+                    return (
+                      <tr key={idx} className="border-b hover:bg-gray-50">
+                        <td className="px-3 py-3 text-center text-xs text-gray-400 font-medium">{idx + 1}</td>
+                        <td className="px-3 py-3">
+                          {item.isFreeText ? (
+                            <input
+                              value={item.productName}
+                              onChange={e => updateItem(idx, 'productName', e.target.value)}
+                              placeholder="e.g. Rakhi SP-11"
+                              className="w-full border border-orange-300 bg-orange-50 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-orange-400 dark:bg-[rgba(255,159,10,0.1)] dark:border-[rgba(255,159,10,0.4)] dark:text-white"
+                            />
+                          ) : (
+                            <>
+                              <input
+                                ref={el => searchInputRefs.current[idx] = el}
+                                value={search}
+                                onChange={e => {
+                                  setProductSearch(p => ({ ...p, [idx]: e.target.value }));
+                                  setShowDropdown(p => ({ ...p, [idx]: true }));
+                                  const rect = searchInputRefs.current[idx]?.getBoundingClientRect();
+                                  if (rect) setDropdownPos(p => ({ ...p, [idx]: { top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: Math.max(rect.width, 320) } }));
+                                }}
+                                onFocus={e => {
+                                  const rect = e.target.getBoundingClientRect();
+                                  setDropdownPos(p => ({ ...p, [idx]: { top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: Math.max(rect.width, 320) } }));
+                                  setShowDropdown(p => ({ ...p, [idx]: true }));
+                                }}
+                                onBlur={() => setTimeout(() => setShowDropdown(p => ({ ...p, [idx]: false })), 200)}
+                                placeholder="Search product…" className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                              {showDropdown[idx] && filteredProducts(search).length > 0 && dropdownPos[idx] && (
+                                <div ref={el => dropdownRefs.current[idx] = el} style={{ position: 'fixed', top: dropdownPos[idx].top + 4, left: dropdownPos[idx].left, width: dropdownPos[idx].width, zIndex: 9999 }} className="bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto">
+                                  {filteredProducts(search).map(p => (
+                                    <div key={p.id} className="px-3 py-2.5 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0" onMouseDown={e => { e.preventDefault(); handleProductSelect(idx, p); }}>
+                                      <div className="flex items-center justify-between gap-2">
+                                        <p className="font-medium text-gray-800 text-sm truncate">{p.name}</p>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          {p.supplier && <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{p.supplier.code || p.supplier.name}</span>}
+                                          {p.sku && <span className="text-xs font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded font-mono">#{p.sku}</span>}
+                                        </div>
+                                      </div>
+                                      <p className="text-xs text-gray-400 mt-0.5">W:{formatCurrency(p.pricing?.wholesale||0)} · S:{formatCurrency(p.pricing?.shop||0)} · Stock:{p.currentStock||0}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </td>
+                        <td className="px-3 py-3">
+                          {item.sku ? (
+                            <div className="space-y-0.5">
+                              <span className="text-xs font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded block w-fit">{item.sku}</span>
+                              {item.vendorCode && <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded block w-fit">{item.vendorCode}</span>}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-300">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col items-center gap-1">
+                            <input ref={el => qtyRefs.current[idx] = el} type="number" min="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', +e.target.value)} onWheel={e => e.target.blur()} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); skuInputRef.current?.focus(); skuInputRef.current?.select(); } }} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                            {item.isFreeText ? (
+                              <select value={item.unit || 'Pcs'} onChange={e => updateItem(idx, 'unit', e.target.value)} className="w-16 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded px-1 py-0.5 focus:outline-none cursor-pointer text-center">
+                                {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                              </select>
+                            ) : (
+                              <span className="text-xs text-gray-400">{item.unit}</span>
+                            )}
                           </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <div className="border-t border-gray-200">
-              {/* Mobile: stack vertically; desktop: side-by-side */}
-              <div className="flex flex-col sm:flex-row sm:min-h-[52px]">
-                {/* Col 1: Add Item */}
-                <button
-                  onClick={addItem}
-                  className="py-3 text-gray-400 hover:text-blue-500 hover:bg-blue-50 text-sm font-medium transition-colors border-b sm:border-b-0 sm:border-r border-dashed border-gray-200 sm:flex-[3]"
-                >
-                  + Add Item
-                </button>
-                {/* Col 2: Free Text */}
-                <button
-                  onClick={() => setItems(prev => [...prev, { ...BLANK_ITEM, isFreeText: true, productName: 'Rakhi SP-11' }])}
-                  className="py-3 text-gray-400 hover:text-orange-500 hover:bg-orange-50 text-sm font-medium transition-colors border-b sm:border-b-0 sm:border-r border-dashed border-gray-200 sm:flex-[3]"
-                >
-                  + Free Text
-                </button>
-                {/* Col 3: SKU scan */}
-                <div className="flex items-center gap-1 px-2 py-1.5 sm:flex-[4]">
-                  <input
-                    ref={skuInputRef}
-                    value={skuQuickAdd}
-                    onChange={e => setSkuQuickAdd(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addProductBySku(skuQuickAdd); } }}
-                    placeholder="📷 Scan / type SKU + ↵"
-                    enterKeyHint="go"
-                    autoCapitalize="off"
-                    autoCorrect="off"
-                    spellCheck="false"
-                    className="flex-1 border border-blue-200 bg-blue-50 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder:text-blue-300 min-w-0"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => addProductBySku(skuQuickAdd)}
-                    className="flex-shrink-0 px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 font-medium"
-                  >
-                    Add
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {item.isFreeText ? (
+                            <input
+                              type="number" min="0" value={item.unitPrice}
+                              onChange={e => updateItem(idx, 'unitPrice', +e.target.value)}
+                              onWheel={e => e.target.blur()}
+                              className="w-full border border-orange-200 bg-orange-50 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-orange-400"
+                            />
+                          ) : (
+                            <span className="text-sm font-medium text-gray-700">{item.unitPrice ? formatCurrency(item.unitPrice) : '—'}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium">{(item.productId || item.isFreeText) ? formatCurrency(gross) : '-'}</td>
+                        {showDiscCol && <td className="px-3 py-3"><input type="number" min="0" max="100" value={item.discountPct} onChange={e => updateItem(idx, 'discountPct', +e.target.value)} onWheel={e => e.target.blur()} className="w-16 border border-gray-200 rounded px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400" /></td>}
+                        {showDiscCol && <td className="px-3 py-3 text-right font-medium text-green-700">{(item.productId || item.isFreeText) ? formatCurrency(taxable) : '-'}</td>}
+                        <td className="px-2 py-3 relative">
+                          <button onClick={() => setPendingDelete(idx)} className="text-gray-300 hover:text-red-500">✕</button>
+                          {pendingDelete === idx && (
+                            <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg shadow-lg px-2 py-1.5 z-20 whitespace-nowrap">
+                              <button onClick={() => removeItem(idx)} className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 font-medium">Delete</button>
+                              <button onClick={() => replaceItem(idx)} className="px-2 py-1 text-xs bg-amber-500 text-white rounded hover:bg-amber-600 font-medium">Replace</button>
+                              <button onClick={() => replaceWithFreeText(idx)} className="px-2 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 font-medium">Free Text</button>
+                              <button onClick={() => setPendingDelete(null)} className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200 font-medium">Cancel</button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <div className="border-t border-gray-200">
+                <div className="flex min-h-[52px]">
+                  <button onClick={addItem}
+                    className="py-3 text-gray-400 hover:text-blue-500 hover:bg-blue-50 text-sm font-medium transition-colors border-r border-dashed border-gray-200 flex-[3]">
+                    + Add Item
                   </button>
+                  <button onClick={() => setItems(prev => [...prev, { ...BLANK_ITEM, isFreeText: true, productName: 'Rakhi SP-11' }])}
+                    className="py-3 text-gray-400 hover:text-orange-500 hover:bg-orange-50 text-sm font-medium transition-colors border-r border-dashed border-gray-200 flex-[3]">
+                    + Free Text
+                  </button>
+                  <div className="flex items-center gap-1 px-2 py-1.5 flex-[4]">
+                    <input
+                      ref={skuInputRef}
+                      value={skuQuickAdd}
+                      onChange={e => setSkuQuickAdd(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addProductBySku(skuQuickAdd); } }}
+                      placeholder="📷 Scan / type SKU + ↵"
+                      enterKeyHint="go"
+                      autoCapitalize="off"
+                      autoCorrect="off"
+                      spellCheck="false"
+                      className="flex-1 border border-blue-200 bg-blue-50 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder:text-blue-300 min-w-0"
+                    />
+                    <button type="button" onClick={() => addProductBySku(skuQuickAdd)}
+                      className="flex-shrink-0 px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 font-medium">Add</button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-          {/* Totals */}
+
+          {/* Totals – shared */}
           <div className="flex justify-end p-4 sm:p-5 border-t">
             <div className="w-full sm:w-72 space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-gray-500">Total Items</span><span>{totals.items.length} items · {totals.items.reduce((s, i) => s + i.quantity, 0)} qty</span></div>
@@ -674,10 +806,19 @@ export default function SaleInvoiceCreate() {
           <Textarea label="Notes" value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Any additional notes…" />
         </Card>
 
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 sticky bottom-0 bg-gray-50 dark:bg-black py-3 sm:py-0 sm:static sm:bg-transparent border-t sm:border-0 border-gray-200 dark:border-gray-700 -mx-4 sm:mx-0 px-4 sm:px-0">
-          <Button variant="secondary" type="button" onClick={() => { if (confirmLeave()) navigate('/sales'); }} className="justify-center">Cancel</Button>
-          <Button variant="outline" onClick={() => handleSave('draft')} disabled={saving} className="justify-center">Save as Draft</Button>
-          <Button variant="success" onClick={() => handleSave('issued')} disabled={saving} className="justify-center">Issue Invoice</Button>
+        <div className="sticky bottom-0 bg-gray-50 dark:bg-black border-t border-gray-200 dark:border-gray-700 -mx-4 sm:mx-0 px-4 sm:px-0 py-3 sm:py-0 sm:static sm:bg-transparent sm:border-0 z-10">
+          {/* Mobile: total + buttons */}
+          {finalTotal > 0 && (
+            <div className="sm:hidden flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-500">Grand Total</span>
+              <span className="text-lg font-bold text-blue-700">{formatCurrency(finalTotal)}</span>
+            </div>
+          )}
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3">
+            <Button variant="secondary" type="button" onClick={() => { if (confirmLeave()) navigate('/sales'); }} className="justify-center">Cancel</Button>
+            <Button variant="outline" onClick={() => handleSave('draft')} disabled={saving} className="justify-center">Save as Draft</Button>
+            <Button variant="success" onClick={() => handleSave('issued')} disabled={saving} className="justify-center">Issue Invoice</Button>
+          </div>
         </div>
       </div>
     </>
