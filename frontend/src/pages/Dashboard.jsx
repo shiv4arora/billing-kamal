@@ -70,25 +70,72 @@ export default function Dashboard() {
   const payColor = { paid: 'green', partial: 'yellow', unpaid: 'red' };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Dashboard</h1>
-        <div className="flex gap-2 sm:gap-3">
-          <Link to="/sales/new" className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 whitespace-nowrap">+ Sale Invoice</Link>
-          <Link to="/purchases/new" className="bg-gray-100 text-gray-700 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 whitespace-nowrap">+ Purchase</Link>
+    <div className="space-y-5">
+      {/* Header — hidden on mobile (company name shown in top bar) */}
+      <div className="hidden sm:flex items-center justify-between flex-wrap gap-2">
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <div className="flex gap-2">
+          <Link to="/sales/new" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">+ Sale Invoice</Link>
+          <Link to="/purchases/new" className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200">+ Purchase</Link>
         </div>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard title="Today's Revenue" value={formatCurrency(stats.todayRevenue)} icon="💵" color="green" />
-        <StatCard title="Month Revenue" value={formatCurrency(stats.monthRevenue)} icon="📈" color="blue" />
+      {/* KPIs — 2 cols mobile, 4 cols desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard title="Today" value={formatCurrency(stats.todayRevenue)} icon="💵" color="green" />
+        <StatCard title="This Month" value={formatCurrency(stats.monthRevenue)} icon="📈" color="blue" />
         <StatCard title="Outstanding" value={formatCurrency(stats.outstanding)} icon="⏳" color="orange" />
-        <StatCard title="Low Stock Items" value={stats.lowStock} icon="⚠️" color="red" sub="items below threshold" />
+        <StatCard title="Low Stock" value={stats.lowStock} icon="⚠️" color="red" sub="items" />
       </div>
 
-      {/* Charts row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      {/* Mobile quick actions */}
+      <div className="sm:hidden grid grid-cols-2 gap-3">
+        <Link to="/sales" className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm active:bg-gray-50">
+          <span className="text-2xl">🧾</span>
+          <div><p className="font-semibold text-gray-800 text-sm">Invoices</p><p className="text-xs text-gray-400">View all sales</p></div>
+        </Link>
+        <Link to="/customers" className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm active:bg-gray-50">
+          <span className="text-2xl">👥</span>
+          <div><p className="font-semibold text-gray-800 text-sm">Customers</p><p className="text-xs text-gray-400">Manage</p></div>
+        </Link>
+        <Link to="/inventory" className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm active:bg-gray-50">
+          <span className="text-2xl">🗃️</span>
+          <div><p className="font-semibold text-gray-800 text-sm">Inventory</p><p className="text-xs text-gray-400">Stock levels</p></div>
+        </Link>
+        <Link to="/reminders" className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm active:bg-gray-50">
+          <span className="text-2xl">🔔</span>
+          <div><p className="font-semibold text-gray-800 text-sm">Reminders</p><p className="text-xs text-gray-400">Payment dues</p></div>
+        </Link>
+      </div>
+
+      {/* Mobile recent sales */}
+      <div className="sm:hidden">
+        <div className="flex items-center justify-between mb-2">
+          <p className="font-semibold text-gray-800">Recent Sales</p>
+          <Link to="/sales" className="text-blue-600 text-sm">View all</Link>
+        </div>
+        <div className="space-y-2">
+          {stats.recentSales.slice(0, 5).map(inv => (
+            <Link key={inv.id} to={`/sales/${inv.id}`} className="bg-white rounded-xl border border-gray-200 px-4 py-3 flex items-center justify-between gap-2 shadow-sm active:bg-gray-50 block">
+              <div className="min-w-0">
+                <p className="font-bold text-blue-600 text-sm">{inv.invoiceNumber}</p>
+                <p className="text-xs text-gray-600 truncate">{inv.customerName}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="font-bold text-gray-900 text-sm">{formatCurrency(inv.grandTotal)}</p>
+                <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
+                  inv.paymentStatus === 'paid' ? 'bg-green-100 text-green-700' :
+                  inv.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-red-100 text-red-700'
+                }`}>{inv.paymentStatus}</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* Charts — hidden on mobile to keep it fast */}
+      <div className="hidden sm:grid grid-cols-1 lg:grid-cols-3 gap-5">
         <Card className="lg:col-span-2" padding={false}>
           <div className="px-5 pt-5 pb-2">
             <h3 className="font-semibold text-gray-800">Daily Revenue (Last 7 Days)</h3>
@@ -122,7 +169,7 @@ export default function Dashboard() {
       </div>
 
       {/* Charts row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="hidden sm:grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Card padding={false}>
           <div className="px-5 pt-5 pb-2">
             <h3 className="font-semibold text-gray-800">Sales vs Purchases (6 Months)</h3>
@@ -158,8 +205,8 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Recent Sales & Low Stock */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      {/* Recent Sales & Low Stock — desktop only */}
+      <div className="hidden sm:grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Card padding={false}>
           <div className="px-5 pt-5 pb-3 flex items-center justify-between">
             <h3 className="font-semibold text-gray-800">Recent Sales</h3>
