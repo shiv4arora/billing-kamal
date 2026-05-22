@@ -25,6 +25,12 @@ export default function SaleInvoiceView() {
   const [payForm, setPayForm] = useState({ date: today(), amount: '', method: 'cash', notes: '' });
   const [retForm, setRetForm] = useState({ date: today(), amount: '', notes: '' });
 
+  // Check Bill
+  const [checkMode, setCheckMode] = useState(false);
+  const [itemChecks, setItemChecks] = useState({});
+  const toggleCheck = (idx, val) =>
+    setItemChecks(p => ({ ...p, [idx]: p[idx] === val ? null : val }));
+
   if (!inv) return <div className="p-8 text-center text-gray-400">Invoice not found.</div>;
 
   const remaining = inv.grandTotal - (inv.amountPaid || 0);
@@ -172,6 +178,11 @@ export default function SaleInvoiceView() {
 
         {/* Secondary actions — horizontal scroll row */}
         <div className="flex gap-2 overflow-x-auto pb-0.5 -mx-0.5 px-0.5">
+          <button
+            onClick={() => { setCheckMode(v => !v); setItemChecks({}); }}
+            className={`shrink-0 px-3 py-2 text-xs rounded-lg font-medium whitespace-nowrap ${checkMode ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600 active:bg-blue-100'}`}>
+            {checkMode ? '✕ End Check' : '🔍 Check Bill'}
+          </button>
           <Link to={`/customers/${inv.customerId}/ledger`}>
             <button className="shrink-0 px-3 py-2 text-xs text-gray-600 bg-gray-100 rounded-lg font-medium active:bg-gray-200 whitespace-nowrap">📒 Ledger</button>
           </Link>
@@ -201,6 +212,9 @@ export default function SaleInvoiceView() {
           <Badge color={payColor[inv.paymentStatus]}>{inv.paymentStatus}</Badge>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button variant={checkMode ? 'primary' : 'outline'} onClick={() => { setCheckMode(v => !v); setItemChecks({}); }}>
+            {checkMode ? '✕ End Check' : '🔍 Check Bill'}
+          </Button>
           <Link to={`/customers/${inv.customerId}/ledger`}><Button variant="secondary">📒 Ledger</Button></Link>
           <Button variant="outline" onClick={() => setWaOpen(true)}>📱 WhatsApp</Button>
           <Link to={`/sales/${id}/print`}><Button variant="outline">🖨 Print</Button></Link>
@@ -289,28 +303,71 @@ export default function SaleInvoiceView() {
 
       {/* ── MOBILE ITEMS (compact rows) ──────────────────────────── */}
       <Card padding={false} className="lg:hidden">
-        <div className="divide-y divide-gray-100">
-          {(inv.items || []).map((item, i) => (
-            <div key={i} className="px-4 py-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-gray-900 text-sm">{item.productName}</p>
-                  {(item.sku || item.hsnCode) && (
-                    <div className="flex gap-1.5 mt-0.5 flex-wrap">
-                      {item.sku && <span className="text-xs font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">#{item.sku}</span>}
-                      {item.hsnCode && <span className="text-xs text-gray-400">HSN:{item.hsnCode}</span>}
-                    </div>
-                  )}
-                </div>
-                <p className="font-semibold text-gray-900 text-sm shrink-0">{formatCurrency(item.lineTotal)}</p>
+        {/* Check progress bar */}
+        {checkMode && (() => {
+          const items = inv.items || [];
+          const ok = items.filter((_, i) => itemChecks[i] === 'ok').length;
+          const wrong = items.filter((_, i) => itemChecks[i] === 'wrong').length;
+          const pending = items.length - ok - wrong;
+          return (
+            <div className="flex items-center justify-between px-4 py-2.5 bg-blue-50 border-b border-blue-100">
+              <span className="text-sm font-semibold text-blue-700">🔍 Checking bill…</span>
+              <div className="flex items-center gap-3 text-xs font-semibold">
+                <span className="text-green-600">{ok} ✓</span>
+                <span className="text-red-500">{wrong} ✗</span>
+                {pending > 0 && <span className="text-gray-400">{pending} left</span>}
               </div>
-              <p className="text-xs text-gray-400 mt-1">
-                {item.quantity} {item.unit} × {formatCurrency(item.unitPrice)}
-                {item.discountPct ? ` − ${item.discountPct}% disc` : ''}
-                {item.gstRate ? ` + ${item.gstRate}% GST` : ''}
-              </p>
             </div>
-          ))}
+          );
+        })()}
+        <div className="divide-y divide-gray-100">
+          {(inv.items || []).map((item, i) => {
+            const checkState = itemChecks[i];
+            return (
+              <div key={i} className={`px-4 py-3 transition-colors ${checkState === 'ok' ? 'bg-green-50' : checkState === 'wrong' ? 'bg-red-50' : ''}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-gray-900 text-sm">{item.productName}</p>
+                    {(item.sku || item.hsnCode) && (
+                      <div className="flex gap-1.5 mt-0.5 flex-wrap">
+                        {item.sku && <span className="text-xs font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">#{item.sku}</span>}
+                        {item.hsnCode && <span className="text-xs text-gray-400">HSN:{item.hsnCode}</span>}
+                      </div>
+                    )}
+                  </div>
+                  <p className="font-semibold text-gray-900 text-sm shrink-0">{formatCurrency(item.lineTotal)}</p>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {item.quantity} {item.unit} × {formatCurrency(item.unitPrice)}
+                  {item.discountPct ? ` − ${item.discountPct}% disc` : ''}
+                  {item.gstRate ? ` + ${item.gstRate}% GST` : ''}
+                </p>
+                {/* Check buttons */}
+                {checkMode && (
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={() => toggleCheck(i, 'ok')}
+                      className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${
+                        checkState === 'ok'
+                          ? 'bg-green-500 text-white'
+                          : 'bg-white border border-green-300 text-green-600 active:bg-green-50'
+                      }`}>
+                      ✓ Correct
+                    </button>
+                    <button
+                      onClick={() => toggleCheck(i, 'wrong')}
+                      className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${
+                        checkState === 'wrong'
+                          ? 'bg-red-500 text-white'
+                          : 'bg-white border border-red-300 text-red-500 active:bg-red-50'
+                      }`}>
+                      ✗ Wrong
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
         <div className="p-4 border-t space-y-1.5 text-sm">
           <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>{formatCurrency(inv.subtotal)}</span></div>
@@ -327,6 +384,23 @@ export default function SaleInvoiceView() {
 
       {/* ── DESKTOP ITEMS (full table) ────────────────────────────── */}
       <Card padding={false} className="hidden lg:block">
+        {/* Check progress bar */}
+        {checkMode && (() => {
+          const items = inv.items || [];
+          const ok = items.filter((_, i) => itemChecks[i] === 'ok').length;
+          const wrong = items.filter((_, i) => itemChecks[i] === 'wrong').length;
+          const pending = items.length - ok - wrong;
+          return (
+            <div className="flex items-center justify-between px-5 py-2.5 bg-blue-50 border-b border-blue-100">
+              <span className="text-sm font-semibold text-blue-700">🔍 Checking bill…</span>
+              <div className="flex items-center gap-4 text-sm font-semibold">
+                <span className="text-green-600">{ok} ✓ correct</span>
+                <span className="text-red-500">{wrong} ✗ wrong</span>
+                {pending > 0 && <span className="text-gray-400">{pending} unchecked</span>}
+              </div>
+            </div>
+          );
+        })()}
         <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] text-sm">
           <thead><tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
@@ -338,26 +412,44 @@ export default function SaleInvoiceView() {
             <th className="px-4 py-3 text-right">Taxable</th>
             <th className="px-4 py-3 text-right">GST</th>
             <th className="px-4 py-3 text-right">Total</th>
+            {checkMode && <th className="px-4 py-3 text-center w-36">Check</th>}
           </tr></thead>
           <tbody>
-            {(inv.items || []).map((item, i) => (
-              <tr key={i} className="border-b">
-                <td className="px-4 py-3 text-gray-400">{i + 1}</td>
-                <td className="px-4 py-3">
-                  <p className="font-medium">{item.productName}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {item.sku && <span className="text-xs font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">#{item.sku}</span>}
-                    {item.hsnCode && <span className="text-xs text-gray-400">HSN: {item.hsnCode}</span>}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-right">{item.quantity} {item.unit}</td>
-                <td className="px-4 py-3 text-right">{formatCurrency(item.unitPrice)}</td>
-                <td className="px-4 py-3 text-right">{item.discountPct ? `${item.discountPct}%` : '-'}</td>
-                <td className="px-4 py-3 text-right">{formatCurrency(item.taxableAmount)}</td>
-                <td className="px-4 py-3 text-right text-gray-500">{item.gstRate}%</td>
-                <td className="px-4 py-3 text-right font-medium">{formatCurrency(item.lineTotal)}</td>
-              </tr>
-            ))}
+            {(inv.items || []).map((item, i) => {
+              const checkState = itemChecks[i];
+              return (
+                <tr key={i} className={`border-b transition-colors ${checkState === 'ok' ? 'bg-green-50' : checkState === 'wrong' ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
+                  <td className="px-4 py-3 text-gray-400">{i + 1}</td>
+                  <td className="px-4 py-3">
+                    <p className="font-medium">{item.productName}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {item.sku && <span className="text-xs font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">#{item.sku}</span>}
+                      {item.hsnCode && <span className="text-xs text-gray-400">HSN: {item.hsnCode}</span>}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right">{item.quantity} {item.unit}</td>
+                  <td className="px-4 py-3 text-right">{formatCurrency(item.unitPrice)}</td>
+                  <td className="px-4 py-3 text-right">{item.discountPct ? `${item.discountPct}%` : '-'}</td>
+                  <td className="px-4 py-3 text-right">{formatCurrency(item.taxableAmount)}</td>
+                  <td className="px-4 py-3 text-right text-gray-500">{item.gstRate}%</td>
+                  <td className="px-4 py-3 text-right font-medium">{formatCurrency(item.lineTotal)}</td>
+                  {checkMode && (
+                    <td className="px-3 py-3">
+                      <div className="flex gap-1.5 justify-center">
+                        <button onClick={() => toggleCheck(i, 'ok')}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
+                            checkState === 'ok' ? 'bg-green-500 text-white' : 'bg-green-50 text-green-600 border border-green-200 hover:bg-green-100'
+                          }`}>✓</button>
+                        <button onClick={() => toggleCheck(i, 'wrong')}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
+                            checkState === 'wrong' ? 'bg-red-500 text-white' : 'bg-red-50 text-red-500 border border-red-200 hover:bg-red-100'
+                          }`}>✗</button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         </div>

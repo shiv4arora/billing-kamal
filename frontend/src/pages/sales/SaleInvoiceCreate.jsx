@@ -11,6 +11,7 @@ import { buildInvoiceTotals, formatCurrency, getPrice, nextInvoiceNumber, today,
 import { GST_RATES, UNITS } from '../../constants';
 import { useInvoiceLock } from '../../hooks/useInvoiceLock';
 import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedChanges.jsx';
+import BarcodeScanner from '../../components/BarcodeScanner';
 
 const BLANK_ITEM = { isFreeText: false, productId: '', productName: '', sku: '', hsnCode: '', unit: 'Pcs', quantity: 1, unitPrice: 0, discountPct: 0, gstRate: 0, vendorCode: '' };
 const BLANK_CUSTOMER = { name: '', phone: '', place: '', type: 'shop', gstin: '' };
@@ -43,6 +44,7 @@ export default function SaleInvoiceCreate() {
   const [showDropdown, setShowDropdown] = useState({});
   const [dropdownPos, setDropdownPos] = useState({});
   const [skuQuickAdd, setSkuQuickAdd] = useState('');
+  const [showScanner, setShowScanner] = useState(false);
   const [bulkDiscount, setBulkDiscount] = useState('all');
   const [bulkGst, setBulkGst] = useState('');
   const [vendorDiscounts, setVendorDiscounts] = useState({});
@@ -303,6 +305,12 @@ export default function SaleInvoiceCreate() {
   return (
     <>
       {savePromptJsx}
+      {showScanner && (
+        <BarcodeScanner
+          onScan={code => { setShowScanner(false); setSkuQuickAdd(code); addProductBySku(code); }}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
       <div className="max-w-5xl space-y-5 pb-4">
         <div className="flex items-center gap-3">
           <button onClick={() => { if (confirmLeave()) navigate('/sales'); }} className="text-gray-400 hover:text-gray-600 text-lg leading-none p-1 -ml-1">←</button>
@@ -495,11 +503,17 @@ export default function SaleInvoiceCreate() {
             {/* SKU Scanner – large, prominent */}
             <div className="p-3 bg-blue-50 border-b border-blue-100">
               <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowScanner(true)}
+                  className="shrink-0 px-3 py-3 bg-white border border-blue-200 rounded-xl text-lg active:bg-blue-50"
+                  title="Scan QR / Barcode"
+                >📷</button>
                 <input
                   value={skuQuickAdd}
                   onChange={e => setSkuQuickAdd(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addProductBySku(skuQuickAdd); } }}
-                  placeholder="📷 Scan / type SKU + ↵"
+                  placeholder="Scan or type SKU + ↵"
                   enterKeyHint="go"
                   autoCapitalize="off"
                   autoCorrect="off"
@@ -763,12 +777,18 @@ export default function SaleInvoiceCreate() {
                     + Free Text
                   </button>
                   <div className="flex items-center gap-1 px-2 py-1.5 flex-[4]">
+                    <button
+                      type="button"
+                      onClick={() => setShowScanner(true)}
+                      className="flex-shrink-0 px-2 py-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded text-base"
+                      title="Scan QR / Barcode"
+                    >📷</button>
                     <input
                       ref={skuInputRef}
                       value={skuQuickAdd}
                       onChange={e => setSkuQuickAdd(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addProductBySku(skuQuickAdd); } }}
-                      placeholder="📷 Scan / type SKU + ↵"
+                      placeholder="Scan or type SKU + ↵"
                       enterKeyHint="go"
                       autoCapitalize="off"
                       autoCorrect="off"
