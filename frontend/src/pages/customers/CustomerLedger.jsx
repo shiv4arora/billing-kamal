@@ -146,7 +146,7 @@ export default function CustomerLedger() {
         </div>
 
         {/* Balance Cards */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-blue-50 rounded-xl p-4">
             <p className="text-xs text-blue-500 font-semibold uppercase">Total Sales (Dr)</p>
             <p className="text-2xl font-bold text-blue-900 mt-1">{formatCurrency(totalDr)}</p>

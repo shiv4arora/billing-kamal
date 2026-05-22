@@ -108,10 +108,10 @@ export default function SaleInvoiceView() {
     <>
       <Toast toasts={toast.toasts} remove={toast.remove} />
     <div className="max-w-4xl space-y-5">
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/sales')} className="text-gray-400 hover:text-gray-600">←</button>
-          <h1 className="text-2xl font-bold text-gray-900">{inv.invoiceNumber}</h1>
+          <h1 className="text-xl font-bold text-gray-900">{inv.invoiceNumber}</h1>
           <Badge color={statusColor[inv.status]}>{inv.status}</Badge>
           <Badge color={payColor[inv.paymentStatus]}>{inv.paymentStatus}</Badge>
         </div>
@@ -132,7 +132,7 @@ export default function SaleInvoiceView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Customer */}
         <Card>
           <p className="text-xs text-gray-500 font-medium uppercase mb-2">Customer</p>
@@ -188,7 +188,8 @@ export default function SaleInvoiceView() {
       </div>
 
       <Card padding={false}>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px] text-sm">
           <thead><tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
             <th className="px-4 py-3 text-left">#</th>
             <th className="px-4 py-3 text-left">Product</th>
@@ -220,8 +221,9 @@ export default function SaleInvoiceView() {
             ))}
           </tbody>
         </table>
-        <div className="flex justify-end p-5 border-t">
-          <div className="w-72 space-y-1.5 text-sm">
+        </div>
+        <div className="flex justify-end p-4 sm:p-5 border-t">
+          <div className="w-full sm:w-72 space-y-1.5 text-sm">
             <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>{formatCurrency(inv.subtotal)}</span></div>
             {inv.totalDiscount > 0 && <div className="flex justify-between text-red-600"><span>Discount</span><span>-{formatCurrency(inv.totalDiscount)}</span></div>}
             {inv.totalCGST > 0 && <div className="flex justify-between"><span className="text-gray-500">CGST</span><span>{formatCurrency(inv.totalCGST)}</span></div>}

@@ -193,7 +193,7 @@ export default function SalesReport() {
       </Card>
 
       {/* Summary tiles — 5 columns */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-blue-50 rounded-xl p-4"><p className="text-xs text-blue-500 font-medium">Total Revenue</p><p className="text-xl font-bold text-blue-900">{formatCurrency(totals.revenue)}</p></div>
         <div className="bg-green-50 rounded-xl p-4"><p className="text-xs text-green-500 font-medium">Amount Collected</p><p className="text-xl font-bold text-green-900">{formatCurrency(totals.paid)}</p></div>
         <div className="bg-purple-50 rounded-xl p-4"><p className="text-xs text-purple-500 font-medium">Total GST</p><p className="text-xl font-bold text-purple-900">{formatCurrency(totals.gst)}</p></div>
@@ -224,7 +224,7 @@ export default function SalesReport() {
             <h3 className="font-semibold text-gray-800">Sales by Place</h3>
             <span className="text-xs text-gray-400">{placeData.length} location{placeData.length !== 1 ? 's' : ''}</span>
           </div>
-          <div className="flex flex-row">
+          <div className="flex flex-col lg:flex-row">
             {/* Bar chart */}
             <div className="flex-1 min-w-0">
               <ResponsiveContainer width="100%" height={placeData.length * 36 + 40}>
@@ -260,7 +260,7 @@ export default function SalesReport() {
               </ResponsiveContainer>
             </div>
             {/* Table */}
-            <div className="w-64 shrink-0 border-l border-gray-100">
+            <div className="w-full lg:w-64 lg:shrink-0 border-t lg:border-t-0 lg:border-l border-gray-100">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">

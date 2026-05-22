@@ -99,7 +99,7 @@ export default function PurchaseInvoiceView() {
     <>
       <Toast toasts={toast.toasts} remove={toast.remove} />
     <div className="max-w-4xl space-y-5">
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/purchases')} className="text-gray-400 hover:text-gray-600">←</button>
           <h1 className="text-2xl font-bold text-gray-900">{inv.invoiceNumber}</h1>
@@ -121,7 +121,7 @@ export default function PurchaseInvoiceView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         <Card>
           <p className="text-xs text-gray-500 uppercase mb-2">Supplier</p>
           <p className="font-semibold">{supplier?.name || inv.supplierName}{vendorCode ? ` (${vendorCode})` : ''}</p>
@@ -153,7 +153,8 @@ export default function PurchaseInvoiceView() {
       </div>
 
       <Card padding={false}>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px] text-sm">
           <thead><tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
             <th className="px-4 py-3 text-left">#</th>
             <th className="px-4 py-3 text-left">Product</th>
@@ -182,8 +183,9 @@ export default function PurchaseInvoiceView() {
             </tr>
           ))}</tbody>
         </table>
+        </div>
         <div className="flex justify-end p-5 border-t">
-          <div className="w-56 space-y-1.5 text-sm">
+          <div className="w-full sm:w-56 space-y-1.5 text-sm">
             <div className="flex justify-between"><span className="text-gray-500">Total Qty</span><span className="font-medium">{totalQty} pcs</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>{formatCurrency(inv.subtotal)}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">GST</span><span>{formatCurrency(inv.totalGST)}</span></div>

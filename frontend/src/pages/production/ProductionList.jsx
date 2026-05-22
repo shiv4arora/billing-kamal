@@ -39,6 +39,7 @@ export default function ProductionList() {
         </div>
       ) : (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
@@ -110,6 +111,7 @@ export default function ProductionList() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

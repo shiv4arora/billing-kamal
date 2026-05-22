@@ -265,7 +265,7 @@ export default function ProductList() {
         ) : skuHistory ? (
           <div className="space-y-4">
             {/* Product info */}
-            <div className="grid grid-cols-3 gap-3 text-sm bg-gray-50 rounded-xl p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm bg-gray-50 rounded-xl p-4">
               <div><p className="text-xs text-gray-500 uppercase mb-1">SKU ID</p><p className="font-mono font-bold text-blue-700">{skuHistory.product.sku || '—'}</p></div>
               <div><p className="text-xs text-gray-500 uppercase mb-1">Created</p><p className="font-medium">{formatDate(skuHistory.product.createdAt)}</p></div>
               <div><p className="text-xs text-gray-500 uppercase mb-1">Current Stock</p><p className="font-bold">{skuHistory.product.currentStock ?? 0} {skuHistory.product.unit}</p></div>

@@ -39,7 +39,7 @@ export default function InventoryReport() {
         <h1 className="text-2xl font-bold text-gray-900">Inventory Report</h1>
         <Button variant="secondary" onClick={handleExport}>⬇ Export CSV</Button>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-blue-50 rounded-xl p-4"><p className="text-xs text-blue-500 font-medium">Total Products</p><p className="text-xl font-bold text-blue-900">{products.length}</p></div>
         <div className="bg-green-50 rounded-xl p-4"><p className="text-xs text-green-500 font-medium">Stock Value (Cost)</p><p className="text-xl font-bold text-green-900">{formatCurrency(stats.totalValue)}</p></div>
         <div className="bg-yellow-50 rounded-xl p-4"><p className="text-xs text-yellow-500 font-medium">Low Stock</p><p className="text-xl font-bold text-yellow-900">{stats.lowStock}</p></div>

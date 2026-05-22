@@ -85,7 +85,7 @@ export default function Inventory() {
           <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
           {lowCount > 0 && <Badge color="red">{lowCount} items low/out of stock</Badge>}
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-green-50 rounded-xl p-4"><p className="text-xs text-green-500 font-medium">In Stock</p><p className="text-2xl font-bold text-green-900">{products.filter(p => (p.currentStock||0) > (p.lowStockThreshold ?? settings.lowStockThreshold)).length}</p></div>
           <div className="bg-yellow-50 rounded-xl p-4"><p className="text-xs text-yellow-500 font-medium">Low Stock</p><p className="text-2xl font-bold text-yellow-900">{products.filter(p => { const s=p.currentStock||0; const t=p.lowStockThreshold??settings.lowStockThreshold; return s>0&&s<=t; }).length}</p></div>
           <div className="bg-red-50 rounded-xl p-4"><p className="text-xs text-red-500 font-medium">Out of Stock</p><p className="text-2xl font-bold text-red-900">{products.filter(p => (p.currentStock||0) <= 0).length}</p></div>
