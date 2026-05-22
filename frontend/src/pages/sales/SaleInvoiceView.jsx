@@ -107,8 +107,93 @@ export default function SaleInvoiceView() {
   return (
     <>
       <Toast toasts={toast.toasts} remove={toast.remove} />
-    <div className="max-w-4xl space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div className="max-w-4xl space-y-4">
+
+      {/* ── MOBILE HEADER ────────────────────────────────────────── */}
+      <div className="lg:hidden space-y-3">
+        {/* Title + quick icons */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <button onClick={() => navigate('/sales')} className="text-gray-400 p-1 -ml-1 shrink-0">←</button>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h1 className="text-lg font-bold text-gray-900">{inv.invoiceNumber}</h1>
+                <Badge color={statusColor[inv.status]}>{inv.status}</Badge>
+                <Badge color={payColor[inv.paymentStatus]}>{inv.paymentStatus}</Badge>
+              </div>
+              <p className="text-xs text-gray-400 truncate">
+                {formatDate(inv.date)} · {formatCustomerDisplay(inv.customerName, inv.customerPlace, inv.customerType)}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-1.5 shrink-0">
+            <button onClick={() => setWaOpen(true)} className="p-2 text-gray-600 bg-gray-100 rounded-lg text-base active:bg-gray-200">📱</button>
+            <Link to={`/sales/${id}/print`}><button className="p-2 text-gray-600 bg-gray-100 rounded-lg text-base active:bg-gray-200">🖨</button></Link>
+          </div>
+        </div>
+
+        {/* Total / Balance tiles */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-gray-50 rounded-xl p-3">
+            <p className="text-xs text-gray-400 mb-0.5">Total</p>
+            <p className="font-bold text-gray-900 text-base">{formatCurrency(inv.grandTotal)}</p>
+            {(inv.amountPaid || 0) > 0 && <p className="text-xs text-green-600 mt-0.5">Paid {formatCurrency(inv.amountPaid)}</p>}
+          </div>
+          {remaining > 0.01 ? (
+            <div className="bg-red-50 rounded-xl p-3">
+              <p className="text-xs text-red-400 mb-0.5">Balance Due</p>
+              <p className="font-bold text-red-600 text-base">{formatCurrency(remaining)}</p>
+            </div>
+          ) : (
+            <div className="bg-green-50 rounded-xl p-3">
+              <p className="text-xs text-green-500 mb-0.5">Payment</p>
+              <p className="font-bold text-green-600">Fully Paid ✓</p>
+            </div>
+          )}
+        </div>
+
+        {/* Primary actions */}
+        {(inv.status !== 'void' && (remaining > 0.01 || inv.paymentStatus !== 'paid')) && (
+          <div className="flex gap-2">
+            {remaining > 0.01 && (
+              <button onClick={() => { setPayForm(f => ({ ...f, amount: remaining.toFixed(2) })); setPayOpen(true); }}
+                className="flex-1 py-3 bg-green-600 text-white text-sm font-semibold rounded-xl active:bg-green-700">
+                + Record Payment
+              </button>
+            )}
+            {inv.paymentStatus !== 'paid' && (
+              <button onClick={markPaid}
+                className="flex-1 py-3 bg-green-100 text-green-700 text-sm font-semibold rounded-xl active:bg-green-200">
+                ✓ Mark Paid
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Secondary actions — horizontal scroll row */}
+        <div className="flex gap-2 overflow-x-auto pb-0.5 -mx-0.5 px-0.5">
+          <Link to={`/customers/${inv.customerId}/ledger`}>
+            <button className="shrink-0 px-3 py-2 text-xs text-gray-600 bg-gray-100 rounded-lg font-medium active:bg-gray-200 whitespace-nowrap">📒 Ledger</button>
+          </Link>
+          {inv.status !== 'void' && (
+            <Link to={`/sales/${id}/edit`}>
+              <button className="shrink-0 px-3 py-2 text-xs text-gray-600 bg-gray-100 rounded-lg font-medium active:bg-gray-200">✏️ Edit</button>
+            </Link>
+          )}
+          {inv.status !== 'void' && (
+            <button onClick={() => setRetOpen(true)} className="shrink-0 px-3 py-2 text-xs text-gray-600 bg-gray-100 rounded-lg font-medium active:bg-gray-200 whitespace-nowrap">↩ Return</button>
+          )}
+          {inv.status !== 'void' && (
+            <button onClick={voidInv} className="shrink-0 px-3 py-2 text-xs text-red-500 bg-red-50 rounded-lg font-medium active:bg-red-100">Void</button>
+          )}
+          {inv.status === 'void' && (
+            <button onClick={unvoidInv} className="shrink-0 px-3 py-2 text-xs text-green-700 bg-green-50 rounded-lg font-medium active:bg-green-100 whitespace-nowrap">↩ Restore</button>
+          )}
+        </div>
+      </div>
+
+      {/* ── DESKTOP HEADER ───────────────────────────────────────── */}
+      <div className="hidden lg:flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/sales')} className="text-gray-400 hover:text-gray-600">←</button>
           <h1 className="text-xl font-bold text-gray-900">{inv.invoiceNumber}</h1>
@@ -132,8 +217,36 @@ export default function SaleInvoiceView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Customer */}
+      {/* ── MOBILE INFO CARD (compact single card) ───────────────── */}
+      <div className="lg:hidden bg-white border border-gray-200 rounded-xl p-4 text-sm space-y-2">
+        <div className="flex justify-between">
+          <span className="text-gray-400">Customer</span>
+          <span className="font-semibold text-gray-900 text-right ml-4">
+            {formatCustomerDisplay(inv.customerName, inv.customerPlace, inv.customerType)}
+            {inv.customerType && (
+              <span className={`ml-1.5 text-xs font-bold px-1.5 py-0.5 rounded-full ${
+                inv.customerType === 'wholesale' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+              }`}>{inv.customerType === 'wholesale' ? 'H' : 'S'}</span>
+            )}
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-400">Date</span>
+          <span className="font-medium">{formatDate(inv.date)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-400">Due</span>
+          <span className="font-medium">{formatDate(inv.dueDate)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-400">Payment</span>
+          <span className="font-medium capitalize">{inv.paymentMethod || '—'}</span>
+        </div>
+        {inv.notes && <p className="text-xs text-gray-400 italic border-t pt-2">{inv.notes}</p>}
+      </div>
+
+      {/* ── DESKTOP INFO CARDS (3-col) ───────────────────────────── */}
+      <div className="hidden lg:grid grid-cols-3 gap-4">
         <Card>
           <p className="text-xs text-gray-500 font-medium uppercase mb-2">Customer</p>
           <p className="font-semibold text-gray-900 text-base">
@@ -149,7 +262,6 @@ export default function SaleInvoiceView() {
             </span>
           )}
         </Card>
-        {/* Invoice dates */}
         <Card>
           <p className="text-xs text-gray-500 font-medium uppercase mb-2">Invoice</p>
           <div className="space-y-2 text-sm">
@@ -158,36 +270,63 @@ export default function SaleInvoiceView() {
             {inv.notes && <p className="text-xs text-gray-400 pt-1 border-t italic">{inv.notes}</p>}
           </div>
         </Card>
-        {/* Payment details */}
         <Card>
           <p className="text-xs text-gray-500 font-medium uppercase mb-2">Payment</p>
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-500">Method</span>
-              <span className="font-medium capitalize">{inv.paymentMethod || '—'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Grand Total</span>
-              <span className="font-semibold text-gray-900">{formatCurrency(inv.grandTotal)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Paid</span>
-              <span className="font-semibold text-green-600">{formatCurrency(inv.amountPaid || 0)}</span>
-            </div>
+            <div className="flex justify-between"><span className="text-gray-500">Method</span><span className="font-medium capitalize">{inv.paymentMethod || '—'}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">Grand Total</span><span className="font-semibold text-gray-900">{formatCurrency(inv.grandTotal)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">Paid</span><span className="font-semibold text-green-600">{formatCurrency(inv.amountPaid || 0)}</span></div>
             {(inv.grandTotal - (inv.amountPaid || 0)) > 0.01 && (
               <div className="flex justify-between border-t pt-1">
                 <span className="text-red-600 font-medium">Balance Due</span>
                 <span className="font-bold text-red-600">{formatCurrency(inv.grandTotal - (inv.amountPaid || 0))}</span>
               </div>
             )}
-            {inv.paymentDate && (
-              <p className="text-xs text-gray-400">Paid on {formatDate(inv.paymentDate)}</p>
-            )}
+            {inv.paymentDate && <p className="text-xs text-gray-400">Paid on {formatDate(inv.paymentDate)}</p>}
           </div>
         </Card>
       </div>
 
-      <Card padding={false}>
+      {/* ── MOBILE ITEMS (compact rows) ──────────────────────────── */}
+      <Card padding={false} className="lg:hidden">
+        <div className="divide-y divide-gray-100">
+          {(inv.items || []).map((item, i) => (
+            <div key={i} className="px-4 py-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-gray-900 text-sm">{item.productName}</p>
+                  {(item.sku || item.hsnCode) && (
+                    <div className="flex gap-1.5 mt-0.5 flex-wrap">
+                      {item.sku && <span className="text-xs font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">#{item.sku}</span>}
+                      {item.hsnCode && <span className="text-xs text-gray-400">HSN:{item.hsnCode}</span>}
+                    </div>
+                  )}
+                </div>
+                <p className="font-semibold text-gray-900 text-sm shrink-0">{formatCurrency(item.lineTotal)}</p>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                {item.quantity} {item.unit} × {formatCurrency(item.unitPrice)}
+                {item.discountPct ? ` − ${item.discountPct}% disc` : ''}
+                {item.gstRate ? ` + ${item.gstRate}% GST` : ''}
+              </p>
+            </div>
+          ))}
+        </div>
+        <div className="p-4 border-t space-y-1.5 text-sm">
+          <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>{formatCurrency(inv.subtotal)}</span></div>
+          {inv.totalDiscount > 0 && <div className="flex justify-between text-red-600"><span>Discount</span><span>-{formatCurrency(inv.totalDiscount)}</span></div>}
+          {inv.totalCGST > 0 && <div className="flex justify-between"><span className="text-gray-500">CGST</span><span>{formatCurrency(inv.totalCGST)}</span></div>}
+          {inv.totalSGST > 0 && <div className="flex justify-between"><span className="text-gray-500">SGST</span><span>{formatCurrency(inv.totalSGST)}</span></div>}
+          {inv.totalIGST > 0 && <div className="flex justify-between"><span className="text-gray-500">IGST</span><span>{formatCurrency(inv.totalIGST)}</span></div>}
+          <div className="flex justify-between font-bold text-base border-t pt-2"><span>Grand Total</span><span className="text-blue-700">{formatCurrency(inv.grandTotal)}</span></div>
+          {(inv.amountPaid || 0) > 0 && <div className="flex justify-between text-green-600"><span>Paid</span><span>{formatCurrency(inv.amountPaid)}</span></div>}
+          {remaining > 0.01 && <div className="flex justify-between font-semibold text-red-600"><span>Balance Due</span><span>{formatCurrency(remaining)}</span></div>}
+          <p className="text-xs text-gray-400 italic pt-1">{amountInWords(inv.grandTotal)}</p>
+        </div>
+      </Card>
+
+      {/* ── DESKTOP ITEMS (full table) ────────────────────────────── */}
+      <Card padding={false} className="hidden lg:block">
         <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] text-sm">
           <thead><tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
