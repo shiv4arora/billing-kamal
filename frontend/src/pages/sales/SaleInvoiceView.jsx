@@ -28,6 +28,7 @@ export default function SaleInvoiceView() {
   // Check Bill
   const [checkMode, setCheckMode] = useState(false);
   const [itemChecks, setItemChecks] = useState({});
+  const [itemNotes, setItemNotes] = useState({});
   const toggleCheck = (idx, val) =>
     setItemChecks(p => ({ ...p, [idx]: p[idx] === val ? null : val }));
 
@@ -344,26 +345,41 @@ export default function SaleInvoiceView() {
                 </p>
                 {/* Check buttons */}
                 {checkMode && (
-                  <div className="flex gap-2 mt-2">
-                    <button
-                      onClick={() => toggleCheck(i, 'ok')}
-                      className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${
-                        checkState === 'ok'
-                          ? 'bg-green-500 text-white'
-                          : 'bg-white border border-green-300 text-green-600 active:bg-green-50'
-                      }`}>
-                      ✓ Correct
-                    </button>
-                    <button
-                      onClick={() => toggleCheck(i, 'wrong')}
-                      className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${
-                        checkState === 'wrong'
-                          ? 'bg-red-500 text-white'
-                          : 'bg-white border border-red-300 text-red-500 active:bg-red-50'
-                      }`}>
-                      ✗ Wrong
-                    </button>
-                  </div>
+                  <>
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={() => toggleCheck(i, 'ok')}
+                        className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${
+                          checkState === 'ok'
+                            ? 'bg-green-500 text-white'
+                            : 'bg-white border border-green-300 text-green-600 active:bg-green-50'
+                        }`}>
+                        ✓ Correct
+                      </button>
+                      <button
+                        onClick={() => toggleCheck(i, 'wrong')}
+                        className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${
+                          checkState === 'wrong'
+                            ? 'bg-red-500 text-white'
+                            : 'bg-white border border-red-300 text-red-500 active:bg-red-50'
+                        }`}>
+                        ✗ Wrong
+                      </button>
+                    </div>
+                    {checkState === 'wrong' && (
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className="text-xs font-bold text-red-500 bg-red-100 rounded-full w-6 h-6 flex items-center justify-center shrink-0">
+                          {i + 1}
+                        </span>
+                        <input
+                          value={itemNotes[i] || ''}
+                          onChange={e => setItemNotes(p => ({ ...p, [i]: e.target.value }))}
+                          placeholder="Note what's wrong…"
+                          className="flex-1 border border-red-200 bg-red-50 rounded-lg px-3 py-2 text-xs text-red-700 placeholder:text-red-300 focus:outline-none focus:ring-1 focus:ring-red-400"
+                        />
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             );
@@ -445,6 +461,17 @@ export default function SaleInvoiceView() {
                             checkState === 'wrong' ? 'bg-red-500 text-white' : 'bg-red-50 text-red-500 border border-red-200 hover:bg-red-100'
                           }`}>✗</button>
                       </div>
+                      {checkState === 'wrong' && (
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          <span className="text-xs font-bold text-red-500 bg-red-100 rounded-full w-5 h-5 flex items-center justify-center shrink-0">{i + 1}</span>
+                          <input
+                            value={itemNotes[i] || ''}
+                            onChange={e => setItemNotes(p => ({ ...p, [i]: e.target.value }))}
+                            placeholder="Note…"
+                            className="flex-1 border border-red-200 bg-red-50 rounded px-2 py-1 text-xs text-red-700 placeholder:text-red-300 focus:outline-none focus:ring-1 focus:ring-red-400 min-w-0"
+                          />
+                        </div>
+                      )}
                     </td>
                   )}
                 </tr>
