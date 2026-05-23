@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useInvoices } from '../../context/InvoiceContext';
+import { useCustomers } from '../../context/CustomerContext';
 import { Card, Button, Badge } from '../../components/ui';
 import { formatCurrency, formatDate, dateRangeFilter, exportToCSV, thisMonthStart, today, formatCustomerDisplay } from '../../utils/helpers';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -30,6 +31,7 @@ function daysSince(dateStr) {
 
 export default function SalesReport() {
   const { saleInvoices } = useInvoices();
+  const { customers } = useCustomers();
   const [start,       setStart]       = useState(thisMonthStart());
   const [end,         setEnd]         = useState(today());
   const [groupBy,     setGroupBy]     = useState('day');
@@ -79,14 +81,39 @@ export default function SalesReport() {
     const map = {};
     filtered.forEach(inv => {
       const id = inv.customerId || inv.customerName || 'Unknown';
-      if (!map[id]) map[id] = { name: inv.customerName || 'Unknown', revenue: 0, count: 0 };
-      map[id].revenue += inv.grandTotal || 0;
-      map[id].count   += 1;
+      if (!map[id]) map[id] = { customerId: inv.customerId, name: inv.customerName || 'Unknown', revenue: 0, collected: 0, count: 0 };
+      map[id].revenue   += inv.grandTotal || 0;
+      map[id].collected += inv.amountPaid || 0;
+      map[id].count     += 1;
     });
     return Object.values(map)
       .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 10);
-  }, [filtered]);
+      .slice(0, 10)
+      .map(c => ({
+        ...c,
+        outstanding:   c.revenue - c.collected,
+        ledgerBalance: customers.find(cu => cu.id === c.customerId)?.balance ?? null,
+      }));
+  }, [filtered, customers]);
+
+  // All customers in the filtered period with outstanding amounts or ledger balance
+  const customerBalances = useMemo(() => {
+    const map = {};
+    filtered.forEach(inv => {
+      const id = inv.customerId || inv.customerName || 'Unknown';
+      if (!map[id]) map[id] = { customerId: inv.customerId, name: inv.customerName || 'Unknown', place: inv.customerPlace || '', revenue: 0, collected: 0 };
+      map[id].revenue   += inv.grandTotal || 0;
+      map[id].collected += inv.amountPaid || 0;
+    });
+    return Object.values(map)
+      .map(c => ({
+        ...c,
+        outstanding:   c.revenue - c.collected,
+        ledgerBalance: customers.find(cu => cu.id === c.customerId)?.balance ?? null,
+      }))
+      .filter(c => c.outstanding > 0.01 || (c.ledgerBalance != null && c.ledgerBalance > 0.01))
+      .sort((a, b) => (b.ledgerBalance ?? b.outstanding) - (a.ledgerBalance ?? a.outstanding));
+  }, [filtered, customers]);
 
 
   // Sales by Place — group by customerPlace
@@ -300,20 +327,28 @@ export default function SalesReport() {
                 <th className="px-4 py-2 text-left w-6">#</th>
                 <th className="px-4 py-2 text-left">Customer</th>
                 <th className="px-4 py-2 text-right">Revenue</th>
+                <th className="px-4 py-2 text-right">Collected</th>
+                <th className="px-4 py-2 text-right">Outstanding</th>
+                <th className="px-4 py-2 text-right">Ledger Bal</th>
                 <th className="px-4 py-2 text-right">Bills</th>
-                <th className="px-4 py-2 text-right">Avg Order</th>
               </tr>
             </thead>
             <tbody>
               {topCustomers.length === 0
-                ? <tr><td colSpan="5" className="text-center py-6 text-gray-400">No data</td></tr>
+                ? <tr><td colSpan="7" className="text-center py-6 text-gray-400">No data</td></tr>
                 : topCustomers.map((c, idx) => (
                   <tr key={idx} className="border-b hover:bg-gray-50">
                     <td className="px-4 py-2 text-gray-400 text-xs">{idx + 1}</td>
                     <td className="px-4 py-2 font-medium text-gray-800">{c.name}</td>
                     <td className="px-4 py-2 text-right font-semibold text-blue-700">{formatCurrency(c.revenue)}</td>
+                    <td className="px-4 py-2 text-right text-green-700">{formatCurrency(c.collected)}</td>
+                    <td className="px-4 py-2 text-right font-semibold text-red-600">{formatCurrency(c.outstanding)}</td>
+                    <td className="px-4 py-2 text-right">
+                      {c.ledgerBalance != null
+                        ? <span className={c.ledgerBalance > 0.01 ? 'text-red-600 font-semibold' : 'text-green-600'}>{formatCurrency(c.ledgerBalance)}</span>
+                        : <span className="text-gray-300">—</span>}
+                    </td>
                     <td className="px-4 py-2 text-right text-gray-600">{c.count}</td>
-                    <td className="px-4 py-2 text-right text-gray-600">{formatCurrency(c.count ? c.revenue / c.count : 0)}</td>
                   </tr>
                 ))
               }
@@ -321,6 +356,58 @@ export default function SalesReport() {
           </table>
         </div>
       </Card>
+
+      {/* Customer Balances — all customers with outstanding or positive ledger balance */}
+      {customerBalances.length > 0 && (
+        <Card padding={false}>
+          <div className="px-5 pt-4 pb-2 flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-gray-800">Customer Outstanding Balances</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Customers with pending amounts in this period · Ledger balance = all-time running total</p>
+            </div>
+            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">{customerBalances.length} customer{customerBalances.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
+                  <th className="px-4 py-2 text-left">Customer</th>
+                  <th className="px-4 py-2 text-right">Invoiced (period)</th>
+                  <th className="px-4 py-2 text-right">Collected (period)</th>
+                  <th className="px-4 py-2 text-right">Period Outstanding</th>
+                  <th className="px-4 py-2 text-right">Ledger Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {customerBalances.map((c, idx) => (
+                  <tr key={idx} className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-2">
+                      <p className="font-medium text-gray-800">{c.name}</p>
+                      {c.place && <p className="text-xs text-gray-400">{c.place}</p>}
+                    </td>
+                    <td className="px-4 py-2 text-right text-gray-700">{formatCurrency(c.revenue)}</td>
+                    <td className="px-4 py-2 text-right text-green-700">{formatCurrency(c.collected)}</td>
+                    <td className={`px-4 py-2 text-right font-semibold ${c.outstanding > 0.01 ? 'text-orange-600' : 'text-gray-400'}`}>{formatCurrency(c.outstanding)}</td>
+                    <td className="px-4 py-2 text-right">
+                      {c.ledgerBalance != null
+                        ? <span className={`font-bold ${c.ledgerBalance > 0.01 ? 'text-red-600' : 'text-green-600'}`}>{formatCurrency(c.ledgerBalance)}</span>
+                        : <span className="text-gray-300">—</span>}
+                    </td>
+                  </tr>
+                ))}
+                {/* Totals row */}
+                <tr className="bg-gray-50 font-semibold text-sm">
+                  <td className="px-4 py-2 text-gray-700">Total</td>
+                  <td className="px-4 py-2 text-right text-gray-700">{formatCurrency(customerBalances.reduce((s, c) => s + c.revenue, 0))}</td>
+                  <td className="px-4 py-2 text-right text-green-700">{formatCurrency(customerBalances.reduce((s, c) => s + c.collected, 0))}</td>
+                  <td className="px-4 py-2 text-right text-orange-600">{formatCurrency(customerBalances.reduce((s, c) => s + c.outstanding, 0))}</td>
+                  <td className="px-4 py-2 text-right text-red-600">{formatCurrency(customerBalances.filter(c => c.ledgerBalance != null).reduce((s, c) => s + c.ledgerBalance, 0))}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       {/* Outstanding Aging */}
       <div>
