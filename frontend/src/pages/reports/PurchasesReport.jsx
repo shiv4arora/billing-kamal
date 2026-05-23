@@ -25,7 +25,7 @@ export default function PurchasesReport() {
 
   const total    = filtered.reduce((s, i) => s + (i.grandTotal || 0), 0);
   const totalGST = filtered.reduce((s, i) => s + (i.totalGST   || 0), 0);
-  const unpaid   = filtered.filter(i => i.paymentStatus !== 'paid').reduce((s, i) => s + (i.grandTotal || 0), 0);
+  const unpaid   = filtered.filter(i => i.paymentStatus !== 'paid').reduce((s, i) => s + Math.max(0, (i.grandTotal || 0) - (i.amountPaid || 0)), 0);
 
   // --- Spend trend chart data ---
   const trendData = useMemo(() => {

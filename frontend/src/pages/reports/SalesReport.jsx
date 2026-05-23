@@ -60,7 +60,7 @@ export default function SalesReport() {
     revenue:  filtered.reduce((s, i) => s + (i.grandTotal || 0), 0),
     gst:      filtered.reduce((s, i) => s + (i.totalGST || 0), 0),
     invoices: filtered.length,
-    paid:     filtered.filter(i => i.paymentStatus === 'paid').reduce((s, i) => s + (i.grandTotal || 0), 0),
+    paid:     filtered.reduce((s, i) => s + (i.amountPaid || 0), 0),
     discount: filtered.reduce((s, i) => s + (i.totalDiscount || 0), 0),
   }), [filtered]);
 
