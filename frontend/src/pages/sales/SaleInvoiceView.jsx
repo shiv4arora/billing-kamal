@@ -74,9 +74,14 @@ export default function SaleInvoiceView() {
   const remaining = inv.grandTotal - (inv.amountPaid || 0);
 
   const complete = async () => {
+    const msg = remaining > 0.01
+      ? `Mark invoice ${inv.invoiceNumber} as completed?\n\nThis will record the outstanding ₹${remaining.toLocaleString('en-IN', { minimumFractionDigits: 2 })} as received and close the invoice.`
+      : `Mark invoice ${inv.invoiceNumber} as completed?`;
+    if (!window.confirm(msg)) return;
     try {
       const updated = await api(`/sales/${id}/complete`, { method: 'PATCH' });
       updateSaleInvoiceLocal(id, updated);
+      toast.success('Invoice marked as completed');
     } catch (e) { toast.error(e.message); }
   };
 
