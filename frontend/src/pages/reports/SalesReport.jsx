@@ -245,7 +245,7 @@ export default function SalesReport() {
         <div className="bg-blue-50 rounded-xl p-4">
           <p className="text-xs text-blue-500 font-medium">Total Revenue</p>
           <p className="text-xl font-bold text-blue-900">{formatCurrency(totals.revenue)}</p>
-          <p className="text-xs text-blue-400 mt-1">{totals.invoices} invoice{totals.invoices !== 1 ? 's' : ''}</p>
+          <p className="text-xs text-blue-400 mt-1">{totals.invoices} sale{totals.invoices !== 1 ? 's' : ''}</p>
         </div>
         <div className="bg-green-50 rounded-xl p-4">
           <p className="text-xs text-green-500 font-medium">Collected (Ledger)</p>
@@ -264,10 +264,6 @@ export default function SalesReport() {
         <div className="bg-pink-50 rounded-xl p-4">
           <p className="text-xs text-pink-500 font-medium">Discount Given</p>
           <p className="text-xl font-bold text-pink-900">{formatCurrency(totals.discount)}</p>
-        </div>
-        <div className="bg-gray-50 rounded-xl p-4">
-          <p className="text-xs text-gray-500 font-medium">Avg Invoice</p>
-          <p className="text-xl font-bold text-gray-900">{formatCurrency(totals.invoices ? totals.revenue / totals.invoices : 0)}</p>
         </div>
       </div>
 
