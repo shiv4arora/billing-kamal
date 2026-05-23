@@ -219,8 +219,9 @@ router.post('/:id/payment', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// ── MARK PAID ────────────────────────────────────────────────────────────────
-router.patch('/:id/mark-paid', async (req, res, next) => {
+// ── COMPLETE ─────────────────────────────────────────────────────────────────
+router.patch('/:id/mark-paid', async (req, res, next) => next()); // legacy alias → fall through
+router.patch('/:id/complete', async (req, res, next) => {
   try {
     const inv = await prisma.saleInvoice.findUniqueOrThrow({ where: { id: req.params.id } });
     const remaining = Number(inv.grandTotal) - Number(inv.amountPaid);
@@ -229,7 +230,7 @@ router.patch('/:id/mark-paid', async (req, res, next) => {
     const updated = await prisma.$transaction(async (tx) => {
       const upd = await tx.saleInvoice.update({
         where: { id: req.params.id },
-        data: { paymentStatus: 'paid', amountPaid: Number(inv.grandTotal), status: 'paid', paymentDate: today },
+        data: { paymentStatus: 'paid', amountPaid: Number(inv.grandTotal), status: 'completed', paymentDate: today },
       });
       if (remaining > 0.01 && inv.customerId) {
         await postPaymentIn(tx, {

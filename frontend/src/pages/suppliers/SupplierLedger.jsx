@@ -26,6 +26,7 @@ export default function SupplierLedger() {
 
   const [rawEntries, setRawEntries] = useState([]);
   const [balance, setBalance]       = useState(0);
+  const [loading, setLoading]       = useState(true);
 
   const [payOpen, setPayOpen] = useState(false);
   const [retOpen, setRetOpen] = useState(false);
@@ -38,10 +39,12 @@ export default function SupplierLedger() {
   const [editForm, setEditForm] = useState({ amount: '', date: '', narration: '' });
 
   const refresh = async () => {
+    setLoading(true);
     const data = await getEntriesByParty('supplier', id).catch(() => []);
     const bal  = await getBalance('supplier', id).catch(() => 0);
     setRawEntries(data);
     setBalance(bal);
+    setLoading(false);
   };
   useEffect(() => { refresh(); }, [id]);
 
@@ -157,18 +160,18 @@ export default function SupplierLedger() {
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-green-50 rounded-xl p-4">
             <p className="text-xs text-green-500 font-semibold uppercase">Payments Made (Dr)</p>
-            <p className="text-2xl font-bold text-green-900 mt-1">{formatCurrency(totalDr)}</p>
+            <p className="text-2xl font-bold text-green-900 mt-1">{loading ? <span className="text-gray-300">—</span> : formatCurrency(totalDr)}</p>
           </div>
           <div className="bg-blue-50 rounded-xl p-4">
             <p className="text-xs text-blue-500 font-semibold uppercase">Total Purchases (Cr)</p>
-            <p className="text-2xl font-bold text-blue-900 mt-1">{formatCurrency(totalCr)}</p>
+            <p className="text-2xl font-bold text-blue-900 mt-1">{loading ? <span className="text-gray-300">—</span> : formatCurrency(totalCr)}</p>
           </div>
-          <div className={`rounded-xl p-4 ${balance > 0.01 ? 'bg-red-50' : balance < -0.01 ? 'bg-purple-50' : 'bg-gray-50'}`}>
-            <p className={`text-xs font-semibold uppercase ${balance > 0.01 ? 'text-red-500' : balance < -0.01 ? 'text-purple-500' : 'text-gray-500'}`}>
-              {balance > 0.01 ? '⚠ Payable (Cr)' : balance < -0.01 ? 'Advance / Overpaid (Dr)' : '✓ Settled'}
+          <div className={`rounded-xl p-4 ${!loading && balance > 0.01 ? 'bg-red-50' : !loading && balance < -0.01 ? 'bg-purple-50' : 'bg-gray-50'}`}>
+            <p className={`text-xs font-semibold uppercase ${!loading && balance > 0.01 ? 'text-red-500' : !loading && balance < -0.01 ? 'text-purple-500' : 'text-gray-500'}`}>
+              {loading ? 'Loading…' : balance > 0.01 ? '⚠ Payable (Cr)' : balance < -0.01 ? 'Advance / Overpaid (Dr)' : '✓ Settled'}
             </p>
-            <p className={`text-2xl font-bold mt-1 ${balance > 0.01 ? 'text-red-800' : balance < -0.01 ? 'text-purple-800' : 'text-gray-500'}`}>
-              {Math.abs(balance) > 0.01 ? formatCurrency(Math.abs(balance)) : '—'}
+            <p className={`text-2xl font-bold mt-1 ${!loading && balance > 0.01 ? 'text-red-800' : !loading && balance < -0.01 ? 'text-purple-800' : 'text-gray-500'}`}>
+              {loading ? <span className="text-gray-300">—</span> : Math.abs(balance) > 0.01 ? formatCurrency(Math.abs(balance)) : '—'}
             </p>
           </div>
         </div>
@@ -193,7 +196,19 @@ export default function SupplierLedger() {
                 </tr>
               </thead>
               <tbody>
-                {entries.length === 0 ? (
+                {loading ? (
+                  <tr>
+                    <td colSpan="7" className="text-center py-12 text-gray-400">
+                      <div className="flex items-center justify-center gap-2">
+                        <svg className="animate-spin h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                        </svg>
+                        Loading entries…
+                      </div>
+                    </td>
+                  </tr>
+                ) : entries.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="text-center py-12 text-gray-400">
                       No transactions yet. Issue a purchase invoice to auto-populate.

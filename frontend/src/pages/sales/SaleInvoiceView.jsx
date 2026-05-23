@@ -8,7 +8,7 @@ import { Button, Badge, Card, Modal, Input, Select, useToast, Toast } from '../.
 import { formatCurrency, formatDate, amountInWords, formatCustomerDisplay, today } from '../../utils/helpers';
 
 const payColor = { paid: 'green', partial: 'yellow', unpaid: 'red' };
-const statusColor = { draft: 'gray', issued: 'blue', paid: 'green', void: 'red' };
+const statusColor = { draft: 'gray', issued: 'blue', paid: 'green', completed: 'green', void: 'red' };
 
 export default function SaleInvoiceView() {
   const { id } = useParams();
@@ -73,9 +73,9 @@ export default function SaleInvoiceView() {
 
   const remaining = inv.grandTotal - (inv.amountPaid || 0);
 
-  const markPaid = async () => {
+  const complete = async () => {
     try {
-      const updated = await api(`/sales/${id}/mark-paid`, { method: 'PATCH' });
+      const updated = await api(`/sales/${id}/complete`, { method: 'PATCH' });
       updateSaleInvoiceLocal(id, updated);
     } catch (e) { toast.error(e.message); }
   };
@@ -205,10 +205,10 @@ export default function SaleInvoiceView() {
                 + Record Payment
               </button>
             )}
-            {inv.paymentStatus !== 'paid' && (
-              <button onClick={markPaid}
+            {inv.status !== 'completed' && inv.status !== 'void' && (
+              <button onClick={complete}
                 className="flex-1 py-3 bg-green-100 text-green-700 text-sm font-semibold rounded-xl active:bg-green-200">
-                ✓ Mark Paid
+                ✓ Complete
               </button>
             )}
           </div>
@@ -263,7 +263,7 @@ export default function SaleInvoiceView() {
             </Button>
           )}
           {inv.status !== 'void' && <Button variant="outline" onClick={() => setRetOpen(true)}>↩ Return</Button>}
-          {inv.paymentStatus !== 'paid' && inv.status !== 'void' && <Button variant="success" onClick={markPaid}>✓ Mark Paid</Button>}
+          {inv.status !== 'completed' && inv.status !== 'void' && <Button variant="success" onClick={complete}>✓ Complete</Button>}
           {inv.status !== 'void' && <Button variant="danger" onClick={voidInv}>Void</Button>}
           {inv.status === 'void' && <Button variant="success" onClick={unvoidInv}>↩ Restore Invoice</Button>}
         </div>

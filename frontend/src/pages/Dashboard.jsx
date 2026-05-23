@@ -66,7 +66,7 @@ export default function Dashboard() {
     return { todayRevenue, monthRevenue, outstanding, lowStock, dailyData, monthlyData, typeData, topProducts, recentSales };
   }, [saleInvoices, purchaseInvoices, products, customers, settings]);
 
-  const statusColor = { draft: 'gray', issued: 'blue', paid: 'green', void: 'red' };
+  const statusColor = { draft: 'gray', issued: 'blue', paid: 'green', completed: 'green', void: 'red' };
   const payColor = { paid: 'green', partial: 'yellow', unpaid: 'red' };
 
   return (

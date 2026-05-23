@@ -5,7 +5,7 @@ import { Button, Table, Badge, SearchInput, Card } from '../../components/ui';
 import { formatCurrency, formatDate, formatCustomerDisplay } from '../../utils/helpers';
 
 const payColor   = { paid: 'green', partial: 'yellow', unpaid: 'red' };
-const statusColor = { draft: 'gray', issued: 'blue', paid: 'green', void: 'red' };
+const statusColor = { draft: 'gray', issued: 'blue', paid: 'green', completed: 'green', void: 'red' };
 
 const payBg = {
   paid:    'bg-green-100 text-green-700',
