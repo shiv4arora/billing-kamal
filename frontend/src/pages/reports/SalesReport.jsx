@@ -248,12 +248,14 @@ export default function SalesReport() {
           <p className="text-xs text-blue-400 mt-1">{totals.invoices} sale{totals.invoices !== 1 ? 's' : ''}</p>
         </div>
         <div className="bg-green-50 rounded-xl p-4">
-          <p className="text-xs text-green-500 font-medium">Collected</p>
+          <p className="text-xs text-green-500 font-medium">Collected (Ledger)</p>
           <p className="text-xl font-bold text-green-900">{formatCurrency(totalLedgerCollected)}</p>
+          <p className="text-xs text-green-400 mt-1">Invoice-based: {formatCurrency(totals.paid)}</p>
         </div>
         <div className="bg-red-50 rounded-xl p-4">
-          <p className="text-xs text-red-500 font-medium">Outstanding</p>
+          <p className="text-xs text-red-500 font-medium">Outstanding (Ledger)</p>
           <p className="text-xl font-bold text-red-900">{formatCurrency(totalLedgerOutstanding)}</p>
+          <p className="text-xs text-red-400 mt-1">Invoice-based: {formatCurrency(totals.revenue - totals.paid)}</p>
         </div>
         <div className="bg-purple-50 rounded-xl p-4">
           <p className="text-xs text-purple-500 font-medium">Total GST</p>
