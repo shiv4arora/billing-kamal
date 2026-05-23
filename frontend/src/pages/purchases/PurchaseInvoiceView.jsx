@@ -38,8 +38,8 @@ export default function PurchaseInvoiceView() {
   const toggleCheck = (idx, val) =>
     setItemChecks(p => ({ ...p, [idx]: p[idx] === val ? null : val }));
 
-  const setCorrection = (idx, qty) =>
-    setItemCorrections(p => ({ ...p, [idx]: { ...p[idx], qty } }));
+  const setCorrection = (idx, field, value) =>
+    setItemCorrections(p => ({ ...p, [idx]: { ...p[idx], [field]: value } }));
 
   if (!inv) return <div className="p-8 text-center text-gray-400">Invoice not found.</div>;
 
@@ -109,9 +109,11 @@ export default function PurchaseInvoiceView() {
   };
 
   const pendingFixes = (inv.items || []).filter((item, i) =>
-    itemChecks[i] === 'wrong' &&
-    itemCorrections[i]?.qty !== undefined &&
-    itemCorrections[i].qty !== item.quantity
+    itemChecks[i] === 'wrong' && (
+      (itemCorrections[i]?.qty !== undefined && itemCorrections[i].qty !== item.quantity) ||
+      (itemCorrections[i]?.rate !== undefined && itemCorrections[i].rate !== item.unitPrice) ||
+      (itemCorrections[i]?.sku !== undefined && itemCorrections[i].sku !== (item.sku || ''))
+    )
   ).length;
 
   const applyCorrections = async () => {
@@ -120,7 +122,9 @@ export default function PurchaseInvoiceView() {
       const correctedItems = (inv.items || []).map((item, i) => {
         if (itemChecks[i] !== 'wrong') return item;
         const newQty = itemCorrections[i]?.qty ?? item.quantity;
-        return { ...item, quantity: newQty, lineTotal: newQty * item.unitPrice };
+        const newRate = itemCorrections[i]?.rate ?? item.unitPrice;
+        const newSku = itemCorrections[i]?.sku ?? item.sku;
+        return { ...item, quantity: newQty, unitPrice: newRate, sku: newSku, lineTotal: newQty * newRate };
       });
       const updated = await api(`/purchases/${id}`, { method: 'PUT', body: { ...inv, items: correctedItems } });
       updatePurchaseInvoiceLocal(id, updated);
@@ -359,31 +363,43 @@ export default function PurchaseInvoiceView() {
                       </button>
                     </div>
                     {checkState === 'wrong' && (
-                      <div className="mt-1.5 space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-red-500 bg-red-100 rounded-full w-6 h-6 flex items-center justify-center shrink-0">{i + 1}</span>
-                          <input value={itemNotes[i] || ''}
-                            onChange={e => setItemNotes(p => ({ ...p, [i]: e.target.value }))}
-                            placeholder="Note what's wrong…"
-                            className="flex-1 border border-red-200 bg-red-50 rounded-lg px-3 py-2 text-xs text-red-700 placeholder:text-red-300 focus:outline-none focus:ring-1 focus:ring-red-400" />
-                        </div>
-                        <div className="flex items-center gap-2 pl-8">
-                          <span className="text-xs text-gray-500 shrink-0">Fix qty:</span>
-                          <div className="flex items-center border border-red-200 rounded-lg overflow-hidden bg-white text-sm">
-                            <button type="button" onClick={() => setCorrection(i, Math.max(0, (itemCorrections[i]?.qty ?? item.quantity) - 1))}
-                              className="px-2.5 py-1.5 text-gray-600 active:bg-gray-100 font-bold leading-none">−</button>
+                      <div className="mt-2 space-y-2">
+                        <input
+                          value={itemNotes[i] || ''}
+                          onChange={e => setItemNotes(p => ({ ...p, [i]: e.target.value }))}
+                          placeholder="Note what's wrong…"
+                          className="w-full border border-red-200 bg-red-50 rounded-lg px-3 py-2 text-xs text-red-700 placeholder:text-red-300 focus:outline-none focus:ring-1 focus:ring-red-400"
+                        />
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <p className="text-xs text-gray-400 mb-1">Qty <span className="text-gray-300">({item.quantity})</span></p>
                             <input type="number" min="0"
-                              value={itemCorrections[i]?.qty ?? item.quantity}
-                              onChange={e => setCorrection(i, +e.target.value)}
+                              value={itemCorrections[i]?.qty ?? ''}
+                              onChange={e => setCorrection(i, 'qty', e.target.value === '' ? undefined : +e.target.value)}
                               onWheel={e => e.target.blur()}
-                              className="w-12 text-center py-1.5 border-x border-red-200 focus:outline-none text-sm" />
-                            <button type="button" onClick={() => setCorrection(i, (itemCorrections[i]?.qty ?? item.quantity) + 1)}
-                              className="px-2.5 py-1.5 text-gray-600 active:bg-gray-100 font-bold leading-none">+</button>
+                              placeholder={String(item.quantity)}
+                              className="w-full border border-red-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-1 focus:ring-red-400"
+                            />
                           </div>
-                          <span className="text-xs text-gray-400 shrink-0">{item.unit}</span>
-                          {(itemCorrections[i]?.qty ?? item.quantity) !== item.quantity && (
-                            <span className="text-xs text-orange-500 font-medium">was {item.quantity}</span>
-                          )}
+                          <div>
+                            <p className="text-xs text-gray-400 mb-1">Rate <span className="text-gray-300">({item.unitPrice})</span></p>
+                            <input type="number" min="0"
+                              value={itemCorrections[i]?.rate ?? ''}
+                              onChange={e => setCorrection(i, 'rate', e.target.value === '' ? undefined : +e.target.value)}
+                              onWheel={e => e.target.blur()}
+                              placeholder={String(item.unitPrice)}
+                              className="w-full border border-red-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-1 focus:ring-red-400"
+                            />
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-400 mb-1">SKU <span className="text-gray-300">({item.sku || '—'})</span></p>
+                            <input type="text"
+                              value={itemCorrections[i]?.sku ?? ''}
+                              onChange={e => setCorrection(i, 'sku', e.target.value)}
+                              placeholder={item.sku || '—'}
+                              className="w-full border border-red-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-1 focus:ring-red-400"
+                            />
+                          </div>
                         </div>
                       </div>
                     )}
@@ -465,26 +481,39 @@ export default function PurchaseInvoiceView() {
                     </div>
                     {checkState === 'wrong' && (
                       <div className="mt-1.5 space-y-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-red-500 bg-red-100 rounded-full w-5 h-5 flex items-center justify-center shrink-0">{i + 1}</span>
-                          <input value={itemNotes[i] || ''}
-                            onChange={e => setItemNotes(p => ({ ...p, [i]: e.target.value }))}
-                            placeholder="Note…"
-                            className="flex-1 border border-red-200 bg-red-50 rounded px-2 py-1 text-xs text-red-700 placeholder:text-red-300 focus:outline-none focus:ring-1 focus:ring-red-400 min-w-0" />
-                        </div>
-                        <div className="flex items-center gap-1 pl-6">
-                          <button type="button" onClick={() => setCorrection(i, Math.max(0, (itemCorrections[i]?.qty ?? item.quantity) - 1))}
-                            className="px-2 py-1 border border-red-200 rounded-l-lg bg-white text-gray-600 hover:bg-gray-100 text-xs font-bold">−</button>
-                          <input type="number" min="0"
-                            value={itemCorrections[i]?.qty ?? item.quantity}
-                            onChange={e => setCorrection(i, +e.target.value)}
-                            onWheel={e => e.target.blur()}
-                            className="w-12 text-center border-y border-red-200 py-1 text-xs focus:outline-none" />
-                          <button type="button" onClick={() => setCorrection(i, (itemCorrections[i]?.qty ?? item.quantity) + 1)}
-                            className="px-2 py-1 border border-red-200 rounded-r-lg bg-white text-gray-600 hover:bg-gray-100 text-xs font-bold">+</button>
-                          {(itemCorrections[i]?.qty ?? item.quantity) !== item.quantity && (
-                            <span className="text-xs text-orange-500 font-medium ml-1">was {item.quantity}</span>
-                          )}
+                        <input value={itemNotes[i] || ''}
+                          onChange={e => setItemNotes(p => ({ ...p, [i]: e.target.value }))}
+                          placeholder="Note…"
+                          className="w-full border border-red-200 bg-red-50 rounded px-2 py-1 text-xs text-red-700 placeholder:text-red-300 focus:outline-none focus:ring-1 focus:ring-red-400" />
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-gray-400 w-7 shrink-0">Qty</span>
+                            <input type="number" min="0"
+                              value={itemCorrections[i]?.qty ?? ''}
+                              onChange={e => setCorrection(i, 'qty', e.target.value === '' ? undefined : +e.target.value)}
+                              onWheel={e => e.target.blur()}
+                              placeholder={String(item.quantity)}
+                              className="w-16 border border-red-200 rounded px-1.5 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-red-400" />
+                            <span className="text-xs text-gray-300">{item.quantity}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-gray-400 w-7 shrink-0">Rate</span>
+                            <input type="number" min="0"
+                              value={itemCorrections[i]?.rate ?? ''}
+                              onChange={e => setCorrection(i, 'rate', e.target.value === '' ? undefined : +e.target.value)}
+                              onWheel={e => e.target.blur()}
+                              placeholder={String(item.unitPrice)}
+                              className="w-16 border border-red-200 rounded px-1.5 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-red-400" />
+                            <span className="text-xs text-gray-300">{item.unitPrice}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-gray-400 w-7 shrink-0">SKU</span>
+                            <input type="text"
+                              value={itemCorrections[i]?.sku ?? ''}
+                              onChange={e => setCorrection(i, 'sku', e.target.value)}
+                              placeholder={item.sku || '—'}
+                              className="w-full border border-red-200 rounded px-1.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-red-400" />
+                          </div>
                         </div>
                       </div>
                     )}

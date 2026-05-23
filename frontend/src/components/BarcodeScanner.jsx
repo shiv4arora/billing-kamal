@@ -9,63 +9,103 @@ import { useEffect, useRef, useState } from 'react';
  *   onClose()     – called when user dismisses the scanner
  */
 export default function BarcodeScanner({ onScan, onClose }) {
-  const videoRef = useRef(null);
+  const videoRef    = useRef(null);
   const controlsRef = useRef(null);
-  const [error, setError] = useState(null);
-  const [detected, setDetected] = useState(false);
+  const activeRef   = useRef(true);
+  const onScanRef   = useRef(onScan);
+  onScanRef.current = onScan;
+
+  const [error, setError]         = useState(null);
+  const [detected, setDetected]   = useState(false);
+  const [devices, setDevices]     = useState([]);
+  const [deviceIdx, setDeviceIdx] = useState(0);
+
+  async function startCamera(deviceId) {
+    try { controlsRef.current?.stop(); } catch (_) {}
+    setError(null);
+    try {
+      const { BrowserMultiFormatReader } = await import('@zxing/browser');
+      const reader = new BrowserMultiFormatReader();
+      const controls = await reader.decodeFromVideoDevice(
+        deviceId,
+        videoRef.current,
+        (result, _err, ctrl) => {
+          if (result && activeRef.current) {
+            activeRef.current = false;
+            setDetected(true);
+            ctrl.stop();
+            setTimeout(() => onScanRef.current(result.getText()), 150);
+          }
+        }
+      );
+      controlsRef.current = controls;
+    } catch (e) {
+      setError(
+        e?.name === 'NotAllowedError'
+          ? 'Camera permission denied. Please allow camera access in your browser settings.'
+          : e?.name === 'NotFoundError'
+          ? 'No camera found on this device.'
+          : 'Camera not available: ' + (e?.message || e)
+      );
+    }
+  }
 
   useEffect(() => {
-    let active = true;
+    activeRef.current = true;
 
-    async function start() {
+    async function init() {
       try {
         const { BrowserMultiFormatReader } = await import('@zxing/browser');
-        const reader = new BrowserMultiFormatReader();
-        const controls = await reader.decodeFromVideoDevice(
-          undefined,          // use default / rear camera
-          videoRef.current,
-          (result, _err, ctrl) => {
-            if (result && active) {
-              active = false;
-              setDetected(true);
-              ctrl.stop();
-              // short delay so user sees the green flash before close
-              setTimeout(() => onScan(result.getText()), 150);
-            }
-          }
-        );
-        controlsRef.current = controls;
-      } catch (e) {
-        setError(
-          e?.name === 'NotAllowedError'
-            ? 'Camera permission denied. Please allow camera access in your browser settings.'
-            : e?.name === 'NotFoundError'
-            ? 'No camera found on this device.'
-            : 'Camera not available: ' + (e?.message || e)
-        );
+        const devs = await BrowserMultiFormatReader.listVideoInputDevices();
+        setDevices(devs);
+        // Default to last device — usually the rear camera on phones
+        const startIdx = devs.length > 1 ? devs.length - 1 : 0;
+        setDeviceIdx(startIdx);
+        startCamera(devs[startIdx]?.deviceId);
+      } catch {
+        // listVideoInputDevices can fail on some browsers — fall back to default
+        startCamera(undefined);
       }
     }
 
-    start();
+    init();
 
     return () => {
-      active = false;
+      activeRef.current = false;
       try { controlsRef.current?.stop(); } catch (_) {}
     };
-  }, [onScan]);
+  }, []);
+
+  const flipCamera = () => {
+    if (devices.length < 2) return;
+    const nextIdx = (deviceIdx + 1) % devices.length;
+    setDeviceIdx(nextIdx);
+    startCamera(devices[nextIdx]?.deviceId);
+  };
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-3 bg-black/70 backdrop-blur-sm shrink-0">
         <span className="text-white font-semibold text-sm">📷 Scan QR / Barcode</span>
-        <button
-          onClick={onClose}
-          className="text-white/70 hover:text-white text-2xl leading-none p-1 active:text-white/50"
-          aria-label="Close scanner"
-        >
-          ✕
-        </button>
+        <div className="flex items-center gap-1">
+          {devices.length > 1 && (
+            <button
+              onClick={flipCamera}
+              className="text-white/70 hover:text-white text-xl leading-none p-2 rounded-lg active:bg-white/10"
+              aria-label="Flip camera"
+            >
+              🔄
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="text-white/70 hover:text-white text-2xl leading-none p-1 active:text-white/50"
+            aria-label="Close scanner"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       {error ? (

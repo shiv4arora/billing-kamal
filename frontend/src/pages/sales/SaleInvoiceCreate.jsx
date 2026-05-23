@@ -267,7 +267,7 @@ export default function SaleInvoiceCreate() {
     const trimmed = code.trim();
     if (!trimmed) return;
     const prod = products.find(p => p.sku === trimmed || p.sku?.toLowerCase() === trimmed.toLowerCase());
-    if (!prod) { toast.error(`No product with code "${trimmed}"`); setSkuQuickAdd(''); return; }
+    if (!prod) { toast.error(`No product with code "${trimmed}"`); return; }  // keep text in field
     const price = getPrice(prod, customerType);
     // Find if last item is blank (not a free-text row) — reuse it; otherwise append
     const lastIdx = items.length - 1;
@@ -307,7 +307,13 @@ export default function SaleInvoiceCreate() {
       {savePromptJsx}
       {showScanner && (
         <BarcodeScanner
-          onScan={code => { setShowScanner(false); setSkuQuickAdd(code); addProductBySku(code); }}
+          onScan={code => {
+            setShowScanner(false);
+            setSkuQuickAdd(code);
+            // setTimeout breaks React 18 batching — field renders the scanned text
+            // before addProductBySku potentially clears it
+            setTimeout(() => addProductBySku(code), 0);
+          }}
           onClose={() => setShowScanner(false)}
         />
       )}
