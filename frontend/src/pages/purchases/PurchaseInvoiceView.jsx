@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useInvoices } from '../../context/InvoiceContext';
 import { useProducts } from '../../context/ProductContext';
@@ -460,66 +460,71 @@ export default function PurchaseInvoiceView() {
           <tbody>{(inv.items||[]).map((item, i) => {
             const checkState = itemChecks[i];
             return (
-              <tr key={i} className={`border-b transition-colors ${checkState === 'ok' ? 'bg-green-50' : checkState === 'wrong' ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
-                <td className="px-4 py-3 text-gray-400">{i+1}</td>
-                <td className="px-4 py-3">
-                  <p className="font-medium">{item.productName}</p>
-                  {item.sku && <p className="text-xs text-blue-500 font-mono mt-0.5">#{item.sku}{vendorCode ? ` · ${vendorCode}` : ''}</p>}
-                </td>
-                <td className="px-4 py-3 text-right">{item.quantity} {item.unit}</td>
-                <td className="px-4 py-3 text-right">{formatCurrency(item.unitPrice)}</td>
-                <td className="px-4 py-3 text-right text-blue-700">{item.pricing?.wholesale ? formatCurrency(item.pricing.wholesale) : <span className="text-gray-300">—</span>}</td>
-                <td className="px-4 py-3 text-right text-gray-500">{item.gstRate}%</td>
-                <td className="px-4 py-3 text-right font-medium">{formatCurrency(item.lineTotal)}</td>
-                {checkMode && (
-                  <td className="px-3 py-3">
-                    <div className="flex gap-1.5 justify-center">
-                      <button onClick={() => toggleCheck(i, 'ok')}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${checkState === 'ok' ? 'bg-green-500 text-white' : 'bg-green-50 text-green-600 border border-green-200 hover:bg-green-100'}`}>✓</button>
-                      <button onClick={() => toggleCheck(i, 'wrong')}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${checkState === 'wrong' ? 'bg-red-500 text-white' : 'bg-red-50 text-red-500 border border-red-200 hover:bg-red-100'}`}>✗</button>
-                    </div>
-                    {checkState === 'wrong' && (
-                      <div className="mt-1.5 space-y-1.5">
-                        <input value={itemNotes[i] || ''}
-                          onChange={e => setItemNotes(p => ({ ...p, [i]: e.target.value }))}
-                          placeholder="Note…"
-                          className="w-full border border-red-200 bg-red-50 rounded px-2 py-1 text-xs text-red-700 placeholder:text-red-300 focus:outline-none focus:ring-1 focus:ring-red-400" />
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-gray-400 w-7 shrink-0">Qty</span>
-                            <input type="number" min="0"
-                              value={itemCorrections[i]?.qty ?? ''}
-                              onChange={e => setCorrection(i, 'qty', e.target.value === '' ? undefined : +e.target.value)}
-                              onWheel={e => e.target.blur()}
-                              placeholder={String(item.quantity)}
-                              className="w-16 border border-red-200 rounded px-1.5 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-red-400" />
-                            <span className="text-xs text-gray-300">{item.quantity}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-gray-400 w-7 shrink-0">Rate</span>
-                            <input type="number" min="0"
-                              value={itemCorrections[i]?.rate ?? ''}
-                              onChange={e => setCorrection(i, 'rate', e.target.value === '' ? undefined : +e.target.value)}
-                              onWheel={e => e.target.blur()}
-                              placeholder={String(item.unitPrice)}
-                              className="w-16 border border-red-200 rounded px-1.5 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-red-400" />
-                            <span className="text-xs text-gray-300">{item.unitPrice}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-gray-400 w-7 shrink-0">SKU</span>
-                            <input type="text"
-                              value={itemCorrections[i]?.sku ?? ''}
-                              onChange={e => setCorrection(i, 'sku', e.target.value)}
-                              placeholder={item.sku || '—'}
-                              className="w-full border border-red-200 rounded px-1.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-red-400" />
-                          </div>
+              <Fragment key={i}>
+                <tr className={`transition-colors ${checkState === 'wrong' ? '' : 'border-b'} ${checkState === 'ok' ? 'bg-green-50' : checkState === 'wrong' ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
+                  <td className="px-4 py-3 text-gray-400">{i+1}</td>
+                  <td className="px-4 py-3">
+                    <p className="font-medium">{item.productName}</p>
+                    {item.sku && <p className="text-xs text-blue-500 font-mono mt-0.5">#{item.sku}{vendorCode ? ` · ${vendorCode}` : ''}</p>}
+                  </td>
+                  <td className="px-4 py-3 text-right">{item.quantity} {item.unit}</td>
+                  <td className="px-4 py-3 text-right">{formatCurrency(item.unitPrice)}</td>
+                  <td className="px-4 py-3 text-right text-blue-700">{item.pricing?.wholesale ? formatCurrency(item.pricing.wholesale) : <span className="text-gray-300">—</span>}</td>
+                  <td className="px-4 py-3 text-right text-gray-500">{item.gstRate}%</td>
+                  <td className="px-4 py-3 text-right font-medium">{formatCurrency(item.lineTotal)}</td>
+                  {checkMode && (
+                    <td className="px-3 py-3">
+                      <div className="flex gap-1.5 justify-center">
+                        <button onClick={() => toggleCheck(i, 'ok')}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${checkState === 'ok' ? 'bg-green-500 text-white' : 'bg-green-50 text-green-600 border border-green-200 hover:bg-green-100'}`}>✓</button>
+                        <button onClick={() => toggleCheck(i, 'wrong')}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${checkState === 'wrong' ? 'bg-red-500 text-white' : 'bg-red-50 text-red-500 border border-red-200 hover:bg-red-100'}`}>✗</button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+                {checkMode && checkState === 'wrong' && (
+                  <tr className="bg-red-50 border-b">
+                    <td colSpan={8} className="px-4 pb-3 pt-1">
+                      <div className="flex items-end gap-3 pl-6">
+                        <div className="flex-1">
+                          <p className="text-xs text-gray-400 mb-1">Note</p>
+                          <input value={itemNotes[i] || ''}
+                            onChange={e => setItemNotes(p => ({ ...p, [i]: e.target.value }))}
+                            placeholder="What's wrong…"
+                            className="w-full border border-red-200 bg-white rounded-lg px-3 py-1.5 text-xs text-red-700 placeholder:text-red-300 focus:outline-none focus:ring-1 focus:ring-red-400" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">Qty <span className="text-gray-300">({item.quantity})</span></p>
+                          <input type="number" min="0"
+                            value={itemCorrections[i]?.qty ?? ''}
+                            onChange={e => setCorrection(i, 'qty', e.target.value === '' ? undefined : +e.target.value)}
+                            onWheel={e => e.target.blur()}
+                            placeholder={String(item.quantity)}
+                            className="w-20 border border-red-200 rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-red-400" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">Rate <span className="text-gray-300">({item.unitPrice})</span></p>
+                          <input type="number" min="0"
+                            value={itemCorrections[i]?.rate ?? ''}
+                            onChange={e => setCorrection(i, 'rate', e.target.value === '' ? undefined : +e.target.value)}
+                            onWheel={e => e.target.blur()}
+                            placeholder={String(item.unitPrice)}
+                            className="w-24 border border-red-200 rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-red-400" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">SKU <span className="text-gray-300">({item.sku || '—'})</span></p>
+                          <input type="text"
+                            value={itemCorrections[i]?.sku ?? ''}
+                            onChange={e => setCorrection(i, 'sku', e.target.value)}
+                            placeholder={item.sku || '—'}
+                            className="w-28 border border-red-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-red-400" />
                         </div>
                       </div>
-                    )}
-                  </td>
+                    </td>
+                  </tr>
                 )}
-              </tr>
+              </Fragment>
             );
           })}</tbody>
         </table>
