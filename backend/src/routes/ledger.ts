@@ -3,6 +3,30 @@ import { prisma } from '../lib/prisma';
 
 const router = Router();
 
+/**
+ * Re-derive a SaleInvoice's amountPaid + paymentStatus from all linked
+ * payment_in ledger entries.  Call this inside a transaction after any
+ * edit/delete of a payment entry that carries a referenceId.
+ */
+async function syncInvoicePayment(tx: any, invoiceId: string) {
+  if (!invoiceId) return;
+  const inv = await tx.saleInvoice.findUnique({ where: { id: invoiceId } });
+  if (!inv) return; // voided or deleted — nothing to do
+  const payments = await tx.ledgerEntry.findMany({
+    where: { referenceId: invoiceId, partyType: 'customer', type: 'payment_in' },
+  });
+  const totalPaid = payments.reduce((s: number, e: any) => s + Number(e.credit), 0);
+  const grandTotal = Number(inv.grandTotal);
+  const paymentStatus =
+    totalPaid >= grandTotal - 0.01 ? 'paid' :
+    totalPaid > 0.001             ? 'partial' :
+                                    'unpaid';
+  await tx.saleInvoice.update({
+    where: { id: invoiceId },
+    data: { amountPaid: totalPaid, paymentStatus },
+  });
+}
+
 // Get all ledger entries for a party with running balance
 router.get('/:partyType/:partyId', async (req, res, next) => {
   try {
@@ -201,6 +225,10 @@ router.put('/entry/:id', async (req, res, next) => {
           await tx.supplier.update({ where: { id: entry.partyId }, data: { balance: { increment: balanceDelta } } });
         }
       }
+      // Keep linked sale invoice in sync when a payment entry is edited
+      if (entry.type === 'payment_in' && entry.partyType === 'customer' && entry.referenceId) {
+        await syncInvoicePayment(tx, entry.referenceId);
+      }
     });
 
     res.json({ ok: true });
@@ -229,6 +257,11 @@ router.delete('/entry/:id', async (req, res, next) => {
         } else {
           await tx.supplier.update({ where: { id: entry.partyId }, data: { balance: { increment: balanceDelta } } });
         }
+      }
+      // Keep linked sale invoice in sync when a payment entry is deleted
+      // (entry is already deleted above, so the sum below reflects remaining payments)
+      if (entry.type === 'payment_in' && entry.partyType === 'customer' && entry.referenceId) {
+        await syncInvoicePayment(tx, entry.referenceId);
       }
     });
 

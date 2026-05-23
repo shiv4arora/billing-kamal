@@ -66,6 +66,27 @@ export default function SalesReport() {
     discount: filtered.reduce((s, i) => s + (i.totalDiscount || 0), 0),
   }), [filtered]);
 
+  // Ledger-based outstanding: sum of customer.balance for customers in the filtered period.
+  // customer.balance is the authoritative all-time net amount owed (positive = owes us).
+  // This captures payments made through ledger entries that may not update invoice.amountPaid.
+  const totalLedgerOutstanding = useMemo(() => {
+    const ids = new Set(filtered.map(i => i.customerId).filter(Boolean));
+    return customers
+      .filter(c => ids.has(c.id) && (c.balance || 0) > 0.01)
+      .reduce((s, c) => s + (c.balance || 0), 0);
+  }, [filtered, customers]);
+
+  // Ledger-based collected = period revenue minus what those customers still owe (all-time).
+  // More accurate than sum(amountPaid) when payments are recorded via ledger entries.
+  const totalLedgerCollected = useMemo(() => {
+    const ids = new Set(filtered.map(i => i.customerId).filter(Boolean));
+    const periodRevenue = filtered.reduce((s, i) => s + (i.grandTotal || 0), 0);
+    const outstanding = customers
+      .filter(c => ids.has(c.id))
+      .reduce((s, c) => s + Math.max(0, c.balance || 0), 0);
+    return Math.max(0, periodRevenue - outstanding);
+  }, [filtered, customers]);
+
   const chartData = useMemo(() => {
     const map = {};
     filtered.forEach(inv => {
@@ -219,13 +240,35 @@ export default function SalesReport() {
         </div>
       </Card>
 
-      {/* Summary tiles — 5 columns */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-blue-50 rounded-xl p-4"><p className="text-xs text-blue-500 font-medium">Total Revenue</p><p className="text-xl font-bold text-blue-900">{formatCurrency(totals.revenue)}</p></div>
-        <div className="bg-green-50 rounded-xl p-4"><p className="text-xs text-green-500 font-medium">Amount Collected</p><p className="text-xl font-bold text-green-900">{formatCurrency(totals.paid)}</p></div>
-        <div className="bg-purple-50 rounded-xl p-4"><p className="text-xs text-purple-500 font-medium">Total GST</p><p className="text-xl font-bold text-purple-900">{formatCurrency(totals.gst)}</p></div>
-        <div className="bg-gray-50 rounded-xl p-4"><p className="text-xs text-gray-500 font-medium">Invoices</p><p className="text-xl font-bold text-gray-900">{totals.invoices}</p></div>
-        <div className="bg-pink-50 rounded-xl p-4"><p className="text-xs text-pink-500 font-medium">Discount Given</p><p className="text-xl font-bold text-pink-900">{formatCurrency(totals.discount)}</p></div>
+      {/* Summary tiles */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="bg-blue-50 rounded-xl p-4">
+          <p className="text-xs text-blue-500 font-medium">Total Revenue</p>
+          <p className="text-xl font-bold text-blue-900">{formatCurrency(totals.revenue)}</p>
+          <p className="text-xs text-blue-400 mt-1">{totals.invoices} invoice{totals.invoices !== 1 ? 's' : ''}</p>
+        </div>
+        <div className="bg-green-50 rounded-xl p-4">
+          <p className="text-xs text-green-500 font-medium">Collected (Ledger)</p>
+          <p className="text-xl font-bold text-green-900">{formatCurrency(totalLedgerCollected)}</p>
+          <p className="text-xs text-green-400 mt-1">Invoice-based: {formatCurrency(totals.paid)}</p>
+        </div>
+        <div className="bg-red-50 rounded-xl p-4">
+          <p className="text-xs text-red-500 font-medium">Outstanding (Ledger)</p>
+          <p className="text-xl font-bold text-red-900">{formatCurrency(totalLedgerOutstanding)}</p>
+          <p className="text-xs text-red-400 mt-1">Invoice-based: {formatCurrency(totals.revenue - totals.paid)}</p>
+        </div>
+        <div className="bg-purple-50 rounded-xl p-4">
+          <p className="text-xs text-purple-500 font-medium">Total GST</p>
+          <p className="text-xl font-bold text-purple-900">{formatCurrency(totals.gst)}</p>
+        </div>
+        <div className="bg-pink-50 rounded-xl p-4">
+          <p className="text-xs text-pink-500 font-medium">Discount Given</p>
+          <p className="text-xl font-bold text-pink-900">{formatCurrency(totals.discount)}</p>
+        </div>
+        <div className="bg-gray-50 rounded-xl p-4">
+          <p className="text-xs text-gray-500 font-medium">Avg Invoice</p>
+          <p className="text-xl font-bold text-gray-900">{formatCurrency(totals.invoices ? totals.revenue / totals.invoices : 0)}</p>
+        </div>
       </div>
 
       {/* Revenue Trend Chart */}
