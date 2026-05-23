@@ -71,7 +71,13 @@ router.get('/:id', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    const inv = await prisma.saleInvoice.create({ data: pickSaleData(req.body) });
+    const settings = await prisma.settings.findUnique({ where: { id: 'singleton' } });
+    const s = parseSettings(settings?.data);
+    const prefix = s.invoice?.salePrefix || 'SI';
+    const inv = await prisma.$transaction(async (tx) => {
+      const invNo = await nextSaleInvoiceNumber(prefix, tx);
+      return tx.saleInvoice.create({ data: { ...pickSaleData(req.body), invoiceNumber: invNo } });
+    });
     res.status(201).json(inv);
   } catch (err) { next(err); }
 });
@@ -119,7 +125,8 @@ router.post('/:id/issue', async (req, res, next) => {
     const payStatus = paid >= totals.grandTotal - 0.01 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
 
     const issued = await prisma.$transaction(async (tx) => {
-      const invNo = await nextSaleInvoiceNumber(prefix, tx);
+      // Drafts now get a number at creation time; fall back to minting one for old numberless drafts
+      const invNo = existing.invoiceNumber || await nextSaleInvoiceNumber(prefix, tx);
 
       const inv = await tx.saleInvoice.update({
         where: { id: existing.id },
