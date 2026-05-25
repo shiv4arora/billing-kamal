@@ -10,9 +10,10 @@ export default function ProductionReport() {
   const [loading, setLoading]     = useState(true);
   const [start,   setStart]       = useState(thisMonthStart());
   const [end,     setEnd]         = useState(today());
-  const [search,  setSearch]      = useState('');
-  const [groupBy, setGroupBy]     = useState('day');
-  const [view,    setView]        = useState('entries'); // 'entries' | 'outputs' | 'inputs'
+  const [search,     setSearch]     = useState('');
+  const [notesFilter, setNotesFilter] = useState('');
+  const [groupBy,    setGroupBy]    = useState('day');
+  const [view,       setView]       = useState('entries'); // 'entries' | 'outputs' | 'inputs'
 
   useEffect(() => {
     api('/production')
@@ -20,6 +21,13 @@ export default function ProductionReport() {
       .catch(() => setEntries([]))
       .finally(() => setLoading(false));
   }, []);
+
+  /* ── all unique non-empty notes (for dropdown) ── */
+  const allNotes = useMemo(() => {
+    const set = new Set();
+    entries.forEach(e => { if (e.notes && e.notes.trim()) set.add(e.notes.trim()); });
+    return [...set].sort();
+  }, [entries]);
 
   /* ── filtered entries ── */
   const filtered = useMemo(() => {
@@ -32,8 +40,9 @@ export default function ProductionReport() {
         (e.entryNumber || '').toLowerCase().includes(q)
       );
     }
+    if (notesFilter) list = list.filter(e => (e.notes || '').trim() === notesFilter);
     return list;
-  }, [entries, start, end, search]);
+  }, [entries, start, end, search, notesFilter]);
 
   /* ── summary ── */
   const totals = useMemo(() => {
@@ -125,11 +134,32 @@ export default function ProductionReport() {
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400">To</label>
             <input type="date" value={end} onChange={e => setEnd(e.target.value)} className={inputCls} />
           </div>
+          <div className="flex flex-col gap-1 justify-end">
+            <button onClick={() => { setStart(''); setEnd(today()); }}
+              className="px-3 py-2 bg-gray-100 dark:bg-[#3A3A3C] text-gray-600 dark:text-gray-300 text-sm rounded-lg hover:bg-gray-200 font-medium whitespace-nowrap">
+              All Time
+            </button>
+          </div>
+          <div className="flex flex-col gap-1 justify-end">
+            <button onClick={() => { setStart(thisMonthStart()); setEnd(today()); }}
+              className="px-3 py-2 bg-gray-100 dark:bg-[#3A3A3C] text-gray-600 dark:text-gray-300 text-sm rounded-lg hover:bg-gray-200 font-medium whitespace-nowrap">
+              This Month
+            </button>
+          </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Search product / entry#</label>
             <input type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder="e.g. Necklace…" className={`${inputCls} min-w-[180px]`} />
           </div>
+          {allNotes.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Filter by Notes</label>
+              <select value={notesFilter} onChange={e => setNotesFilter(e.target.value)} className={`${inputCls} min-w-[160px]`}>
+                <option value="">All Notes</option>
+                {allNotes.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+          )}
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Chart</label>
             <select value={groupBy} onChange={e => setGroupBy(e.target.value)} className={inputCls}>
@@ -137,9 +167,9 @@ export default function ProductionReport() {
               <option value="month">Group by Month</option>
             </select>
           </div>
-          {search && (
-            <button onClick={() => setSearch('')} className="text-xs text-gray-400 hover:text-gray-600 mt-4">
-              ✕ Clear
+          {(search || notesFilter) && (
+            <button onClick={() => { setSearch(''); setNotesFilter(''); }} className="text-xs text-gray-400 hover:text-gray-600 mt-4">
+              ✕ Clear filters
             </button>
           )}
         </div>
