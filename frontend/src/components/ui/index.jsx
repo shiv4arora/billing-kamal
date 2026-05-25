@@ -114,7 +114,7 @@ export function Table({ columns, data, onRowClick, emptyMsg = 'No records found'
           {data.length === 0 ? (
             <tr><td colSpan={columns.length} className="text-center py-12 text-gray-400 dark:text-gray-500">{emptyMsg}</td></tr>
           ) : data.map((row, ri) => (
-            <tr key={ri} className={`border-b border-gray-100 dark:border-[rgba(84,84,88,0.35)] hover:bg-gray-50 dark:hover:bg-[#2C2C2E] ${onRowClick ? 'cursor-pointer' : ''}`} onClick={() => onRowClick?.(row)}>
+            <tr key={row.id ?? ri} className={`border-b border-gray-100 dark:border-[rgba(84,84,88,0.35)] hover:bg-gray-50 dark:hover:bg-[#2C2C2E] ${onRowClick ? 'cursor-pointer' : ''}`} onClick={() => onRowClick?.(row)}>
               {columns.map((col, ci) => (
                 <td key={ci} className={`px-4 py-3 text-gray-800 dark:text-[#f2f2f7] ${col.align === 'right' ? 'text-right' : ''}`}>
                   {col.render ? col.render(row) : row[col.key]}

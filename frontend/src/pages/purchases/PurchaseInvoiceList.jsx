@@ -15,7 +15,7 @@ const payBg = {
 };
 
 export default function PurchaseInvoiceList() {
-  const { purchaseInvoices } = useInvoices();
+  const { purchaseInvoices, invoicesLoading } = useInvoices();
   const { get: getSupplier } = useSuppliers();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
@@ -59,7 +59,12 @@ export default function PurchaseInvoiceList() {
 
       {/* Mobile card list */}
       <div className="lg:hidden space-y-2">
-        {filtered.length === 0 ? (
+        {invoicesLoading ? (
+          <div className="text-center py-12 text-gray-400">
+            <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+            Loading…
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
             <p className="text-3xl mb-2">📦</p>
             <p className="font-medium">No purchase invoices yet</p>
@@ -104,12 +109,19 @@ export default function PurchaseInvoiceList() {
 
       {/* Desktop table */}
       <Card padding={false} className="hidden lg:block">
-        <Table
-          columns={columns}
-          data={filtered}
-          onRowClick={i => navigate(`/purchases/${i.id}`)}
-          emptyMsg="No purchase invoices yet."
-        />
+        {invoicesLoading ? (
+          <div className="text-center py-12 text-gray-400">
+            <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+            Loading…
+          </div>
+        ) : (
+          <Table
+            columns={columns}
+            data={filtered}
+            onRowClick={i => navigate(`/purchases/${i.id}`)}
+            emptyMsg="No purchase invoices yet."
+          />
+        )}
       </Card>
     </div>
   );

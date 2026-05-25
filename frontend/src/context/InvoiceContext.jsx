@@ -16,18 +16,23 @@ export function InvoiceProvider({ children }) {
   const [saleInvoices, setSaleInvoices] = useState([]);
   const [purchaseInvoices, setPurchaseInvoices] = useState([]);
   const [stockLedger, setStockLedger] = useState([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(true);
 
   useEffect(() => {
     if (!currentUser) return;
+    setInvoicesLoading(true);
     checkApiAvailable().then(available => {
       if (!available) {
         setSaleInvoices(lsGet(LS_SALES));
         setPurchaseInvoices(lsGet(LS_PURCH));
         setStockLedger(lsGet(LS_STOCK));
+        setInvoicesLoading(false);
         return;
       }
-      api('/sales').then(setSaleInvoices).catch(console.error);
-      api('/purchases').then(setPurchaseInvoices).catch(console.error);
+      Promise.all([
+        api('/sales').then(setSaleInvoices),
+        api('/purchases').then(setPurchaseInvoices),
+      ]).catch(console.error).finally(() => setInvoicesLoading(false));
     });
   }, [currentUser]);
 
@@ -173,7 +178,7 @@ export function InvoiceProvider({ children }) {
     <Ctx.Provider value={{
       saleInvoices, addSaleInvoice, issueSaleInvoice, updateSaleInvoice, getSaleInvoice, updateSaleInvoiceLocal, deleteSaleInvoice,
       purchaseInvoices, addPurchaseInvoice, issuePurchaseInvoice, updatePurchaseInvoice, getPurchaseInvoice, updatePurchaseInvoiceLocal, deletePurchaseInvoice,
-      stockLedger, addStockEntry,
+      stockLedger, addStockEntry, invoicesLoading,
     }}>
       {children}
     </Ctx.Provider>

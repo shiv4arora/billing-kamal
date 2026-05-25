@@ -14,7 +14,7 @@ const payBg = {
 };
 
 export default function SaleInvoiceList() {
-  const { saleInvoices } = useInvoices();
+  const { saleInvoices, invoicesLoading } = useInvoices();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
@@ -73,7 +73,12 @@ export default function SaleInvoiceList() {
 
       {/* Mobile card list */}
       <div className="lg:hidden space-y-2">
-        {filtered.length === 0 ? (
+        {invoicesLoading ? (
+          <div className="text-center py-12 text-gray-400">
+            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+            Loading…
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
             <p className="text-3xl mb-2">🧾</p>
             <p className="font-medium">No invoices found</p>
@@ -119,12 +124,19 @@ export default function SaleInvoiceList() {
 
       {/* Desktop table */}
       <Card padding={false} className="hidden lg:block">
-        <Table
-          columns={columns}
-          data={filtered}
-          onRowClick={i => navigate(`/sales/${i.id}`)}
-          emptyMsg="No invoices found. Create your first invoice!"
-        />
+        {invoicesLoading ? (
+          <div className="text-center py-12 text-gray-400">
+            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+            Loading…
+          </div>
+        ) : (
+          <Table
+            columns={columns}
+            data={filtered}
+            onRowClick={i => navigate(`/sales/${i.id}`)}
+            emptyMsg="No invoices found. Create your first invoice!"
+          />
+        )}
       </Card>
     </div>
   );
