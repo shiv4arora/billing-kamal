@@ -255,10 +255,14 @@ router.put('/:id', async (req, res, next) => {
         return { productId: c.productId, productName: prod?.name || c.productName, sku: prod?.sku || c.sku || '', quantity: Number(c.quantity) };
       }));
 
-      /* ── Resolve output names ── */
+      /* ── Resolve output names — use submitted name, update product if changed ── */
       const resolvedOutputs = await Promise.all(resolvedNewOutputs.map(async (o: any) => {
         const prod = await tx.product.findUnique({ where: { id: o.productId } });
-        return { productId: o.productId, productName: prod?.name || o.productName, sku: prod?.sku || '', quantity: Number(o.quantity), pricing: o.pricing || {}, unit: prod?.unit || o.unit || 'Pcs' };
+        const finalName = o.productName?.trim() || prod?.name || '';
+        if (prod && finalName && prod.name !== finalName) {
+          await tx.product.update({ where: { id: o.productId }, data: { name: finalName } });
+        }
+        return { productId: o.productId, productName: finalName, sku: prod?.sku || '', quantity: Number(o.quantity), pricing: o.pricing || {}, unit: prod?.unit || o.unit || 'Pcs' };
       }));
 
       const firstOut = resolvedOutputs[0] || { productId: '', productName: '', quantity: 0 };

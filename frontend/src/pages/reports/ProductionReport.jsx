@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../hooks/useApi';
 import { Card, Button } from '../../components/ui';
-import { formatDate, dateRangeFilter, exportToCSV, thisMonthStart, today } from '../../utils/helpers';
+import { formatDate, formatCurrency, dateRangeFilter, exportToCSV, thisMonthStart, today } from '../../utils/helpers';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function ProductionReport() {
@@ -46,13 +46,20 @@ export default function ProductionReport() {
 
   /* ── summary ── */
   const totals = useMemo(() => {
-    let outputQty = 0, componentQty = 0;
+    let outputQty = 0, componentQty = 0, wholesaleValue = 0, shopValue = 0;
     const outputProducts = new Set();
     filtered.forEach(e => {
-      (e.outputs || []).forEach(o => { outputQty += Number(o.quantity) || 0; outputProducts.add(o.productId); });
+      (e.outputs || []).forEach(o => {
+        const qty = Number(o.quantity) || 0;
+        outputQty += qty;
+        outputProducts.add(o.productId);
+        const p = o.pricing || {};
+        wholesaleValue += qty * (Number(p.wholesale) || 0);
+        shopValue      += qty * (Number(p.shop)      || 0);
+      });
       (e.components || []).forEach(c => { componentQty += Number(c.quantity) || 0; });
     });
-    return { entries: filtered.length, outputQty, componentQty, uniqueProducts: outputProducts.size };
+    return { entries: filtered.length, outputQty, componentQty, uniqueProducts: outputProducts.size, wholesaleValue, shopValue };
   }, [filtered]);
 
   /* ── chart: entries per day/month ── */
@@ -176,18 +183,21 @@ export default function ProductionReport() {
       </Card>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="bg-blue-50 dark:bg-[rgba(10,132,255,0.12)] rounded-xl p-4">
           <p className="text-xs text-blue-500 dark:text-[#0A84FF] font-medium">Production Runs</p>
           <p className="text-2xl font-bold text-blue-900 dark:text-[#0A84FF]">{totals.entries}</p>
+          <p className="text-xs text-blue-400 mt-1">{totals.uniqueProducts} product{totals.uniqueProducts !== 1 ? 's' : ''}</p>
         </div>
         <div className="bg-green-50 dark:bg-[rgba(48,209,88,0.12)] rounded-xl p-4">
-          <p className="text-xs text-green-600 dark:text-[#30D158] font-medium">Output Qty</p>
-          <p className="text-2xl font-bold text-green-900 dark:text-[#30D158]">{totals.outputQty.toLocaleString()}</p>
+          <p className="text-xs text-green-600 dark:text-[#30D158] font-medium">Wholesale Value</p>
+          <p className="text-2xl font-bold text-green-900 dark:text-[#30D158]">{formatCurrency(totals.wholesaleValue)}</p>
+          <p className="text-xs text-green-400 mt-1">{totals.outputQty.toLocaleString()} units out</p>
         </div>
         <div className="bg-purple-50 dark:bg-[rgba(191,90,242,0.12)] rounded-xl p-4">
-          <p className="text-xs text-purple-600 dark:text-[#BF5AF2] font-medium">Unique Products Made</p>
-          <p className="text-2xl font-bold text-purple-900 dark:text-[#BF5AF2]">{totals.uniqueProducts}</p>
+          <p className="text-xs text-purple-600 dark:text-[#BF5AF2] font-medium">Shop Value</p>
+          <p className="text-2xl font-bold text-purple-900 dark:text-[#BF5AF2]">{formatCurrency(totals.shopValue)}</p>
+          <p className="text-xs text-purple-400 mt-1">{totals.outputQty.toLocaleString()} units out</p>
         </div>
         <div className="bg-orange-50 dark:bg-[rgba(255,159,10,0.12)] rounded-xl p-4">
           <p className="text-xs text-orange-600 dark:text-[#FF9F0A] font-medium">Components Consumed</p>
@@ -240,6 +250,8 @@ export default function ProductionReport() {
                   <th className="px-4 py-3 text-left">Date</th>
                   <th className="px-4 py-3 text-left">Output Products</th>
                   <th className="px-4 py-3 text-right">Output Qty</th>
+                  <th className="px-4 py-3 text-right">W Value</th>
+                  <th className="px-4 py-3 text-right">S Value</th>
                   <th className="px-4 py-3 text-left">Components Used</th>
                   <th className="px-4 py-3 text-right">Comp. Qty</th>
                   <th className="px-4 py-3 text-left">Box</th>
@@ -248,10 +260,12 @@ export default function ProductionReport() {
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={8} className="text-center py-12 text-gray-400">No production entries for this period</td></tr>
+                  <tr><td colSpan={10} className="text-center py-12 text-gray-400">No production entries for this period</td></tr>
                 ) : filtered.map(e => {
                   const totalOut  = (e.outputs    || []).reduce((s, o) => s + (Number(o.quantity) || 0), 0);
                   const totalComp = (e.components || []).reduce((s, c) => s + (Number(c.quantity) || 0), 0);
+                  const wVal = (e.outputs || []).reduce((s, o) => s + (Number(o.quantity) || 0) * (Number(o.pricing?.wholesale) || 0), 0);
+                  const sVal = (e.outputs || []).reduce((s, o) => s + (Number(o.quantity) || 0) * (Number(o.pricing?.shop)      || 0), 0);
                   return (
                     <tr key={e.id} className="border-b border-gray-100 dark:border-[rgba(84,84,88,0.35)] hover:bg-gray-50 dark:hover:bg-[#2C2C2E]">
                       <td className="px-4 py-3">
@@ -267,6 +281,8 @@ export default function ProductionReport() {
                         ))}
                       </td>
                       <td className="px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">{totalOut}</td>
+                      <td className="px-4 py-3 text-right text-blue-700 dark:text-[#0A84FF] font-medium">{wVal > 0 ? formatCurrency(wVal) : <span className="text-gray-300">—</span>}</td>
+                      <td className="px-4 py-3 text-right text-purple-700 dark:text-[#BF5AF2] font-medium">{sVal > 0 ? formatCurrency(sVal) : <span className="text-gray-300">—</span>}</td>
                       <td className="px-4 py-3 text-gray-700 dark:text-[#f2f2f7]">
                         {(e.components || []).map((c, i) => (
                           <span key={i} className="block text-xs">{c.productName}{(e.components.length > 1) ? ` ×${c.quantity}` : ''}</span>

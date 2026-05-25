@@ -37,7 +37,7 @@ export default function Sidebar({ isOpen, onClose }) {
         ...(can('purchases_view') ? [{ to: '/purchases', label: 'Purchase Invoices', icon: '📦' }] : []),
         ...(can('quotations') ? [{ to: '/quotations', label: 'Estimates',  icon: '📋' }] : []),
         ...(can('production') ? [{ to: '/production', label: 'Production', icon: '⚙️' }] : []),
-        { to: '/free-text-items', label: 'Free Text Items', icon: '📝' },
+        ...(can('free_text_items') ? [{ to: '/free-text-items', label: 'Free Text Items', icon: '📝' }] : []),
       ],
     },
     {
@@ -53,14 +53,14 @@ export default function Sidebar({ isOpen, onClose }) {
         ...(can('suppliers_view')  ? [{ to: '/suppliers', label: 'Suppliers',  icon: '🏭' }] : []),
       ],
     },
-    {
+    ...(can('accounts') ? [{
       section: 'Accounts',
       items: [
         ...(can('customers_view') ? [{ to: '/customers', label: 'Customer Ledgers', icon: '📒' }] : []),
         ...(can('suppliers_view') ? [{ to: '/suppliers', label: 'Supplier Ledgers', icon: '📗' }] : []),
         { to: '/reminders', label: 'Reminders', icon: '🔔' },
       ],
-    },
+    }] : []),
     ...(can('reports')
       ? [{
           section: 'Reports',

@@ -107,7 +107,7 @@ function LayoutRoutes() {
           {can('quotations') && <Route path="/quotations/:id" element={<QuotationView />} />}
           {can('quotations') && <Route path="/quotations/:id/edit" element={<QuotationCreate />} />}
           <Route path="/inventory" element={<Inventory />} />
-          <Route path="/reminders" element={<Reminders />} />
+          {(isAdmin || can('accounts')) && <Route path="/reminders" element={<Reminders />} />}
           {can('crm') && <Route path="/crm" element={<CrmList />} />}
           {can('crm') && <Route path="/crm/new" element={<CrmForm />} />}
           {can('crm') && <Route path="/crm/:id" element={<CrmDetail />} />}
@@ -124,7 +124,7 @@ function LayoutRoutes() {
           {can('settings') && <Route path="/settings" element={<Settings />} />}
           {isAdmin && <Route path="/users" element={<UserManagement />} />}
           {isAdmin && <Route path="/activity-log" element={<ActivityLog />} />}
-          <Route path="/free-text-items" element={<FreeTextItems />} />
+          {(isAdmin || can('free_text_items')) && <Route path="/free-text-items" element={<FreeTextItems />} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </MainLayout>

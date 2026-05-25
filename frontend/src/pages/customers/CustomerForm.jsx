@@ -4,7 +4,7 @@ import { useCustomers } from '../../context/CustomerContext';
 import { Button, Input, Select, Textarea, Card } from '../../components/ui';
 import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedChanges.jsx';
 
-const BLANK = { name: '', place: '', phone: '', type: 'shop', email: '', address: '', gstin: '', creditLimit: '', isActive: true };
+const BLANK = { name: '', place: '', phone: '', type: 'wholesale', email: '', address: '', gstin: '', creditLimit: '', isActive: true };
 
 export default function CustomerForm() {
   const { id } = useParams();
