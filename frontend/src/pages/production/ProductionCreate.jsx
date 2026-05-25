@@ -138,7 +138,6 @@ export default function ProductionCreate() {
 
   const usedCompIds = components.filter(c => c.productId).map(c => c.productId);
   const usedOutIds = outputs.filter(o => o.productId).map(o => o.productId);
-  const oraSup = suppliers.find(s => s.name?.toLowerCase().includes('ora'));
 
   return (
     <div className="max-w-3xl space-y-5">
@@ -176,18 +175,8 @@ export default function ProductionCreate() {
 
       {/* Components */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
           <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Components Consumed (Raw Materials)</p>
-          {oraSup && (
-            <a
-              href={`/purchases/new?supplierId=${oraSup.id}`}
-              target="_blank" rel="noreferrer"
-              className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap"
-              title="Create a purchase invoice for Ora to add missing stock"
-            >
-              + Add missing to {oraSup.name} stock ↗
-            </a>
-          )}
         </div>
         <div className="divide-y divide-gray-100">
           {components.map((comp, i) => {
