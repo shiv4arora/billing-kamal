@@ -54,6 +54,7 @@ export default function ProductionCreate() {
 
   const [date, setDate] = useState(today());
   const [notes, setNotes] = useState('');
+  const [box, setBox] = useState('');
   const [components, setComponents] = useState([BLANK_COMP()]);
   const [outputs, setOutputs] = useState([BLANK_OUTPUT()]);
   const [nextSku, setNextSku] = useState(null);
@@ -112,7 +113,7 @@ export default function ProductionCreate() {
       await api('/production', {
         method: 'POST',
         body: {
-          date, notes,
+          date, notes, box,
           components: validComps.map(c => ({ productId: c.productId, productName: c.productName, sku: c.sku, quantity: Number(c.quantity) })),
           outputs: validOuts.map(o => ({
             isNew: o.isNew,
@@ -159,6 +160,12 @@ export default function ProductionCreate() {
           <label className="text-xs font-medium text-gray-500 block mb-1">Notes (optional)</label>
           <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
             placeholder="e.g. Batch 1 Rakhi packing"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-500 block mb-1">Box (optional)</label>
+          <input type="text" value={box} onChange={e => setBox(e.target.value)}
+            placeholder="e.g. Box A, Box 3"
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
       </div>

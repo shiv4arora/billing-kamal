@@ -65,6 +65,7 @@ export default function ProductionEdit() {
   const [entry, setEntry] = useState(null);
   const [date, setDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [box, setBox] = useState('');
   const [components, setComponents] = useState([]);
   const [outputs, setOutputs] = useState([BLANK_OUTPUT()]);
   const [saving, setSaving] = useState(false);
@@ -78,6 +79,7 @@ export default function ProductionEdit() {
         setEntry(e);
         setDate(e.date);
         setNotes(e.notes || '');
+        setBox(e.box || '');
         setComponents((Array.isArray(e.components) ? e.components : []).map(c => ({
           productId: c.productId, productName: c.productName, sku: c.sku || '', currentStock: 0, unit: '', wholesale: 0, vendorCode: '', quantity: c.quantity,
         })));
@@ -181,7 +183,7 @@ export default function ProductionEdit() {
       await api(`/production/${id}`, {
         method: 'PUT',
         body: {
-          date, notes,
+          date, notes, box,
           components: validComps.map(c => ({ productId: c.productId, productName: c.productName, sku: c.sku, quantity: Number(c.quantity) })),
           outputs: validOuts.map(o => ({
             isNew: o.isNew || false,
@@ -230,6 +232,11 @@ export default function ProductionEdit() {
         <div>
           <label className="text-xs font-medium text-gray-500 block mb-1">Notes</label>
           <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="optional"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-500 block mb-1">Box</label>
+          <input type="text" value={box} onChange={e => setBox(e.target.value)} placeholder="e.g. Box A, Box 3"
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
       </div>

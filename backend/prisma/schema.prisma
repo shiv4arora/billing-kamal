@@ -231,6 +231,7 @@ model ProductionEntry {
   outputProductName String   @default("")
   outputQuantity    Float    @default(0)
   notes             String   @default("")
+  box               String   @default("")
   createdAt         DateTime @default(now())
 }
 

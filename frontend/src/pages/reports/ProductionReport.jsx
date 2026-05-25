@@ -11,7 +11,7 @@ export default function ProductionReport() {
   const [start,   setStart]       = useState(thisMonthStart());
   const [end,     setEnd]         = useState(today());
   const [search,     setSearch]     = useState('');
-  const [notesFilter, setNotesFilter] = useState('');
+  const [boxFilter,  setBoxFilter]  = useState('');
   const [groupBy,    setGroupBy]    = useState('day');
   const [view,       setView]       = useState('entries'); // 'entries' | 'outputs' | 'inputs'
 
@@ -22,10 +22,10 @@ export default function ProductionReport() {
       .finally(() => setLoading(false));
   }, []);
 
-  /* ── all unique non-empty notes (for dropdown) ── */
-  const allNotes = useMemo(() => {
+  /* ── all unique non-empty box values (for dropdown) ── */
+  const allBoxes = useMemo(() => {
     const set = new Set();
-    entries.forEach(e => { if (e.notes && e.notes.trim()) set.add(e.notes.trim()); });
+    entries.forEach(e => { if (e.box && e.box.trim()) set.add(e.box.trim()); });
     return [...set].sort();
   }, [entries]);
 
@@ -40,9 +40,9 @@ export default function ProductionReport() {
         (e.entryNumber || '').toLowerCase().includes(q)
       );
     }
-    if (notesFilter) list = list.filter(e => (e.notes || '').trim() === notesFilter);
+    if (boxFilter) list = list.filter(e => (e.box || '').trim() === boxFilter);
     return list;
-  }, [entries, start, end, search, notesFilter]);
+  }, [entries, start, end, search, boxFilter]);
 
   /* ── summary ── */
   const totals = useMemo(() => {
@@ -151,12 +151,12 @@ export default function ProductionReport() {
             <input type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder="e.g. Necklace…" className={`${inputCls} min-w-[180px]`} />
           </div>
-          {allNotes.length > 0 && (
+          {allBoxes.length > 0 && (
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Filter by Notes</label>
-              <select value={notesFilter} onChange={e => setNotesFilter(e.target.value)} className={`${inputCls} min-w-[160px]`}>
-                <option value="">All Notes</option>
-                {allNotes.map(n => <option key={n} value={n}>{n}</option>)}
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Filter by Box</label>
+              <select value={boxFilter} onChange={e => setBoxFilter(e.target.value)} className={`${inputCls} min-w-[140px]`}>
+                <option value="">All Boxes</option>
+                {allBoxes.map(b => <option key={b} value={b}>{b}</option>)}
               </select>
             </div>
           )}
@@ -167,8 +167,8 @@ export default function ProductionReport() {
               <option value="month">Group by Month</option>
             </select>
           </div>
-          {(search || notesFilter) && (
-            <button onClick={() => { setSearch(''); setNotesFilter(''); }} className="text-xs text-gray-400 hover:text-gray-600 mt-4">
+          {(search || boxFilter) && (
+            <button onClick={() => { setSearch(''); setBoxFilter(''); }} className="text-xs text-gray-400 hover:text-gray-600 mt-4">
               ✕ Clear filters
             </button>
           )}
@@ -242,12 +242,13 @@ export default function ProductionReport() {
                   <th className="px-4 py-3 text-right">Output Qty</th>
                   <th className="px-4 py-3 text-left">Components Used</th>
                   <th className="px-4 py-3 text-right">Comp. Qty</th>
+                  <th className="px-4 py-3 text-left">Box</th>
                   <th className="px-4 py-3 text-left">Notes</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-12 text-gray-400">No production entries for this period</td></tr>
+                  <tr><td colSpan={8} className="text-center py-12 text-gray-400">No production entries for this period</td></tr>
                 ) : filtered.map(e => {
                   const totalOut  = (e.outputs    || []).reduce((s, o) => s + (Number(o.quantity) || 0), 0);
                   const totalComp = (e.components || []).reduce((s, c) => s + (Number(c.quantity) || 0), 0);
@@ -272,6 +273,7 @@ export default function ProductionReport() {
                         ))}
                       </td>
                       <td className="px-4 py-3 text-right text-gray-700 dark:text-[#f2f2f7]">{totalComp}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-[#f2f2f7]">{e.box || <span className="text-gray-300">—</span>}</td>
                       <td className="px-4 py-3 text-xs text-gray-400 dark:text-gray-500 max-w-[160px] truncate">{e.notes}</td>
                     </tr>
                   );

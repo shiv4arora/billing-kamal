@@ -52,7 +52,7 @@ router.get('/', async (_req, res, next) => {
 /* ── POST /production ── */
 router.post('/', async (req, res, next) => {
   try {
-    const { date, components, outputs, notes } = req.body;
+    const { date, components, outputs, notes, box } = req.body;
     // outputs: [{productId?, productName, isNew, unit, quantity, pricing:{wholesale,shop}}]
 
     if (!components?.length) return res.status(400).json({ error: 'Add at least one component' });
@@ -127,6 +127,7 @@ router.post('/', async (req, res, next) => {
           outputProductName: firstOut.productName,
           outputQuantity: firstOut.quantity,
           notes: notes || '',
+          box: box || '',
         },
       });
     });
@@ -160,7 +161,7 @@ router.put('/:id', async (req, res, next) => {
     const existing = await prisma.productionEntry.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ error: 'Not found' });
 
-    const { date, components, outputs, notes } = req.body;
+    const { date, components, outputs, notes, box } = req.body;
     const oldComponents: any[] = parseComponents(existing);
     const newComponents: any[] = components || [];
     const oldOutputs: any[] = parseOutputs(existing);
@@ -271,6 +272,7 @@ router.put('/:id', async (req, res, next) => {
           outputProductName: firstOut.productName,
           outputQuantity: firstOut.quantity,
           notes: notes ?? existing.notes,
+          box: box ?? existing.box ?? '',
         },
       });
     });

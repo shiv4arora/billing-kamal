@@ -48,6 +48,7 @@ export default function ProductionList() {
                 <th className="px-4 py-3 text-left">Output Product</th>
                 <th className="px-4 py-3 text-right"></th>
                 <th className="px-4 py-3 text-left">Components</th>
+                <th className="px-4 py-3 text-left">Box</th>
                 <th className="px-4 py-3 text-center w-28">Actions</th>
               </tr>
             </thead>
@@ -89,6 +90,7 @@ export default function ProductionList() {
                     </div>
                     {e.notes && <p className="text-xs text-gray-400 italic mt-0.5">{e.notes}</p>}
                   </td>
+                  <td className="px-4 py-3 text-sm text-gray-700 align-top">{e.box || <span className="text-gray-300">—</span>}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-1.5">
                       <button
