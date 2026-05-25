@@ -9,7 +9,7 @@ const payColor = { paid: 'green', partial: 'yellow', unpaid: 'red' };
 
 export default function PurchasesReport() {
   const { purchaseInvoices } = useInvoices();
-  const { active: suppliers } = useSuppliers();
+  const { active: suppliers, suppliers: allSuppliers } = useSuppliers();
   const [start,      setStart]      = useState(thisMonthStart());
   const [end,        setEnd]        = useState(today());
   const [suppFilter, setSuppFilter] = useState('');
@@ -25,7 +25,35 @@ export default function PurchasesReport() {
 
   const total    = filtered.reduce((s, i) => s + (i.grandTotal || 0), 0);
   const totalGST = filtered.reduce((s, i) => s + (i.totalGST   || 0), 0);
-  const unpaid   = filtered.filter(i => i.paymentStatus !== 'paid').reduce((s, i) => s + Math.max(0, (i.grandTotal || 0) - (i.amountPaid || 0)), 0);
+
+  // Ledger-based: sum of supplier.balance for suppliers who appear in the filtered period
+  // supplier.balance > 0 means we owe them money
+  const supplierIds = useMemo(() =>
+    new Set(filtered.map(i => i.supplierId).filter(Boolean)),
+  [filtered]);
+
+  const totalLedgerPayable = useMemo(() =>
+    allSuppliers
+      .filter(s => supplierIds.has(s.id) && (s.balance || 0) > 0.01)
+      .reduce((sum, s) => sum + (s.balance || 0), 0),
+  [allSuppliers, supplierIds]);
+
+  // Per-supplier breakdown for the table
+  const supplierBalances = useMemo(() => {
+    const map = {};
+    filtered.forEach(inv => {
+      const sid = inv.supplierId || inv.supplierName || 'Unknown';
+      if (!map[sid]) map[sid] = { supplierId: inv.supplierId, name: inv.supplierName || 'Unknown', spend: 0 };
+      map[sid].spend += inv.grandTotal || 0;
+    });
+    return Object.values(map)
+      .map(s => ({
+        ...s,
+        ledgerBalance: allSuppliers.find(su => su.id === s.supplierId)?.balance ?? null,
+      }))
+      .filter(s => s.ledgerBalance != null && s.ledgerBalance > 0.01)
+      .sort((a, b) => b.ledgerBalance - a.ledgerBalance);
+  }, [filtered, allSuppliers]);
 
   // --- Spend trend chart data ---
   const trendData = useMemo(() => {
@@ -58,25 +86,6 @@ export default function PurchasesReport() {
       .map(([name, spend]) => ({ name, spend }));
   }, [filtered]);
 
-  // --- Payables aging ---
-  const agingBuckets = useMemo(() => {
-    const buckets = { '0–7': 0, '8–30': 0, '31–60': 0, '60+': 0 };
-    const now = new Date();
-    filtered
-      .filter(inv => inv.paymentStatus === 'unpaid' || inv.paymentStatus === 'partial')
-      .forEach(inv => {
-        const outstanding = (inv.grandTotal || 0) - (inv.amountPaid || 0);
-        if (outstanding <= 0) return;
-        const refDate = inv.dueDate || inv.date;
-        const due = refDate ? new Date(refDate) : now;
-        const days = Math.floor((now - due) / 86400000);
-        if (days <= 7)       buckets['0–7']   += outstanding;
-        else if (days <= 30) buckets['8–30']  += outstanding;
-        else if (days <= 60) buckets['31–60'] += outstanding;
-        else                 buckets['60+']   += outstanding;
-      });
-    return buckets;
-  }, [filtered]);
 
 
   const handleExport = () => exportToCSV('purchases_report.csv',
@@ -139,9 +148,9 @@ export default function PurchasesReport() {
 
       {/* Summary tiles */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-green-50 rounded-xl p-4"><p className="text-xs text-green-500 font-medium">Total Purchases</p><p className="text-xl font-bold text-green-900">{formatCurrency(total)}</p></div>
+        <div className="bg-green-50 rounded-xl p-4"><p className="text-xs text-green-500 font-medium">Total Purchases</p><p className="text-xl font-bold text-green-900">{formatCurrency(total)}</p><p className="text-xs text-green-400 mt-1">{filtered.length} invoice{filtered.length !== 1 ? 's' : ''}</p></div>
         <div className="bg-purple-50 rounded-xl p-4"><p className="text-xs text-purple-500 font-medium">GST Paid</p><p className="text-xl font-bold text-purple-900">{formatCurrency(totalGST)}</p></div>
-        <div className="bg-red-50 rounded-xl p-4"><p className="text-xs text-red-500 font-medium">Payables</p><p className="text-xl font-bold text-red-900">{formatCurrency(unpaid)}</p></div>
+        <div className="bg-red-50 rounded-xl p-4"><p className="text-xs text-red-500 font-medium">Amount Due (Ledger)</p><p className="text-xl font-bold text-red-900">{formatCurrency(totalLedgerPayable)}</p><p className="text-xs text-red-400 mt-1">across {supplierBalances.length} supplier{supplierBalances.length !== 1 ? 's' : ''}</p></div>
       </div>
 
       {/* Spend trend chart */}
@@ -178,32 +187,43 @@ export default function PurchasesReport() {
         </Card>
       )}
 
-      {/* Aging + Top products side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Payables aging */}
-        <Card>
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">Payables Aging</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-green-50 rounded-xl p-4">
-              <p className="text-xs font-medium text-green-600">0–7 days</p>
-              <p className="text-lg font-bold text-green-900 mt-1">{formatCurrency(agingBuckets['0–7'])}</p>
+      {/* Supplier Outstanding Balances */}
+      {supplierBalances.length > 0 && (
+        <Card padding={false}>
+          <div className="px-5 pt-4 pb-2 flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-gray-700">Amount Due to Suppliers</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Ledger balance = all-time running total owed to each supplier</p>
             </div>
-            <div className="bg-yellow-50 rounded-xl p-4">
-              <p className="text-xs font-medium text-yellow-600">8–30 days</p>
-              <p className="text-lg font-bold text-yellow-900 mt-1">{formatCurrency(agingBuckets['8–30'])}</p>
-            </div>
-            <div className="bg-orange-50 rounded-xl p-4">
-              <p className="text-xs font-medium text-orange-600">31–60 days</p>
-              <p className="text-lg font-bold text-orange-900 mt-1">{formatCurrency(agingBuckets['31–60'])}</p>
-            </div>
-            <div className="bg-red-50 rounded-xl p-4">
-              <p className="text-xs font-medium text-red-600">60+ days</p>
-              <p className="text-lg font-bold text-red-900 mt-1">{formatCurrency(agingBuckets['60+'])}</p>
-            </div>
+            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">{supplierBalances.length} supplier{supplierBalances.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
+                  <th className="px-4 py-2 text-left">Supplier</th>
+                  <th className="px-4 py-2 text-right">Period Purchases</th>
+                  <th className="px-4 py-2 text-right">Ledger Balance (Due)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {supplierBalances.map((s, idx) => (
+                  <tr key={idx} className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-2 font-medium text-gray-800">{s.name}</td>
+                    <td className="px-4 py-2 text-right text-gray-700">{formatCurrency(s.spend)}</td>
+                    <td className="px-4 py-2 text-right font-bold text-red-600">{formatCurrency(s.ledgerBalance)}</td>
+                  </tr>
+                ))}
+                <tr className="bg-gray-50 font-semibold text-sm">
+                  <td className="px-4 py-2 text-gray-700">Total</td>
+                  <td className="px-4 py-2 text-right text-gray-700">{formatCurrency(supplierBalances.reduce((s, r) => s + r.spend, 0))}</td>
+                  <td className="px-4 py-2 text-right text-red-600">{formatCurrency(totalLedgerPayable)}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </Card>
-
-      </div>
+      )}
 
       {/* Invoice table */}
       <Card padding={false}>
