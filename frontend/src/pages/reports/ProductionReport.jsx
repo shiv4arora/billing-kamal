@@ -183,21 +183,22 @@ export default function ProductionReport() {
       </Card>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-blue-50 dark:bg-[rgba(10,132,255,0.12)] rounded-xl p-4">
           <p className="text-xs text-blue-500 dark:text-[#0A84FF] font-medium">Production Runs</p>
           <p className="text-2xl font-bold text-blue-900 dark:text-[#0A84FF]">{totals.entries}</p>
-          <p className="text-xs text-blue-400 mt-1">{totals.uniqueProducts} product{totals.uniqueProducts !== 1 ? 's' : ''}</p>
         </div>
         <div className="bg-green-50 dark:bg-[rgba(48,209,88,0.12)] rounded-xl p-4">
           <p className="text-xs text-green-600 dark:text-[#30D158] font-medium">Wholesale Value</p>
           <p className="text-2xl font-bold text-green-900 dark:text-[#30D158]">{formatCurrency(totals.wholesaleValue)}</p>
-          <p className="text-xs text-green-400 mt-1">{totals.outputQty.toLocaleString()} units out</p>
+        </div>
+        <div className="bg-teal-50 dark:bg-[rgba(48,176,199,0.12)] rounded-xl p-4">
+          <p className="text-xs text-teal-600 dark:text-[#5AC8FA] font-medium">Output Qty</p>
+          <p className="text-2xl font-bold text-teal-900 dark:text-[#5AC8FA]">{totals.outputQty.toLocaleString()}</p>
         </div>
         <div className="bg-purple-50 dark:bg-[rgba(191,90,242,0.12)] rounded-xl p-4">
-          <p className="text-xs text-purple-600 dark:text-[#BF5AF2] font-medium">Shop Value</p>
-          <p className="text-2xl font-bold text-purple-900 dark:text-[#BF5AF2]">{formatCurrency(totals.shopValue)}</p>
-          <p className="text-xs text-purple-400 mt-1">{totals.outputQty.toLocaleString()} units out</p>
+          <p className="text-xs text-purple-600 dark:text-[#BF5AF2] font-medium">Unique Products</p>
+          <p className="text-2xl font-bold text-purple-900 dark:text-[#BF5AF2]">{totals.uniqueProducts}</p>
         </div>
         <div className="bg-orange-50 dark:bg-[rgba(255,159,10,0.12)] rounded-xl p-4">
           <p className="text-xs text-orange-600 dark:text-[#FF9F0A] font-medium">Components Consumed</p>

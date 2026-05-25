@@ -2,12 +2,15 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSuppliers } from '../../context/SupplierContext';
 import { useLedger } from '../../context/LedgerContext';
+import { useAuth } from '../../context/AuthContext';
 import { Button, Table, SearchInput, ConfirmDialog, Card } from '../../components/ui';
 import { formatCurrency } from '../../utils/helpers';
 
 export default function SupplierList() {
   const { active, remove } = useSuppliers();
   const { getBalance } = useLedger();
+  const { can, isAdmin } = useAuth();
+  const hasAccounts = isAdmin || can('accounts');
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [confirm, setConfirm] = useState(null);
@@ -51,7 +54,7 @@ export default function SupplierList() {
       header: 'GSTIN',
       render: s => s.gstin || <span className="text-gray-300 italic">—</span>,
     },
-    {
+    ...(hasAccounts ? [{
       header: 'Balance',
       align: 'right',
       render: s => {
@@ -62,12 +65,12 @@ export default function SupplierList() {
           ? <span className="text-purple-600 font-semibold text-sm">{formatCurrency(Math.abs(bal))} <span className="text-xs">Dr</span></span>
           : <span className="text-gray-400 text-sm">Settled</span>;
       },
-    },
+    }] : []),
     {
       header: '',
       render: s => (
         <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-          <Button size="sm" variant="ghost" onClick={() => navigate(`/suppliers/${s.id}/ledger`)}>📗 Ledger</Button>
+          {hasAccounts && <Button size="sm" variant="ghost" onClick={() => navigate(`/suppliers/${s.id}/ledger`)}>📗 Ledger</Button>}
           <Button size="sm" variant="ghost" onClick={() => navigate(`/products/opening-stock?supplierId=${s.id}&supplierName=${encodeURIComponent(s.name)}`)}>📦 Add Stock</Button>
           <Button size="sm" variant="ghost" onClick={() => navigate(`/suppliers/${s.id}/edit`)}>Edit</Button>
           <Button size="sm" variant="ghost" onClick={() => setConfirm(s.id)}>🗑</Button>
@@ -106,7 +109,7 @@ export default function SupplierList() {
         <div className="p-4 border-b">
           <SearchInput value={search} onChange={setSearch} placeholder="Search by name, place, contact person or phone…" />
         </div>
-        <Table columns={columns} data={filtered} onRowClick={s => navigate(`/suppliers/${s.id}/ledger`)} emptyMsg="No suppliers found. Add your first supplier!" />
+        <Table columns={columns} data={filtered} onRowClick={hasAccounts ? s => navigate(`/suppliers/${s.id}/ledger`) : undefined} emptyMsg="No suppliers found. Add your first supplier!" />
         {filtered.length > 0 && (
           <div className="px-4 py-2 border-t text-xs text-gray-400">
             Showing {filtered.length} of {active.length} suppliers

@@ -83,11 +83,11 @@ function LayoutRoutes() {
           <Route path="/customers" element={<CustomerList />} />
           <Route path="/customers/new" element={<CustomerForm />} />
           <Route path="/customers/:id/edit" element={<CustomerForm />} />
-          <Route path="/customers/:id/ledger" element={<CustomerLedger />} />
+          {(isAdmin || can('accounts')) && <Route path="/customers/:id/ledger" element={<CustomerLedger />} />}
           <Route path="/suppliers" element={<SupplierList />} />
           <Route path="/suppliers/new" element={<SupplierForm />} />
           <Route path="/suppliers/:id/edit" element={<SupplierForm />} />
-          <Route path="/suppliers/:id/ledger" element={<SupplierLedger />} />
+          {(isAdmin || can('accounts')) && <Route path="/suppliers/:id/ledger" element={<SupplierLedger />} />}
           <Route path="/sales" element={<SaleInvoiceList />} />
           <Route path="/sales/new" element={<SaleInvoiceCreate />} />
           <Route path="/sales/:id" element={<SaleInvoiceView />} />

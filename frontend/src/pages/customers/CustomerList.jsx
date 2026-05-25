@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCustomers } from '../../context/CustomerContext';
 import { useLedger } from '../../context/LedgerContext';
+import { useAuth } from '../../context/AuthContext';
 import { Button, Table, Badge, SearchInput, ConfirmDialog, Card } from '../../components/ui';
 import { formatCurrency } from '../../utils/helpers';
 
@@ -10,6 +11,8 @@ const typeColor = { wholesale: 'blue', shop: 'purple' };
 export default function CustomerList() {
   const { active, remove } = useCustomers();
   const { getBalance } = useLedger();
+  const { can, isAdmin } = useAuth();
+  const hasAccounts = isAdmin || can('accounts');
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [confirm, setConfirm] = useState(null);
@@ -52,7 +55,7 @@ export default function CustomerList() {
       header: 'Type',
       render: c => <Badge color={typeColor[c.type] || 'gray'}>{c.type}</Badge>,
     },
-    {
+    ...(hasAccounts ? [{
       header: 'Balance',
       align: 'right',
       render: c => {
@@ -63,12 +66,12 @@ export default function CustomerList() {
           ? <span className="text-purple-600 font-semibold text-sm">{formatCurrency(Math.abs(bal))} <span className="text-xs">Cr</span></span>
           : <span className="text-gray-400 text-sm">Settled</span>;
       },
-    },
+    }] : []),
     {
       header: '',
       render: c => (
         <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-          <Button size="sm" variant="ghost" onClick={() => navigate(`/customers/${c.id}/ledger`)}>📒 Ledger</Button>
+          {hasAccounts && <Button size="sm" variant="ghost" onClick={() => navigate(`/customers/${c.id}/ledger`)}>📒 Ledger</Button>}
           <Button size="sm" variant="ghost" onClick={() => navigate(`/customers/${c.id}/edit`)}>Edit</Button>
           <Button size="sm" variant="ghost" onClick={() => setConfirm(c.id)}>🗑</Button>
         </div>
@@ -111,7 +114,7 @@ export default function CustomerList() {
             <option value="shop">Shop</option>
           </select>
         </div>
-        <Table columns={columns} data={filtered} onRowClick={c => navigate(`/customers/${c.id}/ledger`)} emptyMsg="No customers found. Add your first customer!" />
+        <Table columns={columns} data={filtered} onRowClick={hasAccounts ? c => navigate(`/customers/${c.id}/ledger`) : undefined} emptyMsg="No customers found. Add your first customer!" />
         {filtered.length > 0 && (
           <div className="px-4 py-2 border-t text-xs text-gray-400">
             Showing {filtered.length} of {active.length} customers

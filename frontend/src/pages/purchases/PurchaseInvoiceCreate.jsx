@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../../hooks/useApi';
 import { useInvoiceLock } from '../../hooks/useInvoiceLock';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useInvoices } from '../../context/InvoiceContext';
 import { useProducts } from '../../context/ProductContext';
 import { useSuppliers } from '../../context/SupplierContext';
@@ -250,6 +250,7 @@ function ItemCard({ item, idx, supplier, products, onUpdate, onRemove, nextSku }
 export default function PurchaseInvoiceCreate() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const toast = useGlobalToast();
   const { addPurchaseInvoice, updatePurchaseInvoice, getPurchaseInvoice } = useInvoices();
   const { active: products, refresh: refreshProducts } = useProducts();
@@ -281,6 +282,15 @@ export default function PurchaseInvoiceCreate() {
   const [otherChargesNarration, setOtherChargesNarration] = useState('');
   const [supplierSearch, setSupplierSearch] = useState('');
   const [showSupplierDrop, setShowSupplierDrop] = useState(false);
+
+  // Pre-fill supplier from URL param (e.g. ?supplierId=xxx) on new invoices
+  useEffect(() => {
+    if (isEdit || !suppliers.length) return;
+    const urlSupplierId = searchParams.get('supplierId');
+    if (!urlSupplierId) return;
+    const sup = suppliers.find(s => s.id === urlSupplierId);
+    if (sup) { setSupplierId(sup.id); setSupplierSearch(sup.name); }
+  }, [suppliers.length, isEdit]);
 
   useEffect(() => {
     if (isEdit) {
