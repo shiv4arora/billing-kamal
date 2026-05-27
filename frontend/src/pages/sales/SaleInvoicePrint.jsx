@@ -84,6 +84,10 @@ export default function SaleInvoicePrint() {
       ctx.fillRect(0, 0, strip.width, strip.height);
       ctx.drawImage(canvas, 0, page * contentH_px, canvas.width, contentH_px, 0, 0, canvas.width, contentH_px);
       pdf.addImage(strip.toDataURL('image/jpeg', 0.82), 'JPEG', margin, margin, contentW, contentH);
+      // Page number at bottom centre, inside bottom margin
+      pdf.setFontSize(8);
+      pdf.setTextColor(130, 130, 130);
+      pdf.text(`Page ${page + 1} of ${totalPages}`, pageW / 2, pageH - 4, { align: 'center' });
     }
     return pdf.output('blob');
   };
@@ -142,6 +146,25 @@ export default function SaleInvoicePrint() {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      <style>{`
+        @media print {
+          @page { margin-bottom: 14mm; }
+          .print-page-num {
+            display: block !important;
+            position: fixed;
+            bottom: 4mm;
+            left: 0; right: 0;
+            text-align: center;
+            font-size: 8pt;
+            color: #9ca3af;
+          }
+          .print-page-num::after {
+            content: "Page " counter(page) " of " counter(pages);
+          }
+        }
+        .print-page-num { display: none; }
+      `}</style>
+      <div className="print-page-num" />
       {/* Toolbar */}
       <div className="no-print sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm px-4 py-3 flex gap-2 flex-wrap items-center">
         <button onClick={() => window.history.back()} className="text-gray-500 hover:text-gray-700 text-sm px-2 py-1.5">
@@ -219,10 +242,16 @@ export default function SaleInvoicePrint() {
           </thead>
           <tbody>
             {items.map((item, i) => {
+              const isFirst = i === 0;
+              const isLast  = i === items.length - 1;
               const gross = item.quantity * item.unitPrice;
               const taxable = item.taxableAmount ?? item.lineTotal;
+              const trStyle = {
+                ...(isFirst ? { borderTop:    '2px solid #374151' } : {}),
+                ...(isLast  ? { borderBottom: '2px solid #374151' } : {}),
+              };
               return (
-                <tr key={i}>
+                <tr key={i} style={trStyle}>
                   <td className="border border-gray-300 px-2 py-1">{i + 1}</td>
                   <td className="border border-gray-300 px-2 py-1">
                     {item.productName}
