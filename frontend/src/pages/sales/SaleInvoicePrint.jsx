@@ -88,35 +88,40 @@ export default function SaleInvoicePrint() {
     return pdf.output('blob');
   };
 
-  const shareWhatsApp = async () => {
+  const sharePdf = async () => {
     const phone = customerPhone.replace(/\D/g, '');
     const text  = buildMessage();
+    const parts = [inv.customerName, inv.customerPlace].filter(Boolean).join(' ');
+    const fileName = `${parts || 'Invoice'} - ${inv.invoiceNumber || id}.pdf`;
 
-    // Try Web Share API with PDF file (works on mobile)
-    if (navigator.canShare) {
-      try {
-        setSharing(true);
-        const blob = await generatePdfBlob();
-        const parts = [inv.customerName, inv.customerPlace].filter(Boolean).join(' ');
-        const fileName = `${parts || 'Invoice'} - ${inv.invoiceNumber || id}.pdf`;
-        const file = new File([blob], fileName, { type: 'application/pdf' });
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], text });
-          return;
-        }
-      } catch (err) {
-        console.warn('Share with file failed, trying text-only:', err);
-      } finally {
-        setSharing(false);
+    try {
+      setSharing(true);
+      const blob = await generatePdfBlob();
+      const file = new File([blob], fileName, { type: 'application/pdf' });
+
+      // Native share sheet (iOS/Android) with PDF
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], text });
+        return;
       }
-    }
 
-    // Fallback: open WhatsApp with text only
-    const encoded = encodeURIComponent(text);
-    const url = phone
-      ? `https://wa.me/91${phone}?text=${encoded}`
-      : `https://wa.me/?text=${encoded}`;
-    window.open(url, '_blank');
+      // Fallback: download the PDF
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        // Last fallback: WhatsApp text only
+        const encoded = encodeURIComponent(text);
+        const url = phone ? `https://wa.me/91${phone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+        window.open(url, '_blank');
+      }
+    } finally {
+      setSharing(false);
+    }
   };
 
   const downloadPdf = async () => {
@@ -136,32 +141,36 @@ export default function SaleInvoicePrint() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="no-print p-4 bg-gray-100 flex gap-3 flex-wrap items-center">
+    <div className="min-h-screen bg-gray-100">
+      {/* Toolbar */}
+      <div className="no-print sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm px-4 py-3 flex gap-2 flex-wrap items-center">
+        <button onClick={() => window.history.back()} className="text-gray-500 hover:text-gray-700 text-sm px-2 py-1.5">
+          ← Back
+        </button>
+        <div className="flex-1" />
         <button onClick={() => {
             const wasDark = document.documentElement.classList.contains('dark');
             if (wasDark) document.documentElement.classList.remove('dark');
             window.print();
             if (wasDark) document.documentElement.classList.add('dark');
           }}
-          className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium">
+          className="hidden sm:flex items-center gap-1.5 bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium">
           🖨 Print
         </button>
         <button onClick={downloadPdf} disabled={sharing}
-          className="bg-blue-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-600 disabled:opacity-60">
-          {sharing ? '⏳ Generating…' : '📄 Download PDF'}
+          className="hidden sm:flex items-center gap-1.5 bg-gray-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-60">
+          {sharing ? '⏳…' : '📄 PDF'}
         </button>
-        <button onClick={shareWhatsApp} disabled={sharing}
-          className="bg-green-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-green-600 disabled:opacity-60">
-          {sharing ? '⏳ Generating…' : '💬 Send on WhatsApp'}
-        </button>
-        <button onClick={() => window.history.back()}
-          className="bg-gray-200 px-4 py-2 rounded text-sm">
-          ← Back
+        <button onClick={sharePdf} disabled={sharing}
+          className="flex items-center gap-1.5 bg-green-500 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-green-600 disabled:opacity-60">
+          {sharing ? '⏳ Generating…' : '📤 Share'}
         </button>
       </div>
 
-      <div ref={invoiceRef} className="p-8 max-w-[210mm] mx-auto text-[13px] border border-gray-300 rounded">
+      {/* A4 preview — horizontally scrollable on mobile so full layout is always visible */}
+      <div className="overflow-x-auto py-6 px-2">
+        <div className="min-w-[210mm]">
+      <div ref={invoiceRef} className="p-8 max-w-[210mm] mx-auto text-[13px] bg-white border border-gray-300 shadow-md">
         {/* Header */}
         <div className="flex justify-between items-start mb-6 pb-4 border-b-2 border-gray-800">
           <div>
@@ -290,6 +299,8 @@ export default function SaleInvoicePrint() {
             <div className="w-36 border-b border-gray-400 mb-1"></div>
             Authorised Signatory
           </div>
+        </div>
+      </div>
         </div>
       </div>
     </div>
