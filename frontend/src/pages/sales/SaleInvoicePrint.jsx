@@ -172,7 +172,7 @@ export default function SaleInvoicePrint() {
             <p className="text-gray-600">GSTIN: {company.gstin || '07AHDPR6884P1ZC'}</p>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold text-gray-900">TAX INVOICE</p>
+            <p className="text-2xl font-bold text-gray-900">PROFORMA INVOICE</p>
             <p className="text-gray-700 mt-1">
               <span className="font-semibold">Invoice No: </span>
               <strong>{inv.invoiceNumber}</strong>

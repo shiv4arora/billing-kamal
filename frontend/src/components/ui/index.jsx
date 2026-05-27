@@ -131,7 +131,7 @@ export function Table({ columns, data, onRowClick, emptyMsg = 'No records found'
 export function SearchInput({ value, onChange, placeholder = 'Search...' }) {
   return (
     <div className="relative">
-      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">🔍</span>
       <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
         className="pl-9 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 w-full" />
     </div>
