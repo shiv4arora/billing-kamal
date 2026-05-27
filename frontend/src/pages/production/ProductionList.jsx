@@ -1,92 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useProducts } from '../../context/ProductContext';
 import { api } from '../../hooks/useApi';
 import { formatDate, formatCurrency } from '../../utils/helpers';
 import { Button } from '../../components/ui';
 
-/* ── Quick-label popover ── */
-function LabelPopover({ entry, products, onClose }) {
-  const navigate = useNavigate();
-  const ref = useRef(null);
-
-  const outputs = Array.isArray(entry.outputs) && entry.outputs.length > 0
-    ? entry.outputs
-    : [{ productId: entry.outputProductId, productName: entry.outputProductName, quantity: entry.outputQuantity, pricing: {}, unit: '' }];
-
-  const [qtys, setQtys] = useState(() => {
-    const init = {};
-    outputs.forEach(o => { init[o.productId] = 1; });
-    return init;
-  });
-
-  // Close on outside click
-  useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
-
-  const setQty = (productId, val) => {
-    const n = Math.max(0, Math.min(99, Number(val) || 0));
-    setQtys(prev => ({ ...prev, [productId]: n }));
-  };
-
-  const printNow = () => {
-    const items = outputs
-      .filter(o => (qtys[o.productId] || 0) > 0)
-      .map(o => {
-        const p = products.find(p => p.id === o.productId);
-        const pricing = p
-          ? ((typeof p.pricing === 'object' && p.pricing !== null) ? p.pricing : (() => { try { return JSON.parse(p.pricing || '{}'); } catch { return {}; } })())
-          : (o.pricing || {});
-        return {
-          product: { id: o.productId, name: o.productName, sku: p?.sku || o.sku || '', unit: o.unit || p?.unit || '', pricing },
-          qty: qtys[o.productId] || 0,
-        };
-      });
-    if (!items.length) return;
-    onClose();
-    navigate('/labels/bulk', { state: { items } });
-  };
-
-  const total = Object.values(qtys).reduce((s, n) => s + n, 0);
-
-  return (
-    <div ref={ref} className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-xl p-3 min-w-[220px]">
-      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Quick Labels</p>
-      <div className="space-y-2">
-        {outputs.map(o => (
-          <div key={o.productId} className="space-y-1">
-            <p className="text-xs font-semibold text-gray-700 truncate max-w-[190px]">{o.productName}</p>
-            <div className="flex items-center gap-1.5">
-              {[1, 2, 5].map(n => (
-                <button key={n} onClick={() => setQty(o.productId, n)}
-                  className={`px-2 py-1 text-xs font-bold rounded-md border transition-colors ${qtys[o.productId] === n ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-300'}`}>
-                  ×{n}
-                </button>
-              ))}
-              <input type="number" min="0" max="99" value={qtys[o.productId]}
-                onChange={e => setQty(o.productId, e.target.value)}
-                className="w-12 border border-gray-200 rounded-md px-1.5 py-1 text-xs text-center font-semibold focus:outline-none focus:ring-1 focus:ring-blue-400" />
-            </div>
-          </div>
-        ))}
-      </div>
-      <button onClick={printNow} disabled={total === 0}
-        className="mt-3 w-full py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-semibold rounded-lg transition-colors">
-        🖨 Print {total > 0 ? `${total} label${total !== 1 ? 's' : ''}` : 'Now'}
-      </button>
-    </div>
-  );
-}
-
 export default function ProductionList() {
   const navigate = useNavigate();
   const { active: products } = useProducts();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [openPopover, setOpenPopover] = useState(null); // entryId
 
   useEffect(() => {
     api('/production')
@@ -94,6 +17,23 @@ export default function ProductionList() {
       .catch(() => setEntries([]))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleLabels = (e) => {
+    const outputs = Array.isArray(e.outputs) && e.outputs.length > 0
+      ? e.outputs
+      : [{ productId: e.outputProductId, productName: e.outputProductName, quantity: e.outputQuantity, pricing: {}, unit: '' }];
+    const items = outputs.map(o => {
+      const p = products.find(p => p.id === o.productId);
+      const pricing = p
+        ? ((typeof p.pricing === 'object' && p.pricing !== null) ? p.pricing : (() => { try { return JSON.parse(p.pricing || '{}'); } catch { return {}; } })())
+        : (o.pricing || {});
+      return {
+        product: { id: o.productId, name: o.productName, sku: p?.sku || o.sku || '', unit: o.unit || p?.unit || '', pricing },
+        qty: o.quantity,
+      };
+    });
+    navigate('/labels/bulk', { state: { items } });
+  };
 
   return (
     <div className="space-y-4">
@@ -177,22 +117,13 @@ export default function ProductionList() {
                       >
                         ✏️ Edit
                       </button>
-                      <div className="relative">
-                        <button
-                          onClick={() => setOpenPopover(prev => prev === e.id ? null : e.id)}
-                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-                          title="Print labels"
-                        >
-                          🏷 Labels
-                        </button>
-                        {openPopover === e.id && (
-                          <LabelPopover
-                            entry={e}
-                            products={products}
-                            onClose={() => setOpenPopover(null)}
-                          />
-                        )}
-                      </div>
+                      <button
+                        onClick={() => handleLabels(e)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                        title="Print labels"
+                      >
+                        🏷 Labels
+                      </button>
                     </div>
                   </td>
                 </tr>
