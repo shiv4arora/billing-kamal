@@ -18,8 +18,8 @@ export default function ProductList() {
   const [skuLoading, setSkuLoading] = useState(false);
   const [filterSupplier, setFilterSupplier] = useState('');
   const [filterStock, setFilterStock] = useState('');   // '' | 'low' | 'out'
-  const [sortKey, setSortKey] = useState('name');       // 'name'|'stock'|'wholesale'|'shop'
-  const [sortDir, setSortDir] = useState('asc');        // 'asc'|'desc'
+  const [sortKey, setSortKey] = useState('sku');        // 'name'|'sku'|'stock'|'wholesale'|'shop'
+  const [sortDir, setSortDir] = useState('desc');       // 'asc'|'desc'
   const [showFilters, setShowFilters] = useState(false);
 
   const openSkuModal = async (p, e) => {
