@@ -87,10 +87,11 @@ const S = StyleSheet.create({
   // ── Column widths ──
   cNum:  { width: 22 },
   cDesc: { flex: 1 },
-  cQty:  { width: 70, textAlign: 'right' },
-  cRate: { width: 82, textAlign: 'right' },
-  cTot:  { width: 88, textAlign: 'right' },
-  cDisc: { width: 46, textAlign: 'right' },
+  cQty:  { width: 68, textAlign: 'right' },
+  cRate: { width: 78, textAlign: 'right' },
+  cTot:  { width: 78, textAlign: 'right' },
+  cDisc: { width: 40, textAlign: 'right' },
+  cAmt:  { width: 88, textAlign: 'right' },
 
   // ── Summary ──
   summary:    { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
@@ -184,7 +185,7 @@ export function InvoicePDF({ inv, company, invSettings, customerAddress, custome
           {hasDiscount && <Text style={[S.th, S.cTot]}>Total</Text>}
           {hasDiscount && <Text style={[S.th, S.cDisc]}>Disc%</Text>}
           {!hasDiscount && <Text style={[S.th, S.cRate]}>Rate</Text>}
-          <Text style={[S.thL, S.cTot]}>{hasDiscount ? 'Amount' : 'Total'}</Text>
+          <Text style={[S.thL, S.cAmt]}>{hasDiscount ? 'Amount' : 'Total'}</Text>
         </View>
 
         {items.map((item, i) => {
@@ -202,7 +203,7 @@ export function InvoicePDF({ inv, company, invSettings, customerAddress, custome
               {hasDiscount && <Text style={[S.td, S.cTot]}>{cur(gross)}</Text>}
               {hasDiscount && <Text style={[S.td, S.cDisc]}>{item.discountPct || 0}%</Text>}
               {!hasDiscount && <Text style={[S.td, S.cRate]}>{cur(item.unitPrice)}</Text>}
-              <Text style={[S.tdL, S.cTot, { fontWeight: 'bold' }]}>
+              <Text style={[S.tdL, S.cAmt, { fontWeight: 'bold' }]}>
                 {hasDiscount ? cur(taxable) : cur(gross)}
               </Text>
             </View>
@@ -217,7 +218,7 @@ export function InvoicePDF({ inv, company, invSettings, customerAddress, custome
           {hasDiscount && <Text style={[S.tfc, S.cTot]}>{cur(grossTotal)}</Text>}
           {hasDiscount && <Text style={[S.tfc, S.cDisc]}> </Text>}
           {!hasDiscount && <Text style={[S.tfc, S.cRate]}> </Text>}
-          <Text style={[S.tfL, S.cTot]}>{hasDiscount ? cur(totalTaxable) : cur(grossTotal)}</Text>
+          <Text style={[S.tfL, S.cAmt]}>{hasDiscount ? cur(totalTaxable) : cur(grossTotal)}</Text>
         </View>
 
         {/* ── Summary ── */}
