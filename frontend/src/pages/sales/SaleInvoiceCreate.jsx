@@ -14,7 +14,7 @@ import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedCh
 import BarcodeScanner from '../../components/BarcodeScanner';
 
 const BLANK_ITEM = { isFreeText: false, productId: '', productName: '', sku: '', hsnCode: '', unit: 'Pcs', quantity: 1, unitPrice: 0, discountPct: 0, gstRate: 0, vendorCode: '' };
-const BLANK_CUSTOMER = { name: '', phone: '', place: '', type: 'shop', gstin: '' };
+const BLANK_CUSTOMER = { name: '', phone: '', place: '', type: 'wholesale', gstin: '' };
 
 export default function SaleInvoiceCreate() {
   const { id } = useParams();

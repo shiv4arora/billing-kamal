@@ -28,6 +28,12 @@ function StatCard({ label, value, sub, color }) {
   );
 }
 
+function daysAgoStr(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { saleInvoices } = useInvoices();
@@ -35,7 +41,8 @@ export default function Dashboard() {
   const { active: customers } = useCustomers();
   const { settings } = useSettings();
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today   = new Date().toISOString().slice(0, 10);
+  const day5ago = daysAgoStr(5);
 
   const todayInvoices = useMemo(() =>
     [...saleInvoices]
@@ -44,17 +51,21 @@ export default function Dashboard() {
     [saleInvoices, today]
   );
 
-  const todaySales    = todayInvoices.reduce((s, i) => s + (i.grandTotal || 0), 0);
-  const pendingDues   = customers.reduce((s, c) => s + Math.max(c.balance || 0, 0), 0);
-  const lowStockCount = products.filter(p => (p.currentStock || 0) <= (p.lowStockThreshold ?? settings.lowStockThreshold)).length;
-
-  const topDues = useMemo(() =>
-    [...customers]
-      .filter(c => (c.balance || 0) > 0.01)
-      .sort((a, b) => b.balance - a.balance)
-      .slice(0, 12),
-    [customers]
+  // Invoices in last 5 days with an outstanding balance
+  const unsettledRecent = useMemo(() =>
+    [...saleInvoices]
+      .filter(i =>
+        i.status !== 'void' &&
+        i.date >= day5ago &&
+        (i.grandTotal || 0) - (i.amountPaid || 0) > 0.01
+      )
+      .sort((a, b) => new Date(b.date) - new Date(a.date)),
+    [saleInvoices, day5ago]
   );
+
+  const todaySales    = todayInvoices.reduce((s, i) => s + (i.grandTotal || 0), 0);
+  const unsettledTotal = unsettledRecent.reduce((s, i) => s + ((i.grandTotal || 0) - (i.amountPaid || 0)), 0);
+  const lowStockCount = products.filter(p => (p.currentStock || 0) <= (p.lowStockThreshold ?? settings.lowStockThreshold)).length;
 
   const waText = (inv) => {
     const bal = (inv.grandTotal || 0) - (inv.amountPaid || 0);
@@ -65,34 +76,29 @@ export default function Dashboard() {
     );
   };
 
-  const waReminderText = (c) =>
-    encodeURIComponent(
-      `Dear ${c.name},\n\nThis is a reminder that you have an outstanding balance of ${formatCurrency(c.balance)} with us.\n\nPlease arrange payment at your earliest convenience.\n\n${settings.company?.name || 'Kamal Jewellers'}`
-    );
-
   return (
     <div className="space-y-4">
 
-      {/* ── Header ── */}
+      {/* ── Header + action buttons ── */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-xl font-bold text-gray-900">Today's Overview</h1>
         <div className="flex gap-2">
           <Link to="/sales/new"
             className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700">
-            + New Invoice
+            + Sale Invoice
           </Link>
-          <Link to="/production/new"
-            className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 hidden sm:inline-flex">
-            + Production
+          <Link to="/purchases/new"
+            className="bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-800">
+            + Purchase Invoice
           </Link>
         </div>
       </div>
 
       {/* ── Stat cards ── */}
       <div className="grid grid-cols-3 gap-3">
-        <StatCard label="Today's Sales"  value={formatCurrency(todaySales)}    color="green" sub={`${todayInvoices.length} invoice${todayInvoices.length !== 1 ? 's' : ''}`} />
-        <StatCard label="Pending Dues"   value={formatCurrency(pendingDues)}   color="orange" sub={`${topDues.length} customer${topDues.length !== 1 ? 's' : ''}`} />
-        <StatCard label="Low Stock"      value={lowStockCount}                 color={lowStockCount > 0 ? 'red' : 'green'} sub="items" />
+        <StatCard label="Today's Sales"   value={formatCurrency(todaySales)}    color="green"  sub={`${todayInvoices.length} invoice${todayInvoices.length !== 1 ? 's' : ''}`} />
+        <StatCard label="Unsettled (5d)"  value={formatCurrency(unsettledTotal)} color="orange" sub={`${unsettledRecent.length} invoice${unsettledRecent.length !== 1 ? 's' : ''}`} />
+        <StatCard label="Low Stock"       value={lowStockCount}                 color={lowStockCount > 0 ? 'red' : 'green'} sub="items" />
       </div>
 
       {/* ── Mobile quick actions ── */}
@@ -111,20 +117,21 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* ── Two-column ops layout (desktop) ── */}
+      {/* ── Desktop two-column layout ── */}
       <div className="hidden sm:grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-        {/* Today's invoices */}
+        {/* Today's sales */}
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="font-semibold text-gray-800">Today's Invoices</h2>
+            <h2 className="font-semibold text-gray-800">Today's Sales</h2>
             <Link to="/sales" className="text-blue-600 text-sm hover:underline">View all</Link>
           </div>
           {todayInvoices.length === 0 ? (
             <div className="py-16 text-center text-gray-400">
               <p className="text-3xl mb-2">🧾</p>
               <p className="text-sm">No invoices today yet</p>
-              <Link to="/sales/new" className="mt-3 inline-block bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700">
+              <Link to="/sales/new"
+                className="mt-3 inline-block bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700">
                 Create Invoice
               </Link>
             </div>
@@ -151,17 +158,14 @@ export default function Dashboard() {
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-sm font-bold text-gray-900">{formatCurrency(inv.grandTotal)}</p>
-                      {bal > 0.01 && <p className="text-xs text-red-600">Due {formatCurrency(bal)}</p>}
+                      {bal > 0.01 && <p className="text-xs text-red-500">Due {formatCurrency(bal)}</p>}
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <button
-                        onClick={() => navigate(`/sales/${inv.id}/print`)}
-                        title="Print / Download"
+                      <button onClick={() => navigate(`/sales/${inv.id}/print`)} title="Print / Download"
                         className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg text-sm">
                         🖨
                       </button>
-                      <a href={waUrl} target="_blank" rel="noreferrer"
-                        title="Send on WhatsApp"
+                      <a href={waUrl} target="_blank" rel="noreferrer" title="Send on WhatsApp"
                         className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg text-sm">
                         💬
                       </a>
@@ -173,38 +177,52 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Outstanding dues */}
+        {/* Unsettled dues — last 5 days */}
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="font-semibold text-gray-800">Outstanding Dues</h2>
-            <Link to="/customers" className="text-blue-600 text-sm hover:underline">View all</Link>
+            <h2 className="font-semibold text-gray-800">Unsettled Dues <span className="text-xs font-normal text-gray-400 ml-1">last 5 days</span></h2>
+            <Link to="/sales" className="text-blue-600 text-sm hover:underline">View all</Link>
           </div>
-          {topDues.length === 0 ? (
+          {unsettledRecent.length === 0 ? (
             <div className="py-16 text-center text-gray-400">
               <p className="text-3xl mb-2">✅</p>
-              <p className="text-sm">No outstanding dues</p>
+              <p className="text-sm">All recent invoices settled</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-100 max-h-[420px] overflow-y-auto">
-              {topDues.map(c => {
-                const phone = (c.phone || '').replace(/\D/g, '');
+              {unsettledRecent.map(inv => {
+                const bal = (inv.grandTotal || 0) - (inv.amountPaid || 0);
+                const phone = (inv.customerPhone || '').replace(/\D/g, '');
                 const waUrl = phone
-                  ? `https://wa.me/91${phone}?text=${waReminderText(c)}`
-                  : `https://wa.me/?text=${waReminderText(c)}`;
+                  ? `https://wa.me/91${phone}?text=${waText(inv)}`
+                  : `https://wa.me/?text=${waText(inv)}`;
                 return (
-                  <div key={c.id} className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50 group">
+                  <div key={inv.id} className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50 group">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 truncate">{c.name}</p>
-                      <p className="text-xs text-gray-400 truncate">{c.place || c.phone || ''}</p>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm font-semibold text-blue-600">{inv.invoiceNumber}</span>
+                        <span className="text-xs text-gray-400">{formatDate(inv.date)}</span>
+                      </div>
+                      <p className="text-xs text-gray-500 truncate mt-0.5">
+                        {formatCustomerDisplay(inv.customerName, inv.customerPlace, inv.customerType)}
+                      </p>
                     </div>
-                    <p className="text-sm font-bold text-red-600 shrink-0">{formatCurrency(c.balance)}</p>
-                    {phone && (
-                      <a href={waUrl} target="_blank" rel="noreferrer"
-                        title="Send reminder on WhatsApp"
-                        className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg text-sm opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                        💬
-                      </a>
-                    )}
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-red-600">{formatCurrency(bal)}</p>
+                      <p className="text-xs text-gray-400">of {formatCurrency(inv.grandTotal)}</p>
+                    </div>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <button onClick={() => navigate(`/sales/${inv.id}/print`)} title="Print / Download"
+                        className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg text-sm">
+                        🖨
+                      </button>
+                      {phone && (
+                        <a href={waUrl} target="_blank" rel="noreferrer" title="Send reminder on WhatsApp"
+                          className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg text-sm">
+                          💬
+                        </a>
+                      )}
+                    </div>
                   </div>
                 );
               })}
