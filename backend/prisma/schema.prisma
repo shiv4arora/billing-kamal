@@ -109,6 +109,7 @@ model SaleInvoice {
   paymentDate   String?
   notes         String   @default("")
   status        String   @default("draft")
+  isCreditSale  Boolean  @default(false)
   lockedBy      String?           // username of who is editing
   lockedAt      String?           // ISO timestamp of lock
   createdAt     DateTime @default(now())

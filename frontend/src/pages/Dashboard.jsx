@@ -5,6 +5,7 @@ import { useProducts } from '../context/ProductContext';
 import { useCustomers } from '../context/CustomerContext';
 import { useSettings } from '../context/SettingsContext';
 import { formatCurrency, formatDate, formatCustomerDisplay } from '../utils/helpers';
+import { api } from '../hooks/useApi';
 
 const payBadge = {
   paid:    'bg-green-100 text-green-700',
@@ -34,10 +35,6 @@ function daysAgoStr(n) {
   return d.toISOString().slice(0, 10);
 }
 
-const LS_CREDIT = 'dashboard_credit_sales';
-const lsGetCredit  = () => { try { return new Set(JSON.parse(localStorage.getItem(LS_CREDIT) || '[]')); } catch { return new Set(); } };
-const lsSaveCredit = (s) => localStorage.setItem(LS_CREDIT, JSON.stringify([...s]));
-
 export default function Dashboard() {
   const navigate = useNavigate();
   const { saleInvoices } = useInvoices();
@@ -45,15 +42,17 @@ export default function Dashboard() {
   const { active: customers } = useCustomers();
   const { settings } = useSettings();
 
-  const [creditIds, setCreditIds] = useState(lsGetCredit);
+  // Optimistic local set — avoids waiting for context refresh after marking credit sale
+  const [localCreditIds, setLocalCreditIds] = useState(new Set());
 
-  const markCredit = (id) => {
-    setCreditIds(prev => {
-      const next = new Set(prev);
-      next.add(id);
-      lsSaveCredit(next);
-      return next;
-    });
+  const markCredit = async (id) => {
+    setLocalCreditIds(prev => new Set([...prev, id]));
+    try {
+      await api(`/sales/${id}/credit-sale`, { method: 'PATCH' });
+    } catch {
+      // revert optimistic update on failure
+      setLocalCreditIds(prev => { const s = new Set(prev); s.delete(id); return s; });
+    }
   };
 
   const today   = new Date().toISOString().slice(0, 10);
@@ -66,17 +65,18 @@ export default function Dashboard() {
     [saleInvoices, today]
   );
 
-  // Invoices in last 5 days with an outstanding balance, excluding credit-sale dismissed ones
+  // Invoices in last 5 days with an outstanding balance, excluding credit sales
   const unsettledRecent = useMemo(() =>
     [...saleInvoices]
       .filter(i =>
         i.status !== 'void' &&
         i.date >= day5ago &&
         (i.grandTotal || 0) - (i.amountPaid || 0) > 0.01 &&
-        !creditIds.has(i.id)
+        !i.isCreditSale &&
+        !localCreditIds.has(i.id)
       )
       .sort((a, b) => new Date(b.date) - new Date(a.date)),
-    [saleInvoices, day5ago, creditIds]
+    [saleInvoices, day5ago, localCreditIds]
   );
 
   const todaySales     = todayInvoices.reduce((s, i) => s + (i.grandTotal || 0), 0);

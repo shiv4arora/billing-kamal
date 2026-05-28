@@ -419,4 +419,14 @@ router.delete('/:id/lock', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+router.patch('/:id/credit-sale', async (req, res, next) => {
+  try {
+    const inv = await prisma.saleInvoice.update({
+      where: { id: req.params.id },
+      data: { isCreditSale: true },
+    });
+    res.json({ id: inv.id, isCreditSale: inv.isCreditSale });
+  } catch (err) { next(err); }
+});
+
 export default router;
