@@ -92,31 +92,32 @@ export default function SaleInvoicePrint() {
     const tableLeft  = (tableRect.left  - elRect.left) * canvasScale;
     const tableRight = (tableRect.right - elRect.left) * canvasScale;
 
-    // Draw first/last-item border lines on the full canvas for each page
+    // Draw first/last-item border lines on the full canvas for each page.
+    // Only draw at rows that START or END on that page — never through a split row.
     const cCtx = canvas.getContext('2d');
     cCtx.strokeStyle = '#374151';           // gray-700
     cCtx.lineWidth   = Math.round(2 * canvasScale); // 2 px visual weight
 
+    const drawLine = y => {
+      cCtx.beginPath(); cCtx.moveTo(tableLeft, y); cCtx.lineTo(tableRight, y); cCtx.stroke();
+    };
+
     for (let pg = 0; pg < totalPages; pg++) {
       const pgTop    = pg       * contentH_px;
       const pgBottom = (pg + 1) * contentH_px;
+      const slop     = 2; // px tolerance for floating-point edges
 
-      let firstRow = null, lastRow = null;
-      for (const row of rowBounds) {
-        if (row.bottom > pgTop && row.top < pgBottom) {
-          if (!firstRow) firstRow = row;
-          lastRow = row;
-        }
-      }
+      // First row whose top edge STARTS on this page (not a carry-over from prev page)
+      const firstStarting = rowBounds.find(
+        r => r.top >= pgTop - slop && r.top < pgBottom
+      );
+      // Last row whose bottom edge ENDS on this page (not split onto next page)
+      const lastEnding = [...rowBounds].reverse().find(
+        r => r.bottom > pgTop && r.bottom <= pgBottom + slop
+      );
 
-      if (firstRow) {
-        const y = Math.max(firstRow.top, pgTop) + cCtx.lineWidth / 2;
-        cCtx.beginPath(); cCtx.moveTo(tableLeft, y); cCtx.lineTo(tableRight, y); cCtx.stroke();
-      }
-      if (lastRow) {
-        const y = Math.min(lastRow.bottom, pgBottom) - cCtx.lineWidth / 2;
-        cCtx.beginPath(); cCtx.moveTo(tableLeft, y); cCtx.lineTo(tableRight, y); cCtx.stroke();
-      }
+      if (firstStarting) drawLine(firstStarting.top   + cCtx.lineWidth / 2);
+      if (lastEnding)    drawLine(lastEnding.bottom    - cCtx.lineWidth / 2);
     }
 
     for (let page = 0; page < totalPages; page++) {
@@ -288,16 +289,10 @@ export default function SaleInvoicePrint() {
           </thead>
           <tbody>
             {items.map((item, i) => {
-              const isFirst = i === 0;
-              const isLast  = i === items.length - 1;
               const gross = item.quantity * item.unitPrice;
               const taxable = item.taxableAmount ?? item.lineTotal;
-              const trStyle = {
-                ...(isFirst ? { borderTop:    '2px solid #374151' } : {}),
-                ...(isLast  ? { borderBottom: '2px solid #374151' } : {}),
-              };
               return (
-                <tr key={i} style={trStyle}>
+                <tr key={i}>
                   <td className="border border-gray-300 px-2 py-1">{i + 1}</td>
                   <td className="border border-gray-300 px-2 py-1">
                     {item.productName}
