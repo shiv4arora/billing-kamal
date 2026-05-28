@@ -54,36 +54,100 @@ export default function SaleInvoicePrint() {
     const wasDark = document.documentElement.classList.contains('dark');
     if (wasDark) document.documentElement.classList.remove('dark');
 
+    const el = invoiceRef.current;
     let canvas;
     try {
-      const el = invoiceRef.current;
       canvas = await html2canvas(el, { scale: 1.5, useCORS: true, backgroundColor: '#ffffff' });
     } finally {
       if (wasDark) document.documentElement.classList.add('dark');
     }
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 12; // mm on all 4 sides
+
+    const pdf     = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW   = pdf.internal.pageSize.getWidth();
+    const pageH   = pdf.internal.pageSize.getHeight();
+    const margin  = 12;
     const contentW = pageW - margin * 2;
     const contentH = pageH - margin * 2;
+    const pxPerMm  = canvas.width / contentW;
 
-    // px height of one page's content area (canvas is scaled to contentW mm wide)
-    const pxPerMm = canvas.width / contentW;
-    const contentH_px = Math.round(contentH * pxPerMm);
-    const totalPages = Math.ceil(canvas.height / contentH_px);
+    // ── Measure each tbody row's canvas position ──
+    const elRect      = el.getBoundingClientRect();
+    const canvasScale = canvas.width / elRect.width; // = 1.5
+    const tbodyRows   = Array.from(el.querySelectorAll('tbody tr'));
+    const rowBounds   = tbodyRows.map(tr => {
+      const r = tr.getBoundingClientRect();
+      return {
+        top:    (r.top    - elRect.top) * canvasScale,
+        bottom: (r.bottom - elRect.top) * canvasScale,
+      };
+    });
 
+    // Table left/right edges for border lines
+    const tableEl    = el.querySelector('table');
+    const tableRect  = tableEl ? tableEl.getBoundingClientRect() : elRect;
+    const tableLeft  = (tableRect.left  - elRect.left) * canvasScale;
+    const tableRight = (tableRect.right - elRect.left) * canvasScale;
+
+    // ── Build item-based page slices: 34 on page 1, 45 on subsequent ──
+    const ITEMS_P1 = 34;
+    const ITEMS_PN = 45;
+    const slices = [];
+    if (rowBounds.length > 0) {
+      const end1 = Math.min(ITEMS_P1 - 1, rowBounds.length - 1);
+      slices.push({ startY: 0, endY: rowBounds[end1].bottom, firstIdx: 0, lastIdx: end1 });
+      let si = ITEMS_P1;
+      while (si < rowBounds.length) {
+        const ei = Math.min(si + ITEMS_PN - 1, rowBounds.length - 1);
+        slices.push({ startY: rowBounds[si].top, endY: rowBounds[ei].bottom, firstIdx: si, lastIdx: ei });
+        si += ITEMS_PN;
+      }
+      // Last slice extends to canvas bottom so totals/signature are included
+      slices[slices.length - 1].endY = canvas.height;
+    } else {
+      slices.push({ startY: 0, endY: canvas.height, firstIdx: 0, lastIdx: 0 });
+    }
+    const totalPages = slices.length;
+
+    // ── Draw top/bottom border lines on full canvas for each slice ──
+    const cCtx = canvas.getContext('2d');
+    cCtx.strokeStyle = '#374151';
+    cCtx.lineWidth   = Math.round(2 * canvasScale);
+    const drawLine = y => {
+      cCtx.beginPath(); cCtx.moveTo(tableLeft, y); cCtx.lineTo(tableRight, y); cCtx.stroke();
+    };
+    for (const s of slices) {
+      if (rowBounds.length > 0) {
+        drawLine(rowBounds[s.firstIdx].top    + cCtx.lineWidth / 2);
+        drawLine(rowBounds[s.lastIdx].bottom  - cCtx.lineWidth / 2);
+      }
+    }
+
+    // ── Render each slice onto an A4 PDF page ──
     for (let page = 0; page < totalPages; page++) {
       if (page > 0) pdf.addPage();
-      // Slice this page's strip from the full canvas
-      const strip = document.createElement('canvas');
-      strip.width = canvas.width;
-      strip.height = contentH_px;
-      const ctx = strip.getContext('2d');
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, strip.width, strip.height);
-      ctx.drawImage(canvas, 0, page * contentH_px, canvas.width, contentH_px, 0, 0, canvas.width, contentH_px);
-      pdf.addImage(strip.toDataURL('image/jpeg', 0.82), 'JPEG', margin, margin, contentW, contentH);
+      const { startY, endY } = slices[page];
+      const sliceH = endY - startY;
+
+      const strip  = document.createElement('canvas');
+      strip.width  = canvas.width;
+      strip.height = Math.max(sliceH, 1);
+      const sCtx   = strip.getContext('2d');
+      sCtx.fillStyle = '#ffffff';
+      sCtx.fillRect(0, 0, strip.width, strip.height);
+      sCtx.drawImage(canvas, 0, startY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+
+      // Scale down only if taller than the content area
+      const sliceH_mm = sliceH / pxPerMm;
+      const placedH   = Math.min(sliceH_mm, contentH);
+      const placedW   = contentW * (placedH / sliceH_mm);
+      const offsetX   = margin + (contentW - placedW) / 2;
+
+      pdf.addImage(strip.toDataURL('image/jpeg', 0.82), 'JPEG', offsetX, margin, placedW, placedH);
+
+      // Page number at bottom centre
+      pdf.setFontSize(8);
+      pdf.setTextColor(130, 130, 130);
+      pdf.text(`Page ${page + 1} of ${totalPages}`, pageW / 2, pageH - 4, { align: 'center' });
     }
     return pdf.output('blob');
   };
@@ -172,7 +236,7 @@ export default function SaleInvoicePrint() {
             <p className="text-gray-600">GSTIN: {company.gstin || '07AHDPR6884P1ZC'}</p>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold text-gray-900">TAX INVOICE</p>
+            <p className="text-2xl font-bold text-gray-900">PROFORMA INVOICE</p>
             <p className="text-gray-700 mt-1">
               <span className="font-semibold">Invoice No: </span>
               <strong>{inv.invoiceNumber}</strong>
