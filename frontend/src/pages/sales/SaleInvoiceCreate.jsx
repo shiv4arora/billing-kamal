@@ -29,7 +29,7 @@ export default function SaleInvoiceCreate() {
   const lock = useInvoiceLock('sales', isEdit ? id : null);
 
   const [customerId, setCustomerId] = useState('');
-  const [customerType, setCustomerType] = useState('shop');
+  const [customerType, setCustomerType] = useState('wholesale');
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerDrop, setShowCustomerDrop] = useState(false);
   const [date, setDate] = useState(today());
@@ -690,8 +690,6 @@ export default function SaleInvoiceCreate() {
                                 onChange={e => {
                                   setProductSearch(p => ({ ...p, [idx]: e.target.value }));
                                   setShowDropdown(p => ({ ...p, [idx]: true }));
-                                  const rect = searchInputRefs.current[idx]?.getBoundingClientRect();
-                                  if (rect) setDropdownPos(p => ({ ...p, [idx]: { top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: Math.max(rect.width, 320) } }));
                                 }}
                                 onFocus={e => {
                                   const rect = e.target.getBoundingClientRect();
