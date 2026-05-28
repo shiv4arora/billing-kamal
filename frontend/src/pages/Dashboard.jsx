@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useInvoices } from '../context/InvoiceContext';
 import { useProducts } from '../context/ProductContext';
@@ -34,12 +34,27 @@ function daysAgoStr(n) {
   return d.toISOString().slice(0, 10);
 }
 
+const LS_CREDIT = 'dashboard_credit_sales';
+const lsGetCredit  = () => { try { return new Set(JSON.parse(localStorage.getItem(LS_CREDIT) || '[]')); } catch { return new Set(); } };
+const lsSaveCredit = (s) => localStorage.setItem(LS_CREDIT, JSON.stringify([...s]));
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { saleInvoices } = useInvoices();
   const { active: products } = useProducts();
   const { active: customers } = useCustomers();
   const { settings } = useSettings();
+
+  const [creditIds, setCreditIds] = useState(lsGetCredit);
+
+  const markCredit = (id) => {
+    setCreditIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      lsSaveCredit(next);
+      return next;
+    });
+  };
 
   const today   = new Date().toISOString().slice(0, 10);
   const day5ago = daysAgoStr(5);
@@ -51,19 +66,20 @@ export default function Dashboard() {
     [saleInvoices, today]
   );
 
-  // Invoices in last 5 days with an outstanding balance
+  // Invoices in last 5 days with an outstanding balance, excluding credit-sale dismissed ones
   const unsettledRecent = useMemo(() =>
     [...saleInvoices]
       .filter(i =>
         i.status !== 'void' &&
         i.date >= day5ago &&
-        (i.grandTotal || 0) - (i.amountPaid || 0) > 0.01
+        (i.grandTotal || 0) - (i.amountPaid || 0) > 0.01 &&
+        !creditIds.has(i.id)
       )
       .sort((a, b) => new Date(b.date) - new Date(a.date)),
-    [saleInvoices, day5ago]
+    [saleInvoices, day5ago, creditIds]
   );
 
-  const todaySales    = todayInvoices.reduce((s, i) => s + (i.grandTotal || 0), 0);
+  const todaySales     = todayInvoices.reduce((s, i) => s + (i.grandTotal || 0), 0);
   const unsettledTotal = unsettledRecent.reduce((s, i) => s + ((i.grandTotal || 0) - (i.amountPaid || 0)), 0);
   const lowStockCount = products.filter(p => (p.currentStock || 0) <= (p.lowStockThreshold ?? settings.lowStockThreshold)).length;
 
@@ -222,6 +238,12 @@ export default function Dashboard() {
                           💬
                         </a>
                       )}
+                      <button
+                        onClick={() => markCredit(inv.id)}
+                        title="Mark as credit sale — removes from this list"
+                        className="px-2 py-1 text-xs font-medium text-purple-600 hover:bg-purple-50 rounded-lg whitespace-nowrap">
+                        Credit Sale
+                      </button>
                     </div>
                   </div>
                 );
