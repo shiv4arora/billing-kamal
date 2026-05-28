@@ -99,7 +99,7 @@ export default function Dashboard() {
             + Sale Invoice
           </Link>
           <Link to="/purchases/new"
-            className="bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-800">
+            className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-600">
             + Purchase Invoice
           </Link>
           <Link to="/production/new"

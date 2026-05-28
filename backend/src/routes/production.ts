@@ -52,7 +52,7 @@ router.get('/', async (_req, res, next) => {
 /* ── POST /production/immediate — create SKU + entry, no components ── */
 router.post('/immediate', async (req, res, next) => {
   try {
-    const { name, wholesale, unit, supplierId, date } = req.body;
+    const { name, wholesale, unit, qty, supplierId, date } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'Product name is required' });
 
     const entry = await prisma.$transaction(async (tx) => {
@@ -60,6 +60,7 @@ router.post('/immediate', async (req, res, next) => {
       const today = date || new Date().toISOString().slice(0, 10);
       const sku = String(await allocateSkuNumbers(1, tx));
       const pricing = { wholesale: Number(wholesale) || 0, shop: 0 };
+      const quantity = Number(qty) || 0;
 
       const product = await tx.product.create({
         data: {
@@ -69,13 +70,19 @@ router.post('/immediate', async (req, res, next) => {
           gstRate: 0,
           pricing: JSON.stringify(pricing),
           costPrice: 0,
-          currentStock: 0,
+          currentStock: quantity,
           isActive: true,
           ...(supplierId ? { supplierId } : {}),
         },
       });
 
-      const output = { productId: product.id, productName: product.name, sku: product.sku, quantity: 0, pricing, unit: product.unit };
+      if (quantity > 0) {
+        await tx.stockLedger.create({
+          data: { productId: product.id, date: today, movementType: 'production_in', quantity, referenceId: '', referenceNo: entryNumber },
+        });
+      }
+
+      const output = { productId: product.id, productName: product.name, sku: product.sku, quantity, pricing, unit: product.unit };
 
       return tx.productionEntry.create({
         data: {
@@ -84,7 +91,7 @@ router.post('/immediate', async (req, res, next) => {
           outputs: JSON.stringify([output]),
           outputProductId: product.id,
           outputProductName: product.name,
-          outputQuantity: 0,
+          outputQuantity: quantity,
           notes: '', box: '',
           isImmediate: true,
         },

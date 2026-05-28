@@ -14,7 +14,7 @@ export default function ProductionList() {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showImmediate, setShowImmediate] = useState(false);
-  const [ipForm, setIpForm] = useState({ name: '', wholesale: '', unit: 'Pcs' });
+  const [ipForm, setIpForm] = useState({ name: '', wholesale: '', unit: 'Pcs', qty: '' });
   const [ipCreating, setIpCreating] = useState(false);
   const [ipList, setIpList] = useState([]);
   const ipNameRef = useRef(null);
@@ -35,11 +35,11 @@ export default function ProductionList() {
     try {
       const entry = await api('/production/immediate', {
         method: 'POST',
-        body: { name: ipForm.name.trim(), wholesale: +ipForm.wholesale || 0, unit: ipForm.unit, supplierId: maliFionna?.id || null },
+        body: { name: ipForm.name.trim(), wholesale: +ipForm.wholesale || 0, unit: ipForm.unit, qty: +ipForm.qty || 0, supplierId: maliFionna?.id || null },
       });
       const product = entry.outputs?.[0];
       setIpList(prev => [{ entryNumber: entry.entryNumber, productId: product?.productId, sku: product?.sku, name: product?.productName, wholesale: ipForm.wholesale }, ...prev]);
-      setIpForm(f => ({ ...f, name: '', wholesale: '' }));
+      setIpForm(f => ({ ...f, name: '', wholesale: '', qty: '' }));
       refreshProducts();
       setTimeout(() => ipNameRef.current?.focus(), 50);
     } catch {
@@ -102,6 +102,14 @@ export default function ProductionList() {
               onKeyDown={e => e.key === 'Enter' && createImmediate()}
               placeholder="Wholesale ₹"
               className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+            />
+            <input
+              type="number"
+              value={ipForm.qty}
+              onChange={e => setIpForm(f => ({ ...f, qty: e.target.value }))}
+              onKeyDown={e => e.key === 'Enter' && createImmediate()}
+              placeholder="Qty"
+              className="w-20 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
             />
             <select
               value={ipForm.unit}
