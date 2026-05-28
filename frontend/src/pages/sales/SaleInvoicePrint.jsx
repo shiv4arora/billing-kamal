@@ -86,6 +86,11 @@ export default function SaleInvoicePrint() {
     window.open(url, '_blank');
   };
 
+  const pdfFileName = () => {
+    const nameParts = [inv.customerName, inv.customerPlace].filter(Boolean).join(' ');
+    return `${nameParts || 'Invoice'} - ${inv.invoiceNumber || id}.pdf`;
+  };
+
   const downloadPdf = async () => {
     try {
       setSharing(true);
@@ -93,10 +98,23 @@ export default function SaleInvoicePrint() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const nameParts = [inv.customerName, inv.customerPlace].filter(Boolean).join(' ');
-      a.download = `${nameParts || 'Invoice'} - ${inv.invoiceNumber || id}.pdf`;
+      a.download = pdfFileName();
       a.click();
       URL.revokeObjectURL(url);
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const printPdf = async () => {
+    try {
+      setSharing(true);
+      const blob = await generatePdfBlob();
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, '_blank');
+      // Revoke after the tab has had time to load the blob
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      if (win) win.focus();
     } finally {
       setSharing(false);
     }
@@ -105,14 +123,9 @@ export default function SaleInvoicePrint() {
   return (
     <div className="min-h-screen bg-white">
       <div className="no-print p-4 bg-gray-100 flex gap-3 flex-wrap items-center">
-        <button onClick={() => {
-            const wasDark = document.documentElement.classList.contains('dark');
-            if (wasDark) document.documentElement.classList.remove('dark');
-            window.print();
-            if (wasDark) document.documentElement.classList.add('dark');
-          }}
-          className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium">
-          🖨 Print
+        <button onClick={printPdf} disabled={sharing}
+          className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-60">
+          {sharing ? '⏳ Generating…' : '🖨 Print'}
         </button>
         <button onClick={downloadPdf} disabled={sharing}
           className="bg-blue-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-600 disabled:opacity-60">
