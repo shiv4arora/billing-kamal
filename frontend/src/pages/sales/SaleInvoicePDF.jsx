@@ -13,7 +13,7 @@ Font.register({
 
 // Always show 2 decimal places, no currency symbol
 const cur = (v = 0) =>
-  '₹' + new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+  '₹ ' + new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
 
 const S = StyleSheet.create({
   page: {
