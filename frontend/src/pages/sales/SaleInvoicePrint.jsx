@@ -54,139 +54,69 @@ export default function SaleInvoicePrint() {
     const wasDark = document.documentElement.classList.contains('dark');
     if (wasDark) document.documentElement.classList.remove('dark');
 
-    const el = invoiceRef.current;
     let canvas;
     try {
+      const el = invoiceRef.current;
       canvas = await html2canvas(el, { scale: 1.5, useCORS: true, backgroundColor: '#ffffff' });
     } finally {
       if (wasDark) document.documentElement.classList.add('dark');
     }
-
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageW  = pdf.internal.pageSize.getWidth();
-    const pageH  = pdf.internal.pageSize.getHeight();
-    const margin = 12;
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 12; // mm on all 4 sides
     const contentW = pageW - margin * 2;
     const contentH = pageH - margin * 2;
-    const pxPerMm  = canvas.width / contentW;
 
-    // ── Measure tbody row positions in canvas pixels ──
-    const elRect      = el.getBoundingClientRect();
-    const canvasScale = canvas.width / elRect.width; // = html2canvas scale (1.5)
-    const tbodyRows   = Array.from(el.querySelectorAll('tbody tr'));
-    const rowBounds   = tbodyRows.map(tr => {
-      const r = tr.getBoundingClientRect();
-      return {
-        top:    (r.top    - elRect.top) * canvasScale,
-        bottom: (r.bottom - elRect.top) * canvasScale,
-      };
-    });
+    // px height of one page's content area (canvas is scaled to contentW mm wide)
+    const pxPerMm = canvas.width / contentW;
+    const contentH_px = Math.round(contentH * pxPerMm);
+    const totalPages = Math.ceil(canvas.height / contentH_px);
 
-    // Table left/right edges for border lines
-    const tableEl    = el.querySelector('table');
-    const tableRect  = tableEl ? tableEl.getBoundingClientRect() : elRect;
-    const tableLeft  = (tableRect.left  - elRect.left) * canvasScale;
-    const tableRight = (tableRect.right - elRect.left) * canvasScale;
-
-    // ── Build item-based page slices: 34 items on page 1, 45 on subsequent pages ──
-    const ITEMS_P1 = 34;
-    const ITEMS_PN = 45;
-    // slices: [{startY, endY, firstIdx, lastIdx}]
-    const slices = [];
-    if (rowBounds.length > 0) {
-      const end1 = Math.min(ITEMS_P1 - 1, rowBounds.length - 1);
-      slices.push({ startY: 0, endY: rowBounds[end1].bottom, firstIdx: 0, lastIdx: end1 });
-      let si = ITEMS_P1;
-      while (si < rowBounds.length) {
-        const ei = Math.min(si + ITEMS_PN - 1, rowBounds.length - 1);
-        slices.push({ startY: rowBounds[si].top, endY: rowBounds[ei].bottom, firstIdx: si, lastIdx: ei });
-        si += ITEMS_PN;
-      }
-      // Extend the last slice to canvas bottom so totals/signature are included
-      slices[slices.length - 1].endY = canvas.height;
-    } else {
-      slices.push({ startY: 0, endY: canvas.height, firstIdx: 0, lastIdx: 0 });
-    }
-    const totalPages = slices.length;
-
-    // ── Draw top/bottom borders on the full canvas for each slice ──
-    const cCtx = canvas.getContext('2d');
-    cCtx.strokeStyle = '#374151';
-    cCtx.lineWidth   = Math.round(2 * canvasScale);
-    const drawLine = y => {
-      cCtx.beginPath(); cCtx.moveTo(tableLeft, y); cCtx.lineTo(tableRight, y); cCtx.stroke();
-    };
-    for (const s of slices) {
-      if (rowBounds.length > 0) {
-        drawLine(rowBounds[s.firstIdx].top    + cCtx.lineWidth / 2);
-        drawLine(rowBounds[s.lastIdx].bottom  - cCtx.lineWidth / 2);
-      }
-    }
-
-    // ── Render each slice onto an A4 page ──
     for (let page = 0; page < totalPages; page++) {
       if (page > 0) pdf.addPage();
-      const { startY, endY } = slices[page];
-      const sliceH = endY - startY;
-
+      // Slice this page's strip from the full canvas
       const strip = document.createElement('canvas');
-      strip.width  = canvas.width;
-      strip.height = Math.max(sliceH, 1);
-      const sCtx = strip.getContext('2d');
-      sCtx.fillStyle = '#ffffff';
-      sCtx.fillRect(0, 0, strip.width, strip.height);
-      sCtx.drawImage(canvas, 0, startY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-
-      // Scale down only if taller than the content area; otherwise place at natural size
-      const sliceH_mm = sliceH / pxPerMm;
-      const placedH   = Math.min(sliceH_mm, contentH);
-      const placedW   = contentW * (placedH / sliceH_mm);
-      const offsetX   = margin + (contentW - placedW) / 2;
-
-      pdf.addImage(strip.toDataURL('image/jpeg', 0.82), 'JPEG', offsetX, margin, placedW, placedH);
-
-      // Page number
-      pdf.setFontSize(8);
-      pdf.setTextColor(130, 130, 130);
-      pdf.text(`Page ${page + 1} of ${totalPages}`, pageW / 2, pageH - 4, { align: 'center' });
+      strip.width = canvas.width;
+      strip.height = contentH_px;
+      const ctx = strip.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, strip.width, strip.height);
+      ctx.drawImage(canvas, 0, page * contentH_px, canvas.width, contentH_px, 0, 0, canvas.width, contentH_px);
+      pdf.addImage(strip.toDataURL('image/jpeg', 0.82), 'JPEG', margin, margin, contentW, contentH);
     }
     return pdf.output('blob');
   };
 
-  const sharePdf = async () => {
+  const shareWhatsApp = async () => {
     const phone = customerPhone.replace(/\D/g, '');
     const text  = buildMessage();
-    const parts = [inv.customerName, inv.customerPlace].filter(Boolean).join(' ');
-    const fileName = `${parts || 'Invoice'} - ${inv.invoiceNumber || id}.pdf`;
 
-    try {
-      setSharing(true);
-      const blob = await generatePdfBlob();
-      const file = new File([blob], fileName, { type: 'application/pdf' });
-
-      // Native share sheet (iOS/Android) with PDF
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], text });
-        return;
+    // Try Web Share API with PDF file (works on mobile)
+    if (navigator.canShare) {
+      try {
+        setSharing(true);
+        const blob = await generatePdfBlob();
+        const parts = [inv.customerName, inv.customerPlace].filter(Boolean).join(' ');
+        const fileName = `${parts || 'Invoice'} - ${inv.invoiceNumber || id}.pdf`;
+        const file = new File([blob], fileName, { type: 'application/pdf' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], text });
+          return;
+        }
+      } catch (err) {
+        console.warn('Share with file failed, trying text-only:', err);
+      } finally {
+        setSharing(false);
       }
-
-      // Fallback: download the PDF
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        // Last fallback: WhatsApp text only
-        const encoded = encodeURIComponent(text);
-        const url = phone ? `https://wa.me/91${phone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
-        window.open(url, '_blank');
-      }
-    } finally {
-      setSharing(false);
     }
+
+    // Fallback: open WhatsApp with text only
+    const encoded = encodeURIComponent(text);
+    const url = phone
+      ? `https://wa.me/91${phone}?text=${encoded}`
+      : `https://wa.me/?text=${encoded}`;
+    window.open(url, '_blank');
   };
 
   const downloadPdf = async () => {
@@ -206,55 +136,32 @@ export default function SaleInvoicePrint() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <style>{`
-        @media print {
-          @page { margin-bottom: 14mm; }
-          .print-page-num {
-            display: block !important;
-            position: fixed;
-            bottom: 4mm;
-            left: 0; right: 0;
-            text-align: center;
-            font-size: 8pt;
-            color: #9ca3af;
-          }
-          .print-page-num::after {
-            content: "Page " counter(page) " of " counter(pages);
-          }
-        }
-        .print-page-num { display: none; }
-      `}</style>
-      <div className="print-page-num" />
-      {/* Toolbar */}
-      <div className="no-print sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm px-4 py-3 flex gap-2 flex-wrap items-center">
-        <button onClick={() => window.history.back()} className="text-gray-500 hover:text-gray-700 text-sm px-2 py-1.5">
-          ← Back
-        </button>
-        <div className="flex-1" />
+    <div className="min-h-screen bg-white">
+      <div className="no-print p-4 bg-gray-100 flex gap-3 flex-wrap items-center">
         <button onClick={() => {
             const wasDark = document.documentElement.classList.contains('dark');
             if (wasDark) document.documentElement.classList.remove('dark');
             window.print();
             if (wasDark) document.documentElement.classList.add('dark');
           }}
-          className="hidden sm:flex items-center gap-1.5 bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium">
+          className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium">
           🖨 Print
         </button>
         <button onClick={downloadPdf} disabled={sharing}
-          className="hidden sm:flex items-center gap-1.5 bg-gray-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-60">
-          {sharing ? '⏳…' : '📄 PDF'}
+          className="bg-blue-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-600 disabled:opacity-60">
+          {sharing ? '⏳ Generating…' : '📄 Download PDF'}
         </button>
-        <button onClick={sharePdf} disabled={sharing}
-          className="flex items-center gap-1.5 bg-green-500 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-green-600 disabled:opacity-60">
-          {sharing ? '⏳ Generating…' : '📤 Share'}
+        <button onClick={shareWhatsApp} disabled={sharing}
+          className="bg-green-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-green-600 disabled:opacity-60">
+          {sharing ? '⏳ Generating…' : '💬 Send on WhatsApp'}
+        </button>
+        <button onClick={() => window.history.back()}
+          className="bg-gray-200 px-4 py-2 rounded text-sm">
+          ← Back
         </button>
       </div>
 
-      {/* A4 preview — horizontally scrollable on mobile so full layout is always visible */}
-      <div className="overflow-x-auto py-6 px-2">
-        <div className="min-w-[210mm]">
-      <div ref={invoiceRef} className="p-8 max-w-[210mm] mx-auto text-[13px] bg-white border border-gray-300 shadow-md">
+      <div ref={invoiceRef} className="p-8 max-w-[210mm] mx-auto text-[13px] border border-gray-300 rounded">
         {/* Header */}
         <div className="flex justify-between items-start mb-6 pb-4 border-b-2 border-gray-800">
           <div>
@@ -265,7 +172,7 @@ export default function SaleInvoicePrint() {
             <p className="text-gray-600">GSTIN: {company.gstin || '07AHDPR6884P1ZC'}</p>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold text-gray-900">PROFORMA INVOICE</p>
+            <p className="text-2xl font-bold text-gray-900">TAX INVOICE</p>
             <p className="text-gray-700 mt-1">
               <span className="font-semibold">Invoice No: </span>
               <strong>{inv.invoiceNumber}</strong>
@@ -383,8 +290,6 @@ export default function SaleInvoicePrint() {
             <div className="w-36 border-b border-gray-400 mb-1"></div>
             Authorised Signatory
           </div>
-        </div>
-      </div>
         </div>
       </div>
     </div>
