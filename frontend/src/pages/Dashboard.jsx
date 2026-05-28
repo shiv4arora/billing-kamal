@@ -1,8 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useInvoices } from '../context/InvoiceContext';
-import { useProducts } from '../context/ProductContext';
-import { useCustomers } from '../context/CustomerContext';
 import { useSettings } from '../context/SettingsContext';
 import { formatCurrency, formatDate, formatCustomerDisplay } from '../utils/helpers';
 import { api } from '../hooks/useApi';
@@ -37,9 +35,7 @@ function daysAgoStr(n) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { saleInvoices } = useInvoices();
-  const { active: products } = useProducts();
-  const { active: customers } = useCustomers();
+  const { saleInvoices, invoicesLoading } = useInvoices();
   const { settings } = useSettings();
 
   // Optimistic local set — avoids waiting for context refresh after marking credit sale
@@ -81,7 +77,6 @@ export default function Dashboard() {
 
   const todaySales     = todayInvoices.reduce((s, i) => s + (i.grandTotal || 0), 0);
   const unsettledTotal = unsettledRecent.reduce((s, i) => s + ((i.grandTotal || 0) - (i.amountPaid || 0)), 0);
-  const lowStockCount = products.filter(p => (p.currentStock || 0) <= (p.lowStockThreshold ?? settings.lowStockThreshold)).length;
 
   const waText = (inv) => {
     const bal = (inv.grandTotal || 0) - (inv.amountPaid || 0);
@@ -107,14 +102,17 @@ export default function Dashboard() {
             className="bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-800">
             + Purchase Invoice
           </Link>
+          <Link to="/production/new"
+            className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700">
+            + Production
+          </Link>
         </div>
       </div>
 
       {/* ── Stat cards ── */}
-      <div className="grid grid-cols-3 gap-3">
-        <StatCard label="Today's Sales"   value={formatCurrency(todaySales)}    color="green"  sub={`${todayInvoices.length} invoice${todayInvoices.length !== 1 ? 's' : ''}`} />
-        <StatCard label="Unsettled (5d)"  value={formatCurrency(unsettledTotal)} color="orange" sub={`${unsettledRecent.length} invoice${unsettledRecent.length !== 1 ? 's' : ''}`} />
-        <StatCard label="Low Stock"       value={lowStockCount}                 color={lowStockCount > 0 ? 'red' : 'green'} sub="items" />
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard label="Today's Sales"   value={invoicesLoading ? '…' : formatCurrency(todaySales)}    color="green"  sub={invoicesLoading ? '' : `${todayInvoices.length} invoice${todayInvoices.length !== 1 ? 's' : ''}`} />
+        <StatCard label="Unsettled (5d)"  value={invoicesLoading ? '…' : formatCurrency(unsettledTotal)} color="orange" sub={invoicesLoading ? '' : `${unsettledRecent.length} invoice${unsettledRecent.length !== 1 ? 's' : ''}`} />
       </div>
 
       {/* ── Mobile quick actions ── */}
@@ -135,6 +133,12 @@ export default function Dashboard() {
 
       {/* ── Desktop two-column layout ── */}
       <div className="hidden sm:grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {invoicesLoading ? (
+          <>
+            <div className="bg-white border border-gray-200 rounded-xl h-48 animate-pulse" />
+            <div className="bg-white border border-gray-200 rounded-xl h-48 animate-pulse" />
+          </>
+        ) : (<>
 
         {/* Today's sales */}
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -251,6 +255,7 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+        </>)}
       </div>
 
       {/* ── Mobile: today's invoices ── */}
