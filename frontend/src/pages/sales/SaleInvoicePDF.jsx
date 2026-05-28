@@ -11,16 +11,16 @@ Font.register({
   ],
 });
 
-// Always show 2 decimal places, ₹ symbol
+// Always show 2 decimal places, no currency symbol
 const cur = (v = 0) =>
-  '₹' + new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+  new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
 
 const S = StyleSheet.create({
   page: {
     paddingHorizontal: 32,
     paddingTop: 28,
     paddingBottom: 36,
-    fontSize: 11,           // base +2 from 9
+    fontSize: 10,
     color: '#111827',
     fontFamily: 'Roboto',
   },
@@ -36,18 +36,18 @@ const S = StyleSheet.create({
     borderBottomColor: '#1f2937',
   },
   logo:          { width: 38, height: 38, marginBottom: 4 },
-  companyName:   { fontSize: 14, fontWeight: 'bold', marginBottom: 2 },
-  companyDetail: { fontSize: 9.5, color: '#4b5563', marginBottom: 1 },
-  invoiceTitle:  { fontSize: 19, fontWeight: 'bold', textAlign: 'right', marginBottom: 5 },
+  companyName:   { fontSize: 13, fontWeight: 'bold', marginBottom: 2 },
+  companyDetail: { fontSize: 8.5, color: '#4b5563', marginBottom: 1 },
+  invoiceTitle:  { fontSize: 18, fontWeight: 'bold', textAlign: 'right', marginBottom: 5 },
   metaRow:       { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 2 },
-  metaLabel:     { fontSize: 10.5, color: '#374151', marginRight: 3 },
-  metaValue:     { fontSize: 10.5, fontWeight: 'bold' },
+  metaLabel:     { fontSize: 9.5, color: '#374151', marginRight: 3 },
+  metaValue:     { fontSize: 9.5, fontWeight: 'bold' },
 
   // ── Bill To ──
   billTo:       { marginBottom: 10 },
-  billToLabel:  { fontSize: 9, fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 3 },
-  billToName:   { fontSize: 12, fontWeight: 'bold', marginBottom: 2 },
-  billToDetail: { fontSize: 9.5, color: '#4b5563', marginBottom: 1 },
+  billToLabel:  { fontSize: 8, fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 3 },
+  billToName:   { fontSize: 11, fontWeight: 'bold', marginBottom: 2 },
+  billToDetail: { fontSize: 8.5, color: '#4b5563', marginBottom: 1 },
 
   // ── Table borders ──
   thead: {
@@ -74,20 +74,20 @@ const S = StyleSheet.create({
   },
 
   // Cells (with right divider)
-  th:  { padding: '5 7', fontSize: 10, fontWeight: 'bold', borderRightWidth: 0.5, borderRightColor: '#9ca3af' },
-  td:  { padding: '4 7', fontSize: 10, borderRightWidth: 0.5, borderRightColor: '#d1d5db' },
-  tfc: { padding: '5 7', fontSize: 10, borderRightWidth: 0.5, borderRightColor: '#9ca3af' },
+  th:  { padding: '5 7', fontSize: 9, fontWeight: 'bold', borderRightWidth: 0.5, borderRightColor: '#9ca3af' },
+  td:  { padding: '4 7', fontSize: 9, borderRightWidth: 0.5, borderRightColor: '#d1d5db' },
+  tfc: { padding: '5 7', fontSize: 9, borderRightWidth: 0.5, borderRightColor: '#9ca3af' },
   // Last cell — no right divider
-  thL: { padding: '5 7', fontSize: 10, fontWeight: 'bold' },
-  tdL: { padding: '4 7', fontSize: 10 },
-  tfL: { padding: '5 7', fontSize: 10 },
+  thL: { padding: '5 7', fontSize: 9, fontWeight: 'bold' },
+  tdL: { padding: '4 7', fontSize: 9 },
+  tfL: { padding: '5 7', fontSize: 9 },
 
-  skuText: { fontSize: 8, color: '#9ca3af' },
+  skuText: { fontSize: 7, color: '#9ca3af' },
 
   // ── Column widths ──
   cNum:  { width: 22 },
   cDesc: { flex: 1 },
-  cQty:  { width: 68, textAlign: 'right' },
+  cQty:  { width: 70, textAlign: 'right' },
   cRate: { width: 82, textAlign: 'right' },
   cTot:  { width: 88, textAlign: 'right' },
   cDisc: { width: 46, textAlign: 'right' },
@@ -96,34 +96,34 @@ const S = StyleSheet.create({
   summary:    { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   sumLeft:    { flex: 1, paddingRight: 16 },
   sumRight:   { width: 180 },
-  sumLabel:   { fontSize: 9.5, fontWeight: 'bold', color: '#374151', marginBottom: 2 },
-  sumItalic:  { fontSize: 9.5, fontStyle: 'italic', color: '#4b5563' },
-  bankLabel:  { fontSize: 9.5, fontWeight: 'bold', color: '#374151', marginTop: 8, marginBottom: 2 },
-  bankText:   { fontSize: 9.5, color: '#4b5563' },
-  sumRow:     { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2, fontSize: 10.5 },
+  sumLabel:   { fontSize: 8.5, fontWeight: 'bold', color: '#374151', marginBottom: 2 },
+  sumItalic:  { fontSize: 8.5, fontStyle: 'italic', color: '#4b5563' },
+  bankLabel:  { fontSize: 8.5, fontWeight: 'bold', color: '#374151', marginTop: 8, marginBottom: 2 },
+  bankText:   { fontSize: 8.5, color: '#4b5563' },
+  sumRow:     { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2, fontSize: 9.5 },
   sumRowBold: {
     flexDirection: 'row', justifyContent: 'space-between',
-    paddingVertical: 3.5, fontSize: 12, fontWeight: 'bold',
+    paddingVertical: 3.5, fontSize: 11, fontWeight: 'bold',
     borderTopWidth: 0.75, borderTopColor: '#6b7280', marginTop: 2,
   },
-  sumRowGreen: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2, fontSize: 10.5, color: '#16a34a' },
-  sumRowRed:   { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2, fontSize: 10.5, color: '#dc2626' },
+  sumRowGreen: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2, fontSize: 9.5, color: '#16a34a' },
+  sumRowRed:   { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2, fontSize: 9.5, color: '#dc2626' },
   sumTaxSep:  {
     flexDirection: 'row', justifyContent: 'space-between',
-    paddingVertical: 2, fontSize: 10.5, fontWeight: 'bold',
+    paddingVertical: 2, fontSize: 9.5, fontWeight: 'bold',
     borderTopWidth: 0.4, borderTopColor: '#e5e7eb', paddingTop: 2.5, marginTop: 1,
   },
 
   // ── Terms / Signature ──
-  terms:         { marginTop: 14, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: '#d1d5db', fontSize: 9.5, color: '#6b7280' },
+  terms:         { marginTop: 14, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: '#d1d5db', fontSize: 8.5, color: '#6b7280' },
   termsBold:     { fontWeight: 'bold', color: '#374151' },
   signature:     { marginTop: 28, alignItems: 'flex-end' },
   signatureLine: { width: 90, borderBottomWidth: 0.5, borderBottomColor: '#9ca3af', marginBottom: 3 },
-  signatureText: { fontSize: 9.5, color: '#4b5563' },
+  signatureText: { fontSize: 8.5, color: '#4b5563' },
 
   pageNum: {
     position: 'absolute', bottom: 14, left: 0, right: 0,
-    textAlign: 'center', fontSize: 9, color: '#9ca3af',
+    textAlign: 'center', fontSize: 8, color: '#9ca3af',
   },
 });
 
