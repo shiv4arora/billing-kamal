@@ -1,44 +1,13 @@
-import { useState, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo } from 'react';
 import { useInvoices } from '../context/InvoiceContext';
-import { useProducts } from '../context/ProductContext';
 import { Card } from '../components/ui';
 import { formatCurrency, formatDate, dateRangeFilter, exportToCSV, thisMonthStart, today } from '../utils/helpers';
-import { api } from '../hooks/useApi';
-import { UNITS } from '../constants';
 
 export default function Shiv() {
-  const navigate = useNavigate();
   const { saleInvoices } = useInvoices();
-  const { refresh: refreshProducts } = useProducts();
   const [start, setStart] = useState('');
   const [end, setEnd] = useState(today());
   const [selected, setSelected] = useState(null);
-
-  // Quick Production state
-  const [qpForm, setQpForm] = useState({ name: '', wholesale: '', unit: 'Pcs' });
-  const [qpCreating, setQpCreating] = useState(false);
-  const [qpList, setQpList] = useState([]);
-  const nameRef = useRef(null);
-
-  const createQuickSku = async () => {
-    if (!qpForm.name.trim()) { nameRef.current?.focus(); return; }
-    setQpCreating(true);
-    try {
-      const result = await api('/products/batch-opening-stock', {
-        method: 'POST',
-        body: { items: [{ name: qpForm.name.trim(), wholesale: +qpForm.wholesale || 0, unit: qpForm.unit, qty: 0 }] },
-      });
-      const created = result.created[0];
-      setQpList(prev => [created, ...prev]);
-      setQpForm(f => ({ ...f, name: '', wholesale: '' }));
-      refreshProducts();
-      setTimeout(() => nameRef.current?.focus(), 50);
-    } catch {
-      // silent — user sees no SKU in list
-    }
-    setQpCreating(false);
-  };
 
   // Collect every free-text line from issued / non-void invoices
   const allFreeTextLines = useMemo(() => {
@@ -120,73 +89,6 @@ export default function Shiv() {
           ⬇ Export CSV
         </button>
       </div>
-
-      {/* Quick Production */}
-      <Card padding={false}>
-        <div className="px-4 py-3 border-b border-purple-100 bg-purple-50 rounded-t-xl">
-          <h2 className="font-semibold text-purple-800 text-sm">⚡ Quick Production — create SKU &amp; print label</h2>
-          <p className="text-xs text-purple-500 mt-0.5">Enter name + wholesale price → gets a new SKU immediately</p>
-        </div>
-        <div className="p-4 space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <input
-              ref={nameRef}
-              value={qpForm.name}
-              onChange={e => setQpForm(f => ({ ...f, name: e.target.value }))}
-              onKeyDown={e => e.key === 'Enter' && createQuickSku()}
-              placeholder="Product name *"
-              className="flex-1 min-w-[180px] border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-            />
-            <input
-              type="number"
-              value={qpForm.wholesale}
-              onChange={e => setQpForm(f => ({ ...f, wholesale: e.target.value }))}
-              onKeyDown={e => e.key === 'Enter' && createQuickSku()}
-              placeholder="Wholesale price"
-              className="w-36 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-            />
-            <select
-              value={qpForm.unit}
-              onChange={e => setQpForm(f => ({ ...f, unit: e.target.value }))}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-            >
-              {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-            </select>
-            <button
-              onClick={createQuickSku}
-              disabled={qpCreating}
-              className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50 whitespace-nowrap"
-            >
-              {qpCreating ? 'Creating…' : '+ Create SKU'}
-            </button>
-          </div>
-
-          {qpList.length > 0 && (
-            <div className="border border-purple-100 rounded-xl overflow-hidden">
-              <div className="px-3 py-2 bg-purple-50 border-b border-purple-100 text-xs font-semibold text-purple-600 uppercase tracking-wide">
-                Created this session
-              </div>
-              {qpList.map(p => (
-                <div key={p.id} className="flex items-center justify-between px-3 py-2.5 border-b border-gray-50 last:border-0 hover:bg-gray-50">
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-sm font-bold text-purple-700">{p.sku}</span>
-                    <span className="text-sm text-gray-700">{p.name}</span>
-                    {p.pricing?.wholesale > 0 && (
-                      <span className="text-xs text-gray-400">W: D.No.{Math.round(p.pricing.wholesale * 2)}</span>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => navigate(`/products/${p.id}/label`)}
-                    className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap"
-                  >
-                    🏷 Print Label
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </Card>
 
       {/* Date filter */}
       <Card>

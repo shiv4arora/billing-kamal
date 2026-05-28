@@ -13,7 +13,7 @@ export default function ProductionReport() {
   const [search,     setSearch]     = useState('');
   const [boxFilter,  setBoxFilter]  = useState('');
   const [groupBy,    setGroupBy]    = useState('day');
-  const [view,       setView]       = useState('entries'); // 'entries' | 'outputs' | 'inputs'
+  const [view,       setView]       = useState('entries'); // 'entries' | 'immediate' | 'outputs' | 'inputs'
 
   useEffect(() => {
     api('/production')
@@ -29,9 +29,15 @@ export default function ProductionReport() {
     return [...set].sort();
   }, [entries]);
 
-  /* ── filtered entries ── */
+  /* ── immediate entries (date-filtered) ── */
+  const immediateEntries = useMemo(() => {
+    return dateRangeFilter(entries.filter(e => e.isImmediate), 'date', start, end)
+      .sort((a, b) => b.date?.localeCompare(a.date));
+  }, [entries, start, end]);
+
+  /* ── filtered entries (regular only) ── */
   const filtered = useMemo(() => {
-    let list = dateRangeFilter(entries, 'date', start, end);
+    let list = dateRangeFilter(entries.filter(e => !e.isImmediate), 'date', start, end);
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(e =>
@@ -229,7 +235,7 @@ export default function ProductionReport() {
 
       {/* Tab selector */}
       <div className="flex gap-1 bg-gray-100 dark:bg-[#2C2C2E] rounded-lg p-1 w-fit">
-        {[['entries', '📋 Entries'], ['outputs', '✅ Outputs'], ['inputs', '🧱 Inputs']].map(([v, label]) => (
+        {[['entries', '📋 Entries'], ['immediate', '⚡ Immediate'], ['outputs', '✅ Outputs'], ['inputs', '🧱 Inputs']].map(([v, label]) => (
           <button key={v} onClick={() => setView(v)}
             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors
               ${view === v
@@ -292,6 +298,50 @@ export default function ProductionReport() {
                       <td className="px-4 py-3 text-right text-gray-700 dark:text-[#f2f2f7]">{totalComp}</td>
                       <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-[#f2f2f7]">{e.box || <span className="text-gray-300">—</span>}</td>
                       <td className="px-4 py-3 text-xs text-gray-400 dark:text-gray-500 max-w-[160px] truncate">{e.notes}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* Immediate Production list */}
+      {view === 'immediate' && (
+        <Card padding={false}>
+          <div className="px-5 py-3 border-b border-gray-100 dark:border-[rgba(84,84,88,0.35)] flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-gray-800 dark:text-white">Immediate Production</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Quick SKU entries linked to Mali Fionna — {immediateEntries.length} entries</p>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-[#1C1C1E] border-b border-gray-200 dark:border-[rgba(84,84,88,0.65)] text-xs text-gray-500 dark:text-[#636366] uppercase tracking-wide">
+                  <th className="px-4 py-3 text-left">Entry #</th>
+                  <th className="px-4 py-3 text-left">Date</th>
+                  <th className="px-4 py-3 text-left">Product</th>
+                  <th className="px-4 py-3 text-left">SKU</th>
+                  <th className="px-4 py-3 text-right">Wholesale</th>
+                </tr>
+              </thead>
+              <tbody>
+                {immediateEntries.length === 0 ? (
+                  <tr><td colSpan={5} className="text-center py-12 text-gray-400">No immediate production entries for this period</td></tr>
+                ) : immediateEntries.map(e => {
+                  const out = (e.outputs || [])[0] || {};
+                  const wPrice = out.pricing?.wholesale || 0;
+                  return (
+                    <tr key={e.id} className="border-b border-gray-100 dark:border-[rgba(84,84,88,0.35)] hover:bg-gray-50 dark:hover:bg-[#2C2C2E]">
+                      <td className="px-4 py-3 font-mono font-semibold text-purple-600 dark:text-[#BF5AF2]">{e.entryNumber}</td>
+                      <td className="px-4 py-3 text-gray-700 dark:text-[#f2f2f7]">{formatDate(e.date)}</td>
+                      <td className="px-4 py-3 font-medium text-gray-800 dark:text-[#f2f2f7]">{out.productName || '—'}</td>
+                      <td className="px-4 py-3 font-mono text-blue-600 dark:text-[#0A84FF] text-xs">{out.sku || '—'}</td>
+                      <td className="px-4 py-3 text-right text-blue-700 dark:text-[#0A84FF] font-medium">
+                        {wPrice > 0 ? <>{formatCurrency(wPrice)} <span className="text-gray-400 text-xs">(D.No.{Math.round(wPrice * 2)})</span></> : <span className="text-gray-300">—</span>}
+                      </td>
                     </tr>
                   );
                 })}

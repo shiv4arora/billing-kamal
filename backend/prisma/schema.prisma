@@ -233,6 +233,7 @@ model ProductionEntry {
   outputQuantity    Float    @default(0)
   notes             String   @default("")
   box               String   @default("")
+  isImmediate       Boolean  @default(false)
   createdAt         DateTime @default(now())
 }
 

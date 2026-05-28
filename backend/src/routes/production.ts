@@ -49,6 +49,59 @@ router.get('/', async (_req, res, next) => {
   } catch (err) { next(err); }
 });
 
+/* ── POST /production/immediate — create SKU + entry, no components ── */
+router.post('/immediate', async (req, res, next) => {
+  try {
+    const { name, wholesale, unit, supplierId, date } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'Product name is required' });
+
+    const entry = await prisma.$transaction(async (tx) => {
+      const entryNumber = await nextProductionNumber(tx);
+      const today = date || new Date().toISOString().slice(0, 10);
+      const sku = String(await allocateSkuNumbers(1, tx));
+      const pricing = { wholesale: Number(wholesale) || 0, shop: 0 };
+
+      const product = await tx.product.create({
+        data: {
+          sku,
+          name: name.trim(),
+          unit: unit || 'Pcs',
+          gstRate: 0,
+          pricing: JSON.stringify(pricing),
+          costPrice: 0,
+          currentStock: 0,
+          isActive: true,
+          ...(supplierId ? { supplierId } : {}),
+        },
+      });
+
+      const output = { productId: product.id, productName: product.name, sku: product.sku, quantity: 0, pricing, unit: product.unit };
+
+      return tx.productionEntry.create({
+        data: {
+          entryNumber, date: today,
+          components: JSON.stringify([]),
+          outputs: JSON.stringify([output]),
+          outputProductId: product.id,
+          outputProductName: product.name,
+          outputQuantity: 0,
+          notes: '', box: '',
+          isImmediate: true,
+        },
+      });
+    });
+
+    logActivity({
+      userId: (req as any).user?.id, userName: (req as any).user?.name || (req as any).user?.username,
+      action: 'CREATE', entity: 'Production',
+      entityId: entry.id, entityRef: entry.entryNumber,
+      details: `[Immediate] ${entry.outputProductName}`,
+    });
+
+    res.json({ ...entry, components: [], outputs: parseOutputs(entry) });
+  } catch (err) { next(err); }
+});
+
 /* ── POST /production ── */
 router.post('/', async (req, res, next) => {
   try {

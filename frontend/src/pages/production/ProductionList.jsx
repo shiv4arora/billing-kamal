@@ -1,15 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useProducts } from '../../context/ProductContext';
+import { useSuppliers } from '../../context/SupplierContext';
 import { api } from '../../hooks/useApi';
 import { formatDate, formatCurrency } from '../../utils/helpers';
-import { Button } from '../../components/ui';
+import { Button, Modal } from '../../components/ui';
+import { UNITS } from '../../constants';
 
 export default function ProductionList() {
   const navigate = useNavigate();
-  const { active: products } = useProducts();
+  const { active: products, refresh: refreshProducts } = useProducts();
+  const { active: suppliers } = useSuppliers();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showImmediate, setShowImmediate] = useState(false);
+  const [ipForm, setIpForm] = useState({ name: '', wholesale: '', unit: 'Pcs' });
+  const [ipCreating, setIpCreating] = useState(false);
+  const [ipList, setIpList] = useState([]);
+  const ipNameRef = useRef(null);
 
   useEffect(() => {
     api('/production')
@@ -17,6 +25,28 @@ export default function ProductionList() {
       .catch(() => setEntries([]))
       .finally(() => setLoading(false));
   }, []);
+
+  const maliFionna = suppliers.find(s => s.name?.toLowerCase().includes('mali') && s.name?.toLowerCase().includes('fionna'))
+    || suppliers.find(s => s.name?.toLowerCase().includes('mali'));
+
+  const createImmediate = async () => {
+    if (!ipForm.name.trim()) { ipNameRef.current?.focus(); return; }
+    setIpCreating(true);
+    try {
+      const entry = await api('/production/immediate', {
+        method: 'POST',
+        body: { name: ipForm.name.trim(), wholesale: +ipForm.wholesale || 0, unit: ipForm.unit, supplierId: maliFionna?.id || null },
+      });
+      const product = entry.outputs?.[0];
+      setIpList(prev => [{ entryNumber: entry.entryNumber, productId: product?.productId, sku: product?.sku, name: product?.productName, wholesale: ipForm.wholesale }, ...prev]);
+      setIpForm(f => ({ ...f, name: '', wholesale: '' }));
+      refreshProducts();
+      setTimeout(() => ipNameRef.current?.focus(), 50);
+    } catch {
+      // fail silently — empty list tells the story
+    }
+    setIpCreating(false);
+  };
 
   const handleLabels = (e) => {
     const outputs = Array.isArray(e.outputs) && e.outputs.length > 0
@@ -37,10 +67,83 @@ export default function ProductionList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-2xl font-bold text-gray-900">Production / Assembly</h1>
-        <Link to="/production/new"><Button>+ New Entry</Button></Link>
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setShowImmediate(true); setTimeout(() => ipNameRef.current?.focus(), 80); }}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg"
+          >
+            ⚡ Immediate
+          </button>
+          <Link to="/production/new"><Button>+ New Entry</Button></Link>
+        </div>
       </div>
+
+      {/* Immediate Production Modal */}
+      <Modal open={showImmediate} onClose={() => setShowImmediate(false)} title="⚡ Immediate Production" size="md">
+        <div className="space-y-4">
+          <p className="text-xs text-gray-500">
+            Creates a new SKU linked to <strong>{maliFionna?.name || 'Mali Fionna'}</strong> — no components needed.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <input
+              ref={ipNameRef}
+              value={ipForm.name}
+              onChange={e => setIpForm(f => ({ ...f, name: e.target.value }))}
+              onKeyDown={e => e.key === 'Enter' && createImmediate()}
+              placeholder="Product name *"
+              className="flex-1 min-w-[160px] border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+            />
+            <input
+              type="number"
+              value={ipForm.wholesale}
+              onChange={e => setIpForm(f => ({ ...f, wholesale: e.target.value }))}
+              onKeyDown={e => e.key === 'Enter' && createImmediate()}
+              placeholder="Wholesale ₹"
+              className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+            />
+            <select
+              value={ipForm.unit}
+              onChange={e => setIpForm(f => ({ ...f, unit: e.target.value }))}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+            >
+              {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
+          </div>
+          <button
+            onClick={createImmediate}
+            disabled={ipCreating}
+            className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50"
+          >
+            {ipCreating ? 'Creating…' : '+ Create SKU & Add Entry'}
+          </button>
+
+          {ipList.length > 0 && (
+            <div className="border border-purple-100 rounded-xl overflow-hidden">
+              <div className="px-3 py-2 bg-purple-50 text-xs font-semibold text-purple-600 uppercase tracking-wide border-b border-purple-100">
+                Created this session
+              </div>
+              {ipList.map((p, i) => (
+                <div key={i} className="flex items-center justify-between px-3 py-2.5 border-b border-gray-50 last:border-0">
+                  <div>
+                    <span className="font-mono text-sm font-bold text-purple-700 mr-2">{p.sku}</span>
+                    <span className="text-sm text-gray-800">{p.name}</span>
+                    {p.wholesale > 0 && <span className="text-xs text-gray-400 ml-2">W: D.No.{Math.round(+p.wholesale * 2)}</span>}
+                    <span className="text-xs text-gray-400 ml-2 font-mono">{p.entryNumber}</span>
+                  </div>
+                  <button
+                    onClick={() => navigate(`/products/${p.productId}/label`)}
+                    className="text-xs font-medium text-blue-600 hover:underline whitespace-nowrap ml-3"
+                  >
+                    🏷 Print
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Modal>
 
       {loading ? (
         <div className="text-center py-12 text-gray-400">Loading…</div>
