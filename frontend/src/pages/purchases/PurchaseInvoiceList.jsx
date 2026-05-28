@@ -41,7 +41,7 @@ function IncomingParcels({ suppliers }) {
     if (!form.supplierName.trim()) return;
     setSaving(true);
     try {
-      const created = await api('/purchase-tasks', { method: 'POST', body: JSON.stringify(form) });
+      const created = await api('/purchase-tasks', { method: 'POST', body: form });
       setTasks(prev => [created, ...prev]);
       setForm(BLANK_TASK);
       setShowForm(false);
@@ -51,12 +51,12 @@ function IncomingParcels({ suppliers }) {
   };
 
   const markReceived = async (id) => {
-    const updated = await api(`/purchase-tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'received' }) });
+    const updated = await api(`/purchase-tasks/${id}`, { method: 'PATCH', body: { status: 'received' } });
     setTasks(prev => prev.map(t => t.id === id ? updated : t));
   };
 
   const toggleUrgent = async (task) => {
-    const updated = await api(`/purchase-tasks/${task.id}`, { method: 'PATCH', body: JSON.stringify({ isUrgent: !task.isUrgent }) });
+    const updated = await api(`/purchase-tasks/${task.id}`, { method: 'PATCH', body: { isUrgent: !task.isUrgent } });
     setTasks(prev => prev.map(t => t.id === task.id ? updated : t));
   };
 
