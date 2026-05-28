@@ -318,3 +318,17 @@ model ActivityLog {
   @@index([createdAt])
   @@index([entity])
 }
+
+
+model PurchaseTask {
+  id           String   @id @default(cuid())
+  supplierName String   @default("")
+  supplierId   String?
+  description  String   @default("")
+  isUrgent     Boolean  @default(false)
+  status       String   @default("pending")  // pending | received
+  expectedDate String   @default("")
+  notes        String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

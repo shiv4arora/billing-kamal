@@ -25,6 +25,7 @@ import purchaseReturnsRouter from './routes/purchaseReturns';
 import quotationsRouter from './routes/quotations';
 import activityLogsRouter from './routes/activityLogs';
 import backupRouter from './routes/backup';
+import purchaseTasksRouter from './routes/purchaseTasks';
 import { verifyJWT } from './middleware/auth';
 import { errorHandler } from './middleware/errorHandler';
 
@@ -82,6 +83,7 @@ app.use('/api/purchase-returns', purchaseReturnsRouter);
 app.use('/api/quotations', quotationsRouter);
 app.use('/api/activity-logs', activityLogsRouter);
 app.use('/api/backup', backupRouter);
+app.use('/api/purchase-tasks', purchaseTasksRouter);
 
 app.use(errorHandler);
 
