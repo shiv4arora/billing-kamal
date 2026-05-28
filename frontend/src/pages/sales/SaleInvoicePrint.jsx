@@ -54,13 +54,14 @@ export default function SaleInvoicePrint() {
     const wasDark = document.documentElement.classList.contains('dark');
     if (wasDark) document.documentElement.classList.remove('dark');
 
+    const el = invoiceRef.current;
     let canvas;
     try {
-      const el = invoiceRef.current;
       canvas = await html2canvas(el, { scale: 1.5, useCORS: true, backgroundColor: '#ffffff' });
     } finally {
       if (wasDark) document.documentElement.classList.add('dark');
     }
+
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
@@ -73,11 +74,56 @@ export default function SaleInvoicePrint() {
     const contentH_px = Math.round(contentH * pxPerMm);
     const totalPages = Math.ceil(canvas.height / contentH_px);
 
+    // ── Measure tbody row positions so we can draw per-page borders ──
+    const elRect      = el.getBoundingClientRect();
+    const canvasScale = canvas.width / elRect.width;   // == html2canvas scale (1.5)
+    const tbodyRows   = Array.from(el.querySelectorAll('tbody tr'));
+    const rowBounds   = tbodyRows.map(tr => {
+      const r = tr.getBoundingClientRect();
+      return {
+        top:    (r.top    - elRect.top) * canvasScale,
+        bottom: (r.bottom - elRect.top) * canvasScale,
+      };
+    });
+
+    // Get table left/right edges (canvas px) so lines align with table borders
+    const tableEl   = el.querySelector('table');
+    const tableRect = tableEl ? tableEl.getBoundingClientRect() : elRect;
+    const tableLeft  = (tableRect.left  - elRect.left) * canvasScale;
+    const tableRight = (tableRect.right - elRect.left) * canvasScale;
+
+    // Draw first/last-item border lines on the full canvas for each page
+    const cCtx = canvas.getContext('2d');
+    cCtx.strokeStyle = '#374151';           // gray-700
+    cCtx.lineWidth   = Math.round(2 * canvasScale); // 2 px visual weight
+
+    for (let pg = 0; pg < totalPages; pg++) {
+      const pgTop    = pg       * contentH_px;
+      const pgBottom = (pg + 1) * contentH_px;
+
+      let firstRow = null, lastRow = null;
+      for (const row of rowBounds) {
+        if (row.bottom > pgTop && row.top < pgBottom) {
+          if (!firstRow) firstRow = row;
+          lastRow = row;
+        }
+      }
+
+      if (firstRow) {
+        const y = Math.max(firstRow.top, pgTop) + cCtx.lineWidth / 2;
+        cCtx.beginPath(); cCtx.moveTo(tableLeft, y); cCtx.lineTo(tableRight, y); cCtx.stroke();
+      }
+      if (lastRow) {
+        const y = Math.min(lastRow.bottom, pgBottom) - cCtx.lineWidth / 2;
+        cCtx.beginPath(); cCtx.moveTo(tableLeft, y); cCtx.lineTo(tableRight, y); cCtx.stroke();
+      }
+    }
+
     for (let page = 0; page < totalPages; page++) {
       if (page > 0) pdf.addPage();
       // Slice this page's strip from the full canvas
       const strip = document.createElement('canvas');
-      strip.width = canvas.width;
+      strip.width  = canvas.width;
       strip.height = contentH_px;
       const ctx = strip.getContext('2d');
       ctx.fillStyle = '#ffffff';
