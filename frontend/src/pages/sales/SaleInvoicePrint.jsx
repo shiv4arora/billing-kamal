@@ -47,50 +47,12 @@ export default function SaleInvoicePrint() {
   };
 
   const generatePdfBlob = async () => {
-    const html2canvas = (await import('html2canvas')).default;
-    const { jsPDF } = await import('jspdf');
-
-    // Temporarily strip dark mode so PDF is always light
-    const wasDark = document.documentElement.classList.contains('dark');
-    if (wasDark) document.documentElement.classList.remove('dark');
-
-    const el = invoiceRef.current;
-    let canvas;
-    try {
-      canvas = await html2canvas(el, { scale: 1.5, useCORS: true, backgroundColor: '#ffffff' });
-    } finally {
-      if (wasDark) document.documentElement.classList.add('dark');
-    }
-
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 12; // mm on all 4 sides
-    const contentW = pageW - margin * 2;
-    const contentH = pageH - margin * 2;
-
-    // px height of one page's content area (canvas is scaled to contentW mm wide)
-    const pxPerMm = canvas.width / contentW;
-    const contentH_px = Math.round(contentH * pxPerMm);
-    const totalPages = Math.ceil(canvas.height / contentH_px);
-
-    for (let page = 0; page < totalPages; page++) {
-      if (page > 0) pdf.addPage();
-      // Slice this page's strip from the full canvas
-      const strip = document.createElement('canvas');
-      strip.width = canvas.width;
-      strip.height = contentH_px;
-      const ctx = strip.getContext('2d');
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, strip.width, strip.height);
-      ctx.drawImage(canvas, 0, page * contentH_px, canvas.width, contentH_px, 0, 0, canvas.width, contentH_px);
-      pdf.addImage(strip.toDataURL('image/jpeg', 0.82), 'JPEG', margin, margin, contentW, contentH);
-      // Page number at bottom centre
-      pdf.setFontSize(8);
-      pdf.setTextColor(130, 130, 130);
-      pdf.text(`Page ${page + 1} of ${totalPages}`, pageW / 2, pageH - 4, { align: 'center' });
-    }
-    return pdf.output('blob');
+    const { pdf } = await import('@react-pdf/renderer');
+    const { InvoicePDF } = await import('./SaleInvoicePDF');
+    const { createElement } = await import('react');
+    return await pdf(
+      createElement(InvoicePDF, { inv, company, invSettings, customerAddress, customerGstin, customerPhone })
+    ).toBlob();
   };
 
   const shareWhatsApp = async () => {
