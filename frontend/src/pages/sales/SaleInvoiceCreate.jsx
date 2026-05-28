@@ -506,31 +506,6 @@ export default function SaleInvoiceCreate() {
 
           {/* ── MOBILE ITEMS (card-based, no horizontal scroll) ────── */}
           <div className="lg:hidden">
-            {/* SKU Scanner – large, prominent */}
-            <div className="p-3 bg-blue-50 border-b border-blue-100">
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowScanner(true)}
-                  className="shrink-0 px-3 py-3 bg-white border border-blue-200 rounded-xl text-lg active:bg-blue-50"
-                  title="Scan QR / Barcode"
-                >📷</button>
-                <input
-                  value={skuQuickAdd}
-                  onChange={e => setSkuQuickAdd(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addProductBySku(skuQuickAdd); } }}
-                  placeholder="Scan or type SKU + ↵"
-                  enterKeyHint="go"
-                  autoCapitalize="off"
-                  autoCorrect="off"
-                  spellCheck="false"
-                  className="flex-1 border border-blue-200 bg-white rounded-xl px-3 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder:text-blue-300"
-                />
-                <button type="button" onClick={() => addProductBySku(skuQuickAdd)}
-                  className="px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm active:bg-blue-700">Add</button>
-              </div>
-            </div>
-
             {/* Item cards */}
             <div className="divide-y divide-gray-100">
               {items.map((item, idx) => {
@@ -634,6 +609,31 @@ export default function SaleInvoiceCreate() {
                   </div>
                 );
               })}
+            </div>
+
+            {/* SKU Scanner */}
+            <div className="p-3 bg-blue-50 border-t border-blue-100">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowScanner(true)}
+                  className="shrink-0 px-3 py-3 bg-white border border-blue-200 rounded-xl text-lg active:bg-blue-50"
+                  title="Scan QR / Barcode"
+                >📷</button>
+                <input
+                  value={skuQuickAdd}
+                  onChange={e => setSkuQuickAdd(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addProductBySku(skuQuickAdd); } }}
+                  placeholder="Scan or type SKU + ↵"
+                  enterKeyHint="go"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck="false"
+                  className="flex-1 border border-blue-200 bg-white rounded-xl px-3 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder:text-blue-300"
+                />
+                <button type="button" onClick={() => addProductBySku(skuQuickAdd)}
+                  className="px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm active:bg-blue-700">Add</button>
+              </div>
             </div>
 
             {/* Add item buttons */}
