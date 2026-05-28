@@ -62,80 +62,29 @@ export default function SaleInvoicePrint() {
       if (wasDark) document.documentElement.classList.add('dark');
     }
 
-    const pdf     = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageW   = pdf.internal.pageSize.getWidth();
-    const pageH   = pdf.internal.pageSize.getHeight();
-    const margin  = 12;
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 12; // mm on all 4 sides
     const contentW = pageW - margin * 2;
     const contentH = pageH - margin * 2;
-    const pxPerMm  = canvas.width / contentW;
 
-    // ── Measure each tbody row's canvas position ──
-    const elRect      = el.getBoundingClientRect();
-    const canvasScale = canvas.width / elRect.width; // = 1.5
-    const tbodyRows   = Array.from(el.querySelectorAll('tbody tr'));
-    const rowBounds   = tbodyRows.map(tr => {
-      const r = tr.getBoundingClientRect();
-      return {
-        top:    (r.top    - elRect.top) * canvasScale,
-        bottom: (r.bottom - elRect.top) * canvasScale,
-      };
-    });
+    // px height of one page's content area (canvas is scaled to contentW mm wide)
+    const pxPerMm = canvas.width / contentW;
+    const contentH_px = Math.round(contentH * pxPerMm);
+    const totalPages = Math.ceil(canvas.height / contentH_px);
 
-    // Table left/right edges for border lines
-    const tableEl    = el.querySelector('table');
-    const tableRect  = tableEl ? tableEl.getBoundingClientRect() : elRect;
-    const tableLeft  = (tableRect.left  - elRect.left) * canvasScale;
-    const tableRight = (tableRect.right - elRect.left) * canvasScale;
-
-    const contentH_px = Math.round(contentH * pxPerMm); // fixed A4 content height in canvas px
-
-    // ── Compute page start positions based on item count ──
-    const ITEMS_P1 = 34, ITEMS_PN = 45;
-    // pages[i] = { startY: canvas y where page i begins, firstIdx, lastIdx }
-    const pages = [];
-    if (rowBounds.length === 0) {
-      pages.push({ startY: 0, firstIdx: -1, lastIdx: -1 });
-    } else {
-      const last1 = Math.min(ITEMS_P1 - 1, rowBounds.length - 1);
-      pages.push({ startY: 0, firstIdx: 0, lastIdx: last1 });
-      for (let si = ITEMS_P1; si < rowBounds.length; si += ITEMS_PN) {
-        const ei = Math.min(si + ITEMS_PN - 1, rowBounds.length - 1);
-        pages.push({ startY: rowBounds[si].top, firstIdx: si, lastIdx: ei });
-      }
-    }
-    const totalPages = pages.length;
-
-    // ── Draw top/bottom border lines on the full canvas ──
-    const cCtx = canvas.getContext('2d');
-    cCtx.strokeStyle = '#374151';
-    cCtx.lineWidth   = Math.round(2 * canvasScale);
-    const drawLine = y => {
-      cCtx.beginPath(); cCtx.moveTo(tableLeft, y); cCtx.lineTo(tableRight, y); cCtx.stroke();
-    };
-    for (const { firstIdx, lastIdx } of pages) {
-      if (firstIdx >= 0) {
-        drawLine(rowBounds[firstIdx].top    + cCtx.lineWidth / 2);
-        drawLine(rowBounds[lastIdx].bottom  - cCtx.lineWidth / 2);
-      }
-    }
-
-    // ── Render each page: fixed A4-height strip, content top-aligned ──
     for (let page = 0; page < totalPages; page++) {
       if (page > 0) pdf.addPage();
-      const { startY } = pages[page];
-
-      const strip  = document.createElement('canvas');
-      strip.width  = canvas.width;
-      strip.height = contentH_px;           // always full A4 height → consistent text size
-      const sCtx   = strip.getContext('2d');
-      sCtx.fillStyle = '#ffffff';
-      sCtx.fillRect(0, 0, strip.width, strip.height);
-      // Draws contentH_px rows from canvas starting at startY; clips safely past canvas.height
-      sCtx.drawImage(canvas, 0, startY, canvas.width, contentH_px, 0, 0, canvas.width, contentH_px);
-
+      // Slice this page's strip from the full canvas
+      const strip = document.createElement('canvas');
+      strip.width = canvas.width;
+      strip.height = contentH_px;
+      const ctx = strip.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, strip.width, strip.height);
+      ctx.drawImage(canvas, 0, page * contentH_px, canvas.width, contentH_px, 0, 0, canvas.width, contentH_px);
       pdf.addImage(strip.toDataURL('image/jpeg', 0.82), 'JPEG', margin, margin, contentW, contentH);
-
       // Page number at bottom centre
       pdf.setFontSize(8);
       pdf.setTextColor(130, 130, 130);
