@@ -11,9 +11,14 @@ Font.register({
   ],
 });
 
-// Always show 2 decimal places, no currency symbol
-const cur = (v = 0) =>
-  '₹ ' + new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+// Number-only formatter — ₹ is rendered in a separate inline Text to avoid glyph overlap
+const fmt = (v = 0) =>
+  new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+
+// Inline currency: renders ₹ as its own text run so it cannot bleed into the digits
+const Cur = ({ v = 0, neg = false }) => (
+  <Text><Text style={S.rupee}>{neg ? '-₹ ' : '₹ '}</Text>{fmt(v)}</Text>
+);
 
 const S = StyleSheet.create({
   page: {
@@ -83,6 +88,7 @@ const S = StyleSheet.create({
   tfL: { padding: '5 7', fontSize: 9 },
 
   skuText: { fontSize: 7, color: '#9ca3af' },
+  rupee:   { fontSize: 7.5 },
 
   // ── Column widths ──
   cNum:   { width: 22 },
@@ -200,12 +206,12 @@ export function InvoicePDF({ inv, company, invSettings, customerAddress, custome
                 {item.sku ? <Text style={S.skuText}>  [#{item.sku}]</Text> : null}
               </Text>
               <Text style={[S.td, S.cQty]}>{item.quantity} {item.unit}</Text>
-              {hasDiscount && <Text style={[S.td, S.cRateD]}>{cur(item.unitPrice)}</Text>}
-              {hasDiscount && <Text style={[S.td, S.cTot]}>{cur(gross)}</Text>}
+              {hasDiscount && <Text style={[S.td, S.cRateD]}><Cur v={item.unitPrice} /></Text>}
+              {hasDiscount && <Text style={[S.td, S.cTot]}><Cur v={gross} /></Text>}
               {hasDiscount && <Text style={[S.td, S.cDisc]}>{item.discountPct || 0}%</Text>}
-              {!hasDiscount && <Text style={[S.td, S.cRate]}>{cur(item.unitPrice)}</Text>}
+              {!hasDiscount && <Text style={[S.td, S.cRate]}><Cur v={item.unitPrice} /></Text>}
               <Text style={[S.tdL, S.cAmt, { fontWeight: 'bold' }]}>
-                {hasDiscount ? cur(taxable) : cur(gross)}
+                <Cur v={hasDiscount ? taxable : gross} />
               </Text>
             </View>
           );
@@ -216,10 +222,10 @@ export function InvoicePDF({ inv, company, invSettings, customerAddress, custome
           <Text style={[S.tfc, S.cDesc, { textAlign: 'right' }]}>Total</Text>
           <Text style={[S.tfc, S.cQty]}>{totalQty}</Text>
           {hasDiscount && <Text style={[S.tfc, S.cRateD]}> </Text>}
-          {hasDiscount && <Text style={[S.tfc, S.cTot]}>{cur(grossTotal)}</Text>}
+          {hasDiscount && <Text style={[S.tfc, S.cTot]}><Cur v={grossTotal} /></Text>}
           {hasDiscount && <Text style={[S.tfc, S.cDisc]}> </Text>}
           {!hasDiscount && <Text style={[S.tfc, S.cRate]}> </Text>}
-          <Text style={[S.tfL, S.cAmt]}>{hasDiscount ? cur(totalTaxable) : cur(grossTotal)}</Text>
+          <Text style={[S.tfL, S.cAmt]}><Cur v={hasDiscount ? totalTaxable : grossTotal} /></Text>
         </View>
 
         {/* ── Summary ── */}
@@ -236,38 +242,41 @@ export function InvoicePDF({ inv, company, invSettings, customerAddress, custome
           </View>
           <View style={S.sumRight}>
             {inv.totalDiscount > 0 && (
-              <View style={S.sumRow}><Text>Discount</Text><Text style={{ color: '#dc2626' }}>-{cur(inv.totalDiscount)}</Text></View>
+              <View style={S.sumRow}>
+                <Text>Discount</Text>
+                <Text style={{ color: '#dc2626' }}><Cur v={inv.totalDiscount} neg /></Text>
+              </View>
             )}
             {inv.totalCGST > 0 && (
-              <View style={S.sumRow}><Text>CGST</Text><Text>{cur(inv.totalCGST)}</Text></View>
+              <View style={S.sumRow}><Text>CGST</Text><Text><Cur v={inv.totalCGST} /></Text></View>
             )}
             {inv.totalSGST > 0 && (
-              <View style={S.sumRow}><Text>SGST</Text><Text>{cur(inv.totalSGST)}</Text></View>
+              <View style={S.sumRow}><Text>SGST</Text><Text><Cur v={inv.totalSGST} /></Text></View>
             )}
             {inv.totalIGST > 0 && (
-              <View style={S.sumRow}><Text>IGST</Text><Text>{cur(inv.totalIGST)}</Text></View>
+              <View style={S.sumRow}><Text>IGST</Text><Text><Cur v={inv.totalIGST} /></Text></View>
             )}
             {totalTax > 0 && (
-              <View style={S.sumTaxSep}><Text>Total Tax</Text><Text>{cur(totalTax)}</Text></View>
+              <View style={S.sumTaxSep}><Text>Total Tax</Text><Text><Cur v={totalTax} /></Text></View>
             )}
             {inv.packingCharges > 0 && (
-              <View style={S.sumRow}><Text>Packing</Text><Text>{cur(inv.packingCharges)}</Text></View>
+              <View style={S.sumRow}><Text>Packing</Text><Text><Cur v={inv.packingCharges} /></Text></View>
             )}
             {inv.shippingCharges > 0 && (
-              <View style={S.sumRow}><Text>Shipping</Text><Text>{cur(inv.shippingCharges)}</Text></View>
+              <View style={S.sumRow}><Text>Shipping</Text><Text><Cur v={inv.shippingCharges} /></Text></View>
             )}
             <View style={S.sumRowBold}>
-              <Text>Grand Total</Text><Text>{cur(inv.grandTotal)}</Text>
+              <Text>Grand Total</Text><Text><Cur v={inv.grandTotal} /></Text>
             </View>
             {(inv.amountPaid || 0) > 0 && (
               <View style={S.sumRowGreen}>
                 <Text>Amount Paid ({inv.paymentMethod})</Text>
-                <Text>{cur(inv.amountPaid)}</Text>
+                <Text><Cur v={inv.amountPaid} /></Text>
               </View>
             )}
             {balanceDue > 0.01 && (
               <View style={S.sumRowRed}>
-                <Text>Balance Due</Text><Text>{cur(balanceDue)}</Text>
+                <Text>Balance Due</Text><Text><Cur v={balanceDue} /></Text>
               </View>
             )}
           </View>
