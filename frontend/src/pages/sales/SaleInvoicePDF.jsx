@@ -13,7 +13,7 @@ Font.register({
 
 // Always show 2 decimal places, no currency symbol
 const cur = (v = 0) =>
-  new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+  '₹' + new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
 
 const S = StyleSheet.create({
   page: {
@@ -85,13 +85,14 @@ const S = StyleSheet.create({
   skuText: { fontSize: 7, color: '#9ca3af' },
 
   // ── Column widths ──
-  cNum:  { width: 22 },
-  cDesc: { flex: 1 },
-  cQty:  { width: 68, textAlign: 'right' },
-  cRate: { width: 78, textAlign: 'right' },
-  cTot:  { width: 78, textAlign: 'right' },
-  cDisc: { width: 40, textAlign: 'right' },
-  cAmt:  { width: 88, textAlign: 'right' },
+  cNum:   { width: 22 },
+  cDesc:  { flex: 1 },
+  cQty:   { width: 68, textAlign: 'right' },
+  cRate:  { width: 78, textAlign: 'right' },
+  cRateD: { width: 68, textAlign: 'right' },
+  cTot:   { width: 78, textAlign: 'right' },
+  cDisc:  { width: 40, textAlign: 'right' },
+  cAmt:   { width: 88, textAlign: 'right' },
 
   // ── Summary ──
   summary:    { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
@@ -181,7 +182,7 @@ export function InvoicePDF({ inv, company, invSettings, customerAddress, custome
           <Text style={[S.th, S.cNum]}>#</Text>
           <Text style={[S.th, S.cDesc]}>Description</Text>
           <Text style={[S.th, S.cQty]}>Qty</Text>
-          {hasDiscount && <Text style={[S.th, S.cRate]}>Rate</Text>}
+          {hasDiscount && <Text style={[S.th, S.cRateD]}>Rate</Text>}
           {hasDiscount && <Text style={[S.th, S.cTot]}>Total</Text>}
           {hasDiscount && <Text style={[S.th, S.cDisc]}>Disc%</Text>}
           {!hasDiscount && <Text style={[S.th, S.cRate]}>Rate</Text>}
@@ -199,7 +200,7 @@ export function InvoicePDF({ inv, company, invSettings, customerAddress, custome
                 {item.sku ? <Text style={S.skuText}>  [#{item.sku}]</Text> : null}
               </Text>
               <Text style={[S.td, S.cQty]}>{item.quantity} {item.unit}</Text>
-              {hasDiscount && <Text style={[S.td, S.cRate]}>{cur(item.unitPrice)}</Text>}
+              {hasDiscount && <Text style={[S.td, S.cRateD]}>{cur(item.unitPrice)}</Text>}
               {hasDiscount && <Text style={[S.td, S.cTot]}>{cur(gross)}</Text>}
               {hasDiscount && <Text style={[S.td, S.cDisc]}>{item.discountPct || 0}%</Text>}
               {!hasDiscount && <Text style={[S.td, S.cRate]}>{cur(item.unitPrice)}</Text>}
@@ -214,7 +215,7 @@ export function InvoicePDF({ inv, company, invSettings, customerAddress, custome
           <Text style={[S.tfc, S.cNum]}> </Text>
           <Text style={[S.tfc, S.cDesc, { textAlign: 'right' }]}>Total</Text>
           <Text style={[S.tfc, S.cQty]}>{totalQty}</Text>
-          {hasDiscount && <Text style={[S.tfc, S.cRate]}> </Text>}
+          {hasDiscount && <Text style={[S.tfc, S.cRateD]}> </Text>}
           {hasDiscount && <Text style={[S.tfc, S.cTot]}>{cur(grossTotal)}</Text>}
           {hasDiscount && <Text style={[S.tfc, S.cDisc]}> </Text>}
           {!hasDiscount && <Text style={[S.tfc, S.cRate]}> </Text>}
