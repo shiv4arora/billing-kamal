@@ -63,20 +63,16 @@ export default function SaleInvoicePrint() {
     }
 
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 12; // mm on all 4 sides
+    const pageW  = pdf.internal.pageSize.getWidth();
+    const pageH  = pdf.internal.pageSize.getHeight();
+    const margin = 12;
     const contentW = pageW - margin * 2;
     const contentH = pageH - margin * 2;
+    const pxPerMm  = canvas.width / contentW;
 
-    // px height of one page's content area (canvas is scaled to contentW mm wide)
-    const pxPerMm = canvas.width / contentW;
-    const contentH_px = Math.round(contentH * pxPerMm);
-    const totalPages = Math.ceil(canvas.height / contentH_px);
-
-    // ── Measure tbody row positions so we can draw per-page borders ──
+    // ── Measure tbody row positions in canvas pixels ──
     const elRect      = el.getBoundingClientRect();
-    const canvasScale = canvas.width / elRect.width;   // == html2canvas scale (1.5)
+    const canvasScale = canvas.width / elRect.width; // = html2canvas scale (1.5)
     const tbodyRows   = Array.from(el.querySelectorAll('tbody tr'));
     const rowBounds   = tbodyRows.map(tr => {
       const r = tr.getBoundingClientRect();
@@ -86,52 +82,70 @@ export default function SaleInvoicePrint() {
       };
     });
 
-    // Get table left/right edges (canvas px) so lines align with table borders
-    const tableEl   = el.querySelector('table');
-    const tableRect = tableEl ? tableEl.getBoundingClientRect() : elRect;
+    // Table left/right edges for border lines
+    const tableEl    = el.querySelector('table');
+    const tableRect  = tableEl ? tableEl.getBoundingClientRect() : elRect;
     const tableLeft  = (tableRect.left  - elRect.left) * canvasScale;
     const tableRight = (tableRect.right - elRect.left) * canvasScale;
 
-    // Draw first/last-item border lines on the full canvas for each page.
-    // Only draw at rows that START or END on that page — never through a split row.
-    const cCtx = canvas.getContext('2d');
-    cCtx.strokeStyle = '#374151';           // gray-700
-    cCtx.lineWidth   = Math.round(2 * canvasScale); // 2 px visual weight
+    // ── Build item-based page slices: 34 items on page 1, 45 on subsequent pages ──
+    const ITEMS_P1 = 34;
+    const ITEMS_PN = 45;
+    // slices: [{startY, endY, firstIdx, lastIdx}]
+    const slices = [];
+    if (rowBounds.length > 0) {
+      const end1 = Math.min(ITEMS_P1 - 1, rowBounds.length - 1);
+      slices.push({ startY: 0, endY: rowBounds[end1].bottom, firstIdx: 0, lastIdx: end1 });
+      let si = ITEMS_P1;
+      while (si < rowBounds.length) {
+        const ei = Math.min(si + ITEMS_PN - 1, rowBounds.length - 1);
+        slices.push({ startY: rowBounds[si].top, endY: rowBounds[ei].bottom, firstIdx: si, lastIdx: ei });
+        si += ITEMS_PN;
+      }
+      // Extend the last slice to canvas bottom so totals/signature are included
+      slices[slices.length - 1].endY = canvas.height;
+    } else {
+      slices.push({ startY: 0, endY: canvas.height, firstIdx: 0, lastIdx: 0 });
+    }
+    const totalPages = slices.length;
 
+    // ── Draw top/bottom borders on the full canvas for each slice ──
+    const cCtx = canvas.getContext('2d');
+    cCtx.strokeStyle = '#374151';
+    cCtx.lineWidth   = Math.round(2 * canvasScale);
     const drawLine = y => {
       cCtx.beginPath(); cCtx.moveTo(tableLeft, y); cCtx.lineTo(tableRight, y); cCtx.stroke();
     };
-
-    for (let pg = 0; pg < totalPages; pg++) {
-      const pgTop    = pg       * contentH_px;
-      const pgBottom = (pg + 1) * contentH_px;
-      const slop     = 2; // px tolerance for floating-point edges
-
-      // First row whose top edge STARTS on this page (not a carry-over from prev page)
-      const firstStarting = rowBounds.find(
-        r => r.top >= pgTop - slop && r.top < pgBottom
-      );
-      // Last row whose bottom edge ENDS on this page (not split onto next page)
-      const lastEnding = [...rowBounds].reverse().find(
-        r => r.bottom > pgTop && r.bottom <= pgBottom + slop
-      );
-
-      if (firstStarting) drawLine(firstStarting.top   + cCtx.lineWidth / 2);
-      if (lastEnding)    drawLine(lastEnding.bottom    - cCtx.lineWidth / 2);
+    for (const s of slices) {
+      if (rowBounds.length > 0) {
+        drawLine(rowBounds[s.firstIdx].top    + cCtx.lineWidth / 2);
+        drawLine(rowBounds[s.lastIdx].bottom  - cCtx.lineWidth / 2);
+      }
     }
 
+    // ── Render each slice onto an A4 page ──
     for (let page = 0; page < totalPages; page++) {
       if (page > 0) pdf.addPage();
-      // Slice this page's strip from the full canvas
+      const { startY, endY } = slices[page];
+      const sliceH = endY - startY;
+
       const strip = document.createElement('canvas');
       strip.width  = canvas.width;
-      strip.height = contentH_px;
-      const ctx = strip.getContext('2d');
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, strip.width, strip.height);
-      ctx.drawImage(canvas, 0, page * contentH_px, canvas.width, contentH_px, 0, 0, canvas.width, contentH_px);
-      pdf.addImage(strip.toDataURL('image/jpeg', 0.82), 'JPEG', margin, margin, contentW, contentH);
-      // Page number at bottom centre, inside bottom margin
+      strip.height = Math.max(sliceH, 1);
+      const sCtx = strip.getContext('2d');
+      sCtx.fillStyle = '#ffffff';
+      sCtx.fillRect(0, 0, strip.width, strip.height);
+      sCtx.drawImage(canvas, 0, startY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+
+      // Scale down only if taller than the content area; otherwise place at natural size
+      const sliceH_mm = sliceH / pxPerMm;
+      const placedH   = Math.min(sliceH_mm, contentH);
+      const placedW   = contentW * (placedH / sliceH_mm);
+      const offsetX   = margin + (contentW - placedW) / 2;
+
+      pdf.addImage(strip.toDataURL('image/jpeg', 0.82), 'JPEG', offsetX, margin, placedW, placedH);
+
+      // Page number
       pdf.setFontSize(8);
       pdf.setTextColor(130, 130, 130);
       pdf.text(`Page ${page + 1} of ${totalPages}`, pageW / 2, pageH - 4, { align: 'center' });
