@@ -88,61 +88,53 @@ export default function SaleInvoicePrint() {
     const tableLeft  = (tableRect.left  - elRect.left) * canvasScale;
     const tableRight = (tableRect.right - elRect.left) * canvasScale;
 
-    // ── Build item-based page slices: 34 on page 1, 45 on subsequent ──
-    const ITEMS_P1 = 34;
-    const ITEMS_PN = 45;
-    const slices = [];
-    if (rowBounds.length > 0) {
-      const end1 = Math.min(ITEMS_P1 - 1, rowBounds.length - 1);
-      slices.push({ startY: 0, endY: rowBounds[end1].bottom, firstIdx: 0, lastIdx: end1 });
-      let si = ITEMS_P1;
-      while (si < rowBounds.length) {
-        const ei = Math.min(si + ITEMS_PN - 1, rowBounds.length - 1);
-        slices.push({ startY: rowBounds[si].top, endY: rowBounds[ei].bottom, firstIdx: si, lastIdx: ei });
-        si += ITEMS_PN;
-      }
-      // Last slice extends to canvas bottom so totals/signature are included
-      slices[slices.length - 1].endY = canvas.height;
-    } else {
-      slices.push({ startY: 0, endY: canvas.height, firstIdx: 0, lastIdx: 0 });
-    }
-    const totalPages = slices.length;
+    const contentH_px = Math.round(contentH * pxPerMm); // fixed A4 content height in canvas px
 
-    // ── Draw top/bottom border lines on full canvas for each slice ──
+    // ── Compute page start positions based on item count ──
+    const ITEMS_P1 = 34, ITEMS_PN = 45;
+    // pages[i] = { startY: canvas y where page i begins, firstIdx, lastIdx }
+    const pages = [];
+    if (rowBounds.length === 0) {
+      pages.push({ startY: 0, firstIdx: -1, lastIdx: -1 });
+    } else {
+      const last1 = Math.min(ITEMS_P1 - 1, rowBounds.length - 1);
+      pages.push({ startY: 0, firstIdx: 0, lastIdx: last1 });
+      for (let si = ITEMS_P1; si < rowBounds.length; si += ITEMS_PN) {
+        const ei = Math.min(si + ITEMS_PN - 1, rowBounds.length - 1);
+        pages.push({ startY: rowBounds[si].top, firstIdx: si, lastIdx: ei });
+      }
+    }
+    const totalPages = pages.length;
+
+    // ── Draw top/bottom border lines on the full canvas ──
     const cCtx = canvas.getContext('2d');
     cCtx.strokeStyle = '#374151';
     cCtx.lineWidth   = Math.round(2 * canvasScale);
     const drawLine = y => {
       cCtx.beginPath(); cCtx.moveTo(tableLeft, y); cCtx.lineTo(tableRight, y); cCtx.stroke();
     };
-    for (const s of slices) {
-      if (rowBounds.length > 0) {
-        drawLine(rowBounds[s.firstIdx].top    + cCtx.lineWidth / 2);
-        drawLine(rowBounds[s.lastIdx].bottom  - cCtx.lineWidth / 2);
+    for (const { firstIdx, lastIdx } of pages) {
+      if (firstIdx >= 0) {
+        drawLine(rowBounds[firstIdx].top    + cCtx.lineWidth / 2);
+        drawLine(rowBounds[lastIdx].bottom  - cCtx.lineWidth / 2);
       }
     }
 
-    // ── Render each slice onto an A4 PDF page ──
+    // ── Render each page: fixed A4-height strip, content top-aligned ──
     for (let page = 0; page < totalPages; page++) {
       if (page > 0) pdf.addPage();
-      const { startY, endY } = slices[page];
-      const sliceH = endY - startY;
+      const { startY } = pages[page];
 
       const strip  = document.createElement('canvas');
       strip.width  = canvas.width;
-      strip.height = Math.max(sliceH, 1);
+      strip.height = contentH_px;           // always full A4 height → consistent text size
       const sCtx   = strip.getContext('2d');
       sCtx.fillStyle = '#ffffff';
       sCtx.fillRect(0, 0, strip.width, strip.height);
-      sCtx.drawImage(canvas, 0, startY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+      // Draws contentH_px rows from canvas starting at startY; clips safely past canvas.height
+      sCtx.drawImage(canvas, 0, startY, canvas.width, contentH_px, 0, 0, canvas.width, contentH_px);
 
-      // Scale down only if taller than the content area
-      const sliceH_mm = sliceH / pxPerMm;
-      const placedH   = Math.min(sliceH_mm, contentH);
-      const placedW   = contentW * (placedH / sliceH_mm);
-      const offsetX   = margin + (contentW - placedW) / 2;
-
-      pdf.addImage(strip.toDataURL('image/jpeg', 0.82), 'JPEG', offsetX, margin, placedW, placedH);
+      pdf.addImage(strip.toDataURL('image/jpeg', 0.82), 'JPEG', margin, margin, contentW, contentH);
 
       // Page number at bottom centre
       pdf.setFontSize(8);
