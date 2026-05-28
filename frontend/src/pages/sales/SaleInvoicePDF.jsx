@@ -67,14 +67,12 @@ const S = StyleSheet.create({
     flexDirection: 'row',
     borderTopWidth: 0.5,
     borderTopColor: '#9ca3af',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#9ca3af',
     borderLeftWidth: 0.5,
     borderLeftColor: '#9ca3af',
     borderRightWidth: 0.5,
     borderRightColor: '#9ca3af',
-  },
-  rowLast: {
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#9ca3af',
   },
   tfoot: {
     flexDirection: 'row',
@@ -208,7 +206,7 @@ export function InvoicePDF({ inv, company, invSettings, customerAddress, custome
           const gross   = item.quantity * item.unitPrice;
           const taxable = item.taxableAmount ?? item.lineTotal;
           return (
-            <View key={i} style={[S.row, i === items.length - 1 && S.rowLast]} wrap={false}>
+            <View key={i} style={S.row} wrap={false}>
               <Text style={[S.td, S.cNum]}>{i + 1}</Text>
               <Text style={[S.td, S.cDesc]}>
                 {item.productName}
