@@ -71,9 +71,9 @@ function ParcelForm({ f, setF, suppliers, idPrefix = '' }) {
       <label className="flex items-center gap-2 cursor-pointer">
         <input type="checkbox" checked={f.isUrgent}
           onChange={e => setF(v => ({ ...v, isUrgent: e.target.checked }))}
-          className="w-4 h-4 accent-orange-500"
+          className="w-4 h-4 accent-red-600"
         />
-        <span className="text-sm font-medium text-orange-600">🔥 Mark as urgent</span>
+        <span className="text-sm font-medium text-red-600">🔥 Mark as urgent</span>
       </label>
     </>
   );
@@ -187,11 +187,11 @@ function IncomingParcels({ suppliers }) {
     }
 
     return (
-      <div className={`rounded-xl border px-4 py-2.5 ${task.isUrgent ? 'border-orange-200 bg-orange-50' : 'border-gray-200 bg-white'}`}>
+      <div className={`rounded-xl border px-4 py-2.5 ${task.isUrgent ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'}`}>
         {/* Top row: name + badges */}
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-semibold text-gray-900">{task.supplierName}</span>
-          {task.isUrgent && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500 text-white">🔥 Urgent</span>}
+          {task.isUrgent && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-600 text-white">🔥 Urgent</span>}
         </div>
 
         {/* Date/time — slightly larger */}
@@ -215,7 +215,7 @@ function IncomingParcels({ suppliers }) {
                 ✓ Received
               </button>
               <button onClick={() => toggleUrgent(task)}
-                className={`text-xs px-2.5 py-1 rounded-lg font-medium whitespace-nowrap ${task.isUrgent ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-orange-100 text-orange-700 hover:bg-orange-200'}`}>
+                className={`text-xs px-2.5 py-1 rounded-lg font-medium whitespace-nowrap ${task.isUrgent ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}>
                 {task.isUrgent ? 'Not urgent' : '🔥 Urgent'}
               </button>
               <button onClick={() => { setNrId(id => id === task.id ? null : task.id); setNrText(''); }}
@@ -289,7 +289,7 @@ function IncomingParcels({ suppliers }) {
       {/* Urgent */}
       {urgent.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-bold text-orange-600 uppercase tracking-wide">🔥 Urgent — {urgent.length}</p>
+          <p className="text-xs font-bold text-red-600 uppercase tracking-wide">🔥 Urgent — {urgent.length}</p>
           {urgent.map(t => <TaskCard key={t.id} task={t} />)}
         </div>
       )}
@@ -297,7 +297,7 @@ function IncomingParcels({ suppliers }) {
       {/* Normal pending */}
       {normal.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Pending — {normal.length}</p>
+          <p className="text-xs font-bold text-orange-500 uppercase tracking-wide">Pending — {normal.length}</p>
           {normal.map(t => <TaskCard key={t.id} task={t} />)}
         </div>
       )}
