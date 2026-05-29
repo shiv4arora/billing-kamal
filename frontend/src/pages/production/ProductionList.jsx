@@ -58,7 +58,7 @@ export default function ProductionList() {
         ? ((typeof p.pricing === 'object' && p.pricing !== null) ? p.pricing : (() => { try { return JSON.parse(p.pricing || '{}'); } catch { return {}; } })())
         : (o.pricing || {});
       return {
-        product: { id: o.productId, name: o.productName, sku: p?.sku || o.sku || '', unit: o.unit || p?.unit || '', pricing },
+        product: { id: o.productId, name: o.productName, sku: p?.sku || o.sku || '', unit: o.unit || p?.unit || '', pricing, supplierId: p?.supplierId || null },
         qty: o.quantity,
       };
     });

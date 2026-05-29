@@ -16,9 +16,9 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { supplierName, supplierId, description, isUrgent, expectedDate, notes } = req.body;
+    const { supplierName, supplierId, description, isUrgent, expectedDate, expectedTime, notes } = req.body;
     const task = await prisma.purchaseTask.create({
-      data: { supplierName, supplierId: supplierId || null, description, isUrgent: !!isUrgent, expectedDate: expectedDate || '', notes: notes || '' },
+      data: { supplierName, supplierId: supplierId || null, description, isUrgent: !!isUrgent, expectedDate: expectedDate || '', expectedTime: expectedTime || '', notes: notes || '' },
     });
     res.json(task);
   } catch (e) {
@@ -28,17 +28,19 @@ router.post('/', async (req, res) => {
 
 router.patch('/:id', async (req, res) => {
   try {
-    const { supplierName, supplierId, description, isUrgent, status, expectedDate, notes } = req.body;
+    const { supplierName, supplierId, description, isUrgent, status, expectedDate, expectedTime, notes, notReceivedReason } = req.body;
     const task = await prisma.purchaseTask.update({
       where: { id: req.params.id },
       data: {
-        ...(supplierName  !== undefined && { supplierName }),
-        ...(supplierId    !== undefined && { supplierId: supplierId || null }),
-        ...(description   !== undefined && { description }),
-        ...(isUrgent      !== undefined && { isUrgent: !!isUrgent }),
-        ...(status        !== undefined && { status }),
-        ...(expectedDate  !== undefined && { expectedDate }),
-        ...(notes         !== undefined && { notes }),
+        ...(supplierName       !== undefined && { supplierName }),
+        ...(supplierId         !== undefined && { supplierId: supplierId || null }),
+        ...(description        !== undefined && { description }),
+        ...(isUrgent           !== undefined && { isUrgent: !!isUrgent }),
+        ...(status             !== undefined && { status }),
+        ...(expectedDate       !== undefined && { expectedDate }),
+        ...(expectedTime       !== undefined && { expectedTime }),
+        ...(notes              !== undefined && { notes }),
+        ...(notReceivedReason  !== undefined && { notReceivedReason }),
       },
     });
     res.json(task);

@@ -15,15 +15,82 @@ const payBg = {
   unpaid:  'bg-red-100 text-red-700',
 };
 
-const BLANK_TASK = { supplierName: '', description: '', isUrgent: false, expectedDate: '', notes: '' };
+const BLANK_TASK = { supplierName: '', description: '', isUrgent: false, expectedDate: '', expectedTime: '', notes: '' };
+
+// ── Shared parcel form fields ────────────────────────────────────────────────
+function ParcelForm({ f, setF, suppliers, idPrefix = '' }) {
+  return (
+    <>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Supplier name *</label>
+          <input
+            list={`${idPrefix}supplier-list`}
+            value={f.supplierName}
+            onChange={e => setF(v => ({ ...v, supplierName: e.target.value }))}
+            placeholder="Supplier…"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+          <datalist id={`${idPrefix}supplier-list`}>
+            {suppliers.map(s => <option key={s.id} value={s.name} />)}
+          </datalist>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Expected date</label>
+            <input type="date" value={f.expectedDate}
+              onChange={e => setF(v => ({ ...v, expectedDate: e.target.value }))}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Time</label>
+            <input type="time" value={f.expectedTime}
+              onChange={e => setF(v => ({ ...v, expectedTime: e.target.value }))}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </div>
+        </div>
+      </div>
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">What's coming</label>
+        <input value={f.description}
+          onChange={e => setF(v => ({ ...v, description: e.target.value }))}
+          placeholder="e.g. Rakhi SP series, 5 boxes"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+      </div>
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">Notes (optional)</label>
+        <input value={f.notes}
+          onChange={e => setF(v => ({ ...v, notes: e.target.value }))}
+          placeholder="Any extra info…"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+      </div>
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" checked={f.isUrgent}
+          onChange={e => setF(v => ({ ...v, isUrgent: e.target.checked }))}
+          className="w-4 h-4 accent-orange-500"
+        />
+        <span className="text-sm font-medium text-orange-600">🔥 Mark as urgent</span>
+      </label>
+    </>
+  );
+}
 
 // ── Incoming Parcels tab ─────────────────────────────────────────────────────
 function IncomingParcels({ suppliers }) {
-  const [tasks, setTasks]         = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [showForm, setShowForm]   = useState(false);
-  const [form, setForm]           = useState(BLANK_TASK);
-  const [saving, setSaving]       = useState(false);
+  const [tasks, setTasks]             = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [showForm, setShowForm]       = useState(false);
+  const [form, setForm]               = useState(BLANK_TASK);
+  const [saving, setSaving]           = useState(false);
+  const [editTaskId, setEditTaskId]   = useState(null);
+  const [editForm, setEditForm]       = useState(BLANK_TASK);
+  const [editSaving, setEditSaving]   = useState(false);
+  const [nrId, setNrId]               = useState(null);   // "not received" active task id
+  const [nrText, setNrText]           = useState('');
 
   useEffect(() => {
     api('/purchase-tasks')
@@ -45,9 +112,30 @@ function IncomingParcels({ suppliers }) {
       setTasks(prev => [created, ...prev]);
       setForm(BLANK_TASK);
       setShowForm(false);
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
+  };
+
+  const startEdit = (task) => {
+    setEditTaskId(task.id);
+    setEditForm({
+      supplierName: task.supplierName || '',
+      description:  task.description  || '',
+      isUrgent:     task.isUrgent     || false,
+      expectedDate: task.expectedDate || '',
+      expectedTime: task.expectedTime || '',
+      notes:        task.notes        || '',
+    });
+    setNrId(null);
+  };
+
+  const saveEdit = async () => {
+    if (!editForm.supplierName.trim()) return;
+    setEditSaving(true);
+    try {
+      const updated = await api(`/purchase-tasks/${editTaskId}`, { method: 'PATCH', body: editForm });
+      setTasks(prev => prev.map(t => t.id === editTaskId ? updated : t));
+      setEditTaskId(null);
+    } finally { setEditSaving(false); }
   };
 
   const markReceived = async (id) => {
@@ -60,46 +148,113 @@ function IncomingParcels({ suppliers }) {
     setTasks(prev => prev.map(t => t.id === task.id ? updated : t));
   };
 
+  const saveNotReceived = async (id) => {
+    if (!nrText.trim()) return;
+    const updated = await api(`/purchase-tasks/${id}`, { method: 'PATCH', body: { notReceivedReason: nrText.trim() } });
+    setTasks(prev => prev.map(t => t.id === id ? updated : t));
+    setNrId(null); setNrText('');
+  };
+
   const remove = async (id) => {
     await api(`/purchase-tasks/${id}`, { method: 'DELETE' });
     setTasks(prev => prev.filter(t => t.id !== id));
   };
 
-  const TaskCard = ({ task }) => (
-    <div className={`rounded-xl border px-4 py-3 flex gap-3 items-start ${task.isUrgent ? 'border-orange-200 bg-orange-50' : 'border-gray-200 bg-white'}`}>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-semibold text-gray-900">{task.supplierName}</span>
-          {task.isUrgent && (
-            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500 text-white">🔥 Urgent</span>
-          )}
-          {task.expectedDate && (
-            <span className="text-xs text-gray-400">Expected: {formatDate(task.expectedDate)}</span>
-          )}
+  const TaskCard = ({ task }) => {
+    const expectedStr = [
+      task.expectedDate ? formatDate(task.expectedDate) : '',
+      task.expectedTime || '',
+    ].filter(Boolean).join(' at ');
+
+    // Inline edit mode
+    if (editTaskId === task.id) {
+      return (
+        <div className="bg-white border border-blue-200 rounded-xl p-4 space-y-3">
+          <p className="font-semibold text-gray-800 text-sm">Edit Parcel</p>
+          <ParcelForm f={editForm} setF={setEditForm} suppliers={suppliers} idPrefix="edit-" />
+          <div className="flex gap-2 pt-1">
+            <button onClick={saveEdit} disabled={editSaving || !editForm.supplierName.trim()}
+              className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              {editSaving ? 'Saving…' : 'Save Changes'}
+            </button>
+            <button onClick={() => setEditTaskId(null)}
+              className="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200">
+              Cancel
+            </button>
+          </div>
         </div>
-        {task.description && <p className="text-sm text-gray-700 mt-0.5">{task.description}</p>}
-        {task.notes && <p className="text-xs text-gray-400 italic mt-0.5">{task.notes}</p>}
-      </div>
-      <div className="flex flex-col gap-1.5 shrink-0 items-end">
-        {task.status === 'pending' && (
-          <>
-            <button onClick={() => markReceived(task.id)}
-              className="text-xs px-2.5 py-1 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 active:bg-green-800 whitespace-nowrap">
-              ✓ Received
+      );
+    }
+
+    return (
+      <div className={`rounded-xl border px-4 py-3 space-y-2 ${task.isUrgent ? 'border-orange-200 bg-orange-50' : 'border-gray-200 bg-white'}`}>
+        <div className="flex gap-3 items-start">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-gray-900">{task.supplierName}</span>
+              {task.isUrgent && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500 text-white">🔥 Urgent</span>}
+              {expectedStr && <span className="text-xs text-gray-400">📅 {expectedStr}</span>}
+            </div>
+            {task.description && <p className="text-sm text-gray-700 mt-0.5">{task.description}</p>}
+            {task.notes && <p className="text-xs text-gray-400 italic mt-0.5">{task.notes}</p>}
+            {task.notReceivedReason && (
+              <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-2 py-1 mt-1">
+                ⚠ Not received: {task.notReceivedReason}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col gap-1.5 shrink-0 items-end">
+            {task.status === 'pending' && (
+              <>
+                <button onClick={() => markReceived(task.id)}
+                  className="text-xs px-2.5 py-1 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 whitespace-nowrap">
+                  ✓ Received
+                </button>
+                <button onClick={() => toggleUrgent(task)}
+                  className={`text-xs px-2.5 py-1 rounded-lg font-medium whitespace-nowrap ${task.isUrgent ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-orange-100 text-orange-700 hover:bg-orange-200'}`}>
+                  {task.isUrgent ? 'Not urgent' : '🔥 Urgent'}
+                </button>
+                <button onClick={() => { setNrId(id => id === task.id ? null : task.id); setNrText(''); }}
+                  className="text-xs px-2.5 py-1 bg-red-50 text-red-600 rounded-lg font-medium hover:bg-red-100 whitespace-nowrap">
+                  ⚠ Not received
+                </button>
+              </>
+            )}
+            <button onClick={() => startEdit(task)}
+              className="text-xs px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 whitespace-nowrap">
+              ✏ Edit
             </button>
-            <button onClick={() => toggleUrgent(task)}
-              className={`text-xs px-2.5 py-1 rounded-lg font-medium whitespace-nowrap ${task.isUrgent ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-orange-100 text-orange-700 hover:bg-orange-200'}`}>
-              {task.isUrgent ? 'Not urgent' : '🔥 Mark urgent'}
+            <button onClick={() => remove(task.id)}
+              className="text-xs px-2.5 py-1 bg-red-50 text-red-400 rounded-lg hover:bg-red-100 whitespace-nowrap">
+              Delete
             </button>
-          </>
+          </div>
+        </div>
+
+        {/* Not received reason input */}
+        {nrId === task.id && (
+          <div className="flex gap-2 pt-1 border-t border-red-100">
+            <input
+              autoFocus
+              value={nrText}
+              onChange={e => setNrText(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && saveNotReceived(task.id)}
+              placeholder="Reason (e.g. delayed by supplier, wrong items)"
+              className="flex-1 border border-red-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-red-400"
+            />
+            <button onClick={() => saveNotReceived(task.id)}
+              className="text-xs px-3 py-1.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 whitespace-nowrap">
+              Save
+            </button>
+            <button onClick={() => { setNrId(null); setNrText(''); }}
+              className="text-xs px-2 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">
+              ✕
+            </button>
+          </div>
         )}
-        <button onClick={() => remove(task.id)}
-          className="text-xs px-2.5 py-1 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 whitespace-nowrap">
-          Delete
-        </button>
       </div>
-    </div>
-  );
+    );
+  };
 
   if (loading) return <div className="text-center py-16 text-gray-400">Loading…</div>;
 
@@ -109,58 +264,7 @@ function IncomingParcels({ suppliers }) {
       {showForm ? (
         <div className="bg-white border border-blue-200 rounded-xl p-4 space-y-3">
           <p className="font-semibold text-gray-800 text-sm">New Incoming Parcel</p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Supplier name *</label>
-              <input
-                list="supplier-list"
-                value={form.supplierName}
-                onChange={e => setForm(f => ({ ...f, supplierName: e.target.value }))}
-                placeholder="Supplier…"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-              <datalist id="supplier-list">
-                {suppliers.map(s => <option key={s.id} value={s.name} />)}
-              </datalist>
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Expected date</label>
-              <input type="date" value={form.expectedDate}
-                onChange={e => setForm(f => ({ ...f, expectedDate: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs text-gray-500 mb-1 block">What's coming</label>
-            <input value={form.description}
-              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              placeholder="e.g. Rakhi SP series, 5 boxes"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs text-gray-500 mb-1 block">Notes (optional)</label>
-            <input value={form.notes}
-              onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-              placeholder="Any extra info…"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-          </div>
-
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={form.isUrgent}
-                onChange={e => setForm(f => ({ ...f, isUrgent: e.target.checked }))}
-                className="w-4 h-4 accent-orange-500"
-              />
-              <span className="text-sm font-medium text-orange-600">🔥 Mark as urgent</span>
-            </label>
-          </div>
-
+          <ParcelForm f={form} setF={setForm} suppliers={suppliers} />
           <div className="flex gap-2 pt-1">
             <button onClick={save} disabled={saving || !form.supplierName.trim()}
               className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
