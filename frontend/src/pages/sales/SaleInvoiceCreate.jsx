@@ -258,7 +258,7 @@ export default function SaleInvoiceCreate() {
     }
   }, [saving, amountPaid, finalTotal, date, dueDate, customerId, customer, customerType, totals, packingAmt, shippingAmt, paymentMethod, notes, effectiveId]);
 
-  const autoSaveStatus = useAutoSave(autoSaveData, performAutoSave, { delay: 3000 });
+  const autoSaveStatus = useAutoSave(autoSaveData, performAutoSave, { delay: 60000 });
   // ─────────────────────────────────────────────────────────────────────────
 
   const handleSave = async (status) => {

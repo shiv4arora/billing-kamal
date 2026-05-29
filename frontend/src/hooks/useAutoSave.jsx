@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
  *
  * @returns {'idle'|'unsaved'|'saving'|'saved'|'error'} status
  */
-export function useAutoSave(data, saveFn, { delay = 3000 } = {}) {
+export function useAutoSave(data, saveFn, { delay = 60000 } = {}) {
   const [status, setStatus] = useState('idle');
   const timerRef   = useRef(null);
   const firstRender = useRef(true);

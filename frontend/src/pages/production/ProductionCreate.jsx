@@ -88,7 +88,7 @@ export default function ProductionCreate() {
     clearTimeout(draftTimerRef.current);
     draftTimerRef.current = setTimeout(() => {
       localStorage.setItem(DRAFT_KEY, JSON.stringify({ date, notes, box, components, outputs }));
-    }, 1500);
+    }, 60000);
     return () => clearTimeout(draftTimerRef.current);
   }, [date, notes, box, components, outputs]);
 

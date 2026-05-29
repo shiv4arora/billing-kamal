@@ -463,7 +463,7 @@ export default function PurchaseInvoiceCreate() {
     }
   }, [supplierId, supplierInvNo, date, supplier, amountPaid, paymentMethod, notes, billDiscount, otherCharges, otherChargesNarration, effectiveId, totals, validItems.length]);
 
-  const autoSaveStatus = useAutoSave(autoSaveData, performAutoSave, { delay: 3000 });
+  const autoSaveStatus = useAutoSave(autoSaveData, performAutoSave, { delay: 60000 });
   // ─────────────────────────────────────────────────────────────────────────
 
   const handleSave = async (status) => {
