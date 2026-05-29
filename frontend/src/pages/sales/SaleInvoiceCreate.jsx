@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useInvoices } from '../../context/InvoiceContext';
 import { useProducts } from '../../context/ProductContext';
@@ -8,9 +8,11 @@ import { useLedger } from '../../context/LedgerContext';
 import { Button, Input, Select, Textarea, Card } from '../../components/ui';
 import { useGlobalToast } from '../../context/ToastContext';
 import { buildInvoiceTotals, formatCurrency, getPrice, nextInvoiceNumber, today, formatCustomerDisplay } from '../../utils/helpers';
+import { api } from '../../hooks/useApi';
 import { GST_RATES, UNITS } from '../../constants';
 import { useInvoiceLock } from '../../hooks/useInvoiceLock';
 import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedChanges.jsx';
+import { useAutoSave, AutoSaveIndicator } from '../../hooks/useAutoSave';
 import BarcodeScanner from '../../components/BarcodeScanner';
 
 const BLANK_ITEM = { isFreeText: false, productId: '', productName: '', sku: '', hsnCode: '', unit: 'Pcs', quantity: 1, unitPrice: 0, discountPct: 0, gstRate: 0, vendorCode: '' };
@@ -49,6 +51,7 @@ export default function SaleInvoiceCreate() {
   const [bulkGst, setBulkGst] = useState('');
   const [vendorDiscounts, setVendorDiscounts] = useState({});
   const [extraCharges, setExtraCharges] = useState({ packing: '', shipping: '' });
+  const [autoSavedId, setAutoSavedId] = useState(null); // draft ID created by auto-save on new invoices
   const dropdownRefs = useRef({});
   const searchInputRefs = useRef({});
 
@@ -223,6 +226,41 @@ export default function SaleInvoiceCreate() {
   const shippingAmt = parseFloat(extraCharges.shipping) || 0;
   const finalTotal = totals.grandTotal + packingAmt + shippingAmt;
 
+  // ── Auto-save ────────────────────────────────────────────────────────────
+  const effectiveId = isEdit ? id : autoSavedId;
+
+  const autoSaveData = useMemo(() => JSON.stringify({
+    date, dueDate, customerId, customerType,
+    items: items.map(i => ({ productId: i.productId, productName: i.productName, isFreeText: i.isFreeText, quantity: i.quantity, unitPrice: i.unitPrice, discountPct: i.discountPct, gstRate: i.gstRate })),
+    amountPaid, paymentMethod, notes,
+    packing: extraCharges.packing, shipping: extraCharges.shipping,
+  }), [date, dueDate, customerId, customerType, items, amountPaid, paymentMethod, notes, extraCharges]);
+
+  const performAutoSave = useCallback(async () => {
+    if (saving) return;
+    const paid = +amountPaid || 0;
+    const payStatus = paid >= finalTotal ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
+    const invData = {
+      date, dueDate: dueDate || date,
+      customerId, customerName: customer?.name || '',
+      customerPlace: customer?.place || '', customerType,
+      customerAddress: customer?.address || '', customerGstin: customer?.gstin || '',
+      items: totals.items, ...totals,
+      grandTotal: finalTotal, packingCharges: packingAmt, shippingCharges: shippingAmt,
+      amountPaid: paid, paymentMethod, paymentStatus: payStatus,
+      paymentDate: paid > 0 ? today() : null, notes, status: 'draft',
+    };
+    if (effectiveId) {
+      await api(`/sales/${effectiveId}`, { method: 'PUT', body: invData });
+    } else {
+      const saved = await api('/sales', { method: 'POST', body: invData });
+      setAutoSavedId(saved.id);
+    }
+  }, [saving, amountPaid, finalTotal, date, dueDate, customerId, customer, customerType, totals, packingAmt, shippingAmt, paymentMethod, notes, effectiveId]);
+
+  const autoSaveStatus = useAutoSave(autoSaveData, performAutoSave, { delay: 3000 });
+  // ─────────────────────────────────────────────────────────────────────────
+
   const handleSave = async (status) => {
     if (!customerId) { toast.error('Please select a customer'); return; }
     for (const item of items) {
@@ -239,10 +277,15 @@ export default function SaleInvoiceCreate() {
       const invData = { date, dueDate: dueD, customerId, customerName: customer?.name || '', customerPlace: customer?.place || '', customerType, customerAddress: customer?.address || '', customerGstin: customer?.gstin || '', items: totals.items, ...totals, grandTotal: finalTotal, packingCharges: packingAmt, shippingCharges: shippingAmt, amountPaid: paid, paymentMethod, paymentStatus: payStatus, paymentDate: paid > 0 ? today() : null, notes, status: 'draft' };
 
       setIsDirty(false);
-      if (isEdit) {
-        await updateSaleInvoice(id, { ...invData, status });
-        toast.success('Invoice updated');
-        navigate('/sales');
+      if (effectiveId) {
+        await updateSaleInvoice(effectiveId, { ...invData, status });
+        if (status === 'issued') {
+          const issued = await issueSaleInvoice(effectiveId);
+          toast.success(`Invoice ${issued.invoiceNumber} issued`);
+        } else {
+          toast.success(isEdit ? 'Invoice updated' : 'Draft saved');
+        }
+        navigate(`/sales/${effectiveId}`);
       } else {
         const saved = await addSaleInvoice(invData);
         if (status === 'issued') {
@@ -321,6 +364,7 @@ export default function SaleInvoiceCreate() {
         <div className="flex items-center gap-3">
           <button onClick={() => { if (confirmLeave()) navigate('/sales'); }} className="text-gray-400 hover:text-gray-600 text-lg leading-none p-1 -ml-1">←</button>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{isEdit ? 'Edit Sale Invoice' : 'New Sale Invoice'}</h1>
+          <AutoSaveIndicator status={autoSaveStatus} />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

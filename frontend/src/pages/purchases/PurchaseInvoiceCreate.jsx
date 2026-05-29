@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { api } from '../../hooks/useApi';
 import { useInvoiceLock } from '../../hooks/useInvoiceLock';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -12,6 +12,7 @@ import { buildInvoiceTotals, formatCurrency, today } from '../../utils/helpers';
 import { GST_RATES, UNITS } from '../../constants';
 import * as XLSX from 'xlsx';
 import { useUnsavedChanges, UnsavedChangesModal } from '../../hooks/useUnsavedChanges.jsx';
+import { useAutoSave, AutoSaveIndicator } from '../../hooks/useAutoSave';
 
 /* ─── helpers ────────────────────────────────────────────────────────── */
 function calcSellingPrices(cost, supplierMargin = {}, supplierDiscount = 0) {
@@ -318,6 +319,7 @@ export default function PurchaseInvoiceCreate() {
   }, [id]);
 
   const supplier = suppliers.find(s => s.id === supplierId);
+  const [autoSavedId, setAutoSavedId] = useState(null); // draft ID created by auto-save on new invoices
 
   // When supplier changes, recalc prices for all existing items
   const handleSupplierChange = (sid) => {
@@ -431,6 +433,39 @@ export default function PurchaseInvoiceCreate() {
     e.target.value = ''; // reset so same file can be re-uploaded
   };
 
+  // ── Auto-save ────────────────────────────────────────────────────────────
+  const effectiveId = isEdit ? id : autoSavedId;
+
+  const autoSaveData = useMemo(() => JSON.stringify({
+    supplierId, supplierInvNo, date,
+    items: items.map(i => ({ productId: i.productId, productName: i.productName, isNew: i.isNew, quantity: i.quantity, unitPrice: i.unitPrice, gstRate: i.gstRate })),
+    amountPaid, paymentMethod, notes, billDiscount, otherCharges, otherChargesNarration,
+  }), [supplierId, supplierInvNo, date, items, amountPaid, paymentMethod, notes, billDiscount, otherCharges, otherChargesNarration]);
+
+  const performAutoSave = useCallback(async () => {
+    if (!supplierId || validItems.length === 0) return;
+    const paid = +amountPaid || 0;
+    const invData = {
+      supplierInvoiceNumber: supplierInvNo,
+      date, supplierId, supplierName: supplier?.name || '',
+      items: totals.items,
+      amountPaid: paid, paymentMethod, notes,
+      billDiscount: +billDiscount || 0,
+      otherCharges: +otherCharges || 0,
+      otherChargesNarration: otherChargesNarration || '',
+      status: 'draft',
+    };
+    if (effectiveId) {
+      await api(`/purchases/${effectiveId}`, { method: 'PUT', body: invData });
+    } else {
+      const saved = await api('/purchases', { method: 'POST', body: invData });
+      setAutoSavedId(saved.id);
+    }
+  }, [supplierId, supplierInvNo, date, supplier, amountPaid, paymentMethod, notes, billDiscount, otherCharges, otherChargesNarration, effectiveId, totals, validItems.length]);
+
+  const autoSaveStatus = useAutoSave(autoSaveData, performAutoSave, { delay: 3000 });
+  // ─────────────────────────────────────────────────────────────────────────
+
   const handleSave = async (status) => {
     if (!supplierId) { toast.error('Select a supplier'); return; }
     if (validItems.length === 0) { toast.error('Add at least one item with name and quantity'); return; }
@@ -451,11 +486,11 @@ export default function PurchaseInvoiceCreate() {
 
     try {
       setIsDirty(false);
-      if (isEdit) {
-        await updatePurchaseInvoice(id, invData);
+      if (effectiveId) {
+        await updatePurchaseInvoice(effectiveId, invData);
         await refreshProducts();
         toast.success('Invoice updated · Stock & prices synced');
-        setTimeout(() => { navigate('/purchases'); }, 600);
+        setTimeout(() => { navigate(`/purchases/${effectiveId}`); }, 600);
         return;
       }
       const saved = await addPurchaseInvoice({ ...invData, status: 'draft' });
@@ -492,6 +527,7 @@ export default function PurchaseInvoiceCreate() {
         <div className="flex items-center gap-3">
           <button onClick={() => { if (confirmLeave()) navigate('/purchases'); }} className="text-gray-400 hover:text-gray-600">←</button>
           <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Purchase' : 'New Purchase Invoice'}</h1>
+          <AutoSaveIndicator status={autoSaveStatus} />
         </div>
 
         {/* Supplier + Invoice details */}

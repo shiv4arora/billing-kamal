@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProducts } from '../../context/ProductContext';
 import { useSuppliers } from '../../context/SupplierContext';
@@ -10,6 +10,7 @@ import QuickCalc from '../../components/ui/QuickCalc';
 
 const BLANK_COMP = () => ({ productId: '', productName: '', sku: '', currentStock: 0, unit: '', wholesale: 0, vendorCode: '', quantity: '' });
 const BLANK_OUTPUT = () => ({ isNew: false, productId: '', productName: '', sku: '', currentStock: 0, unit: 'Pcs', quantity: '', wholesale: '', shop: '', supplierId: '' });
+const DRAFT_KEY = 'production_draft';
 
 /* ── Shared product search dropdown ── */
 function ProductSearch({ value, onSelect, products, placeholder = 'Search product…', exclude = [] }) {
@@ -59,10 +60,54 @@ export default function ProductionCreate() {
   const [outputs, setOutputs] = useState([BLANK_OUTPUT()]);
   const [nextSku, setNextSku] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [showRestoreBanner, setShowRestoreBanner] = useState(false);
+  const draftTimerRef = useRef(null);
+  const firstRender = useRef(true);
 
   useEffect(() => {
     api('/counters').then(d => setNextSku(d.sku ?? 1001)).catch(() => {});
   }, []);
+
+  // Check for saved draft on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const draft = JSON.parse(raw);
+        const hasContent = draft.notes?.trim() || draft.box?.trim()
+          || draft.components?.some(c => c.productId)
+          || draft.outputs?.some(o => o.productId || o.productName?.trim());
+        if (hasContent) setShowRestoreBanner(true);
+      }
+    } catch {}
+  }, []);
+
+  // Debounced save to localStorage (skip first render)
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return; }
+    clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ date, notes, box, components, outputs }));
+    }, 1500);
+    return () => clearTimeout(draftTimerRef.current);
+  }, [date, notes, box, components, outputs]);
+
+  const restoreDraft = () => {
+    try {
+      const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}');
+      if (draft.date) setDate(draft.date);
+      if (draft.notes != null) setNotes(draft.notes);
+      if (draft.box != null) setBox(draft.box);
+      if (draft.components?.length) setComponents(draft.components);
+      if (draft.outputs?.length) setOutputs(draft.outputs);
+    } catch {}
+    setShowRestoreBanner(false);
+  };
+
+  const discardDraft = () => {
+    localStorage.removeItem(DRAFT_KEY);
+    setShowRestoreBanner(false);
+  };
 
   /* ── Component helpers ── */
   const addComponent = () => setComponents(prev => [...prev, BLANK_COMP()]);
@@ -126,6 +171,7 @@ export default function ProductionCreate() {
           })),
         },
       });
+      localStorage.removeItem(DRAFT_KEY);
       await refreshProducts();
       toast.success('Production entry saved · stock updated');
       navigate('/production');
@@ -148,6 +194,17 @@ export default function ProductionCreate() {
           <p className="text-sm text-gray-500 mt-0.5">Combine raw materials into finished products</p>
         </div>
       </div>
+
+      {/* Draft restore banner */}
+      {showRestoreBanner && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+          <p className="text-sm text-amber-800 font-medium">📝 You have an unsaved draft. Restore it?</p>
+          <div className="flex gap-2 shrink-0">
+            <button onClick={restoreDraft} className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-lg">Restore</button>
+            <button onClick={discardDraft} className="px-3 py-1.5 bg-white border border-amber-200 hover:bg-amber-50 text-amber-700 text-xs font-medium rounded-lg">Discard</button>
+          </div>
+        </div>
+      )}
 
       {/* Meta */}
       <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-4">

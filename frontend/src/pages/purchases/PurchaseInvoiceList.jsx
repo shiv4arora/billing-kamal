@@ -187,53 +187,56 @@ function IncomingParcels({ suppliers }) {
     }
 
     return (
-      <div className={`rounded-xl border px-4 py-3 space-y-2 ${task.isUrgent ? 'border-orange-200 bg-orange-50' : 'border-gray-200 bg-white'}`}>
-        <div className="flex gap-3 items-start">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-gray-900">{task.supplierName}</span>
-              {task.isUrgent && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500 text-white">🔥 Urgent</span>}
-              {expectedStr && <span className="text-xs text-gray-400">📅 {expectedStr}</span>}
-            </div>
-            {task.description && <p className="text-sm text-gray-700 mt-0.5">{task.description}</p>}
-            {task.notes && <p className="text-xs text-gray-400 italic mt-0.5">{task.notes}</p>}
-            {task.notReceivedReason && (
-              <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-2 py-1 mt-1">
-                ⚠ Not received: {task.notReceivedReason}
-              </p>
-            )}
-          </div>
-          <div className="flex flex-col gap-1.5 shrink-0 items-end">
-            {task.status === 'pending' && (
-              <>
-                <button onClick={() => markReceived(task.id)}
-                  className="text-xs px-2.5 py-1 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 whitespace-nowrap">
-                  ✓ Received
-                </button>
-                <button onClick={() => toggleUrgent(task)}
-                  className={`text-xs px-2.5 py-1 rounded-lg font-medium whitespace-nowrap ${task.isUrgent ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-orange-100 text-orange-700 hover:bg-orange-200'}`}>
-                  {task.isUrgent ? 'Not urgent' : '🔥 Urgent'}
-                </button>
-                <button onClick={() => { setNrId(id => id === task.id ? null : task.id); setNrText(''); }}
-                  className="text-xs px-2.5 py-1 bg-red-50 text-red-600 rounded-lg font-medium hover:bg-red-100 whitespace-nowrap">
-                  ⚠ Not received
-                </button>
-              </>
-            )}
-            <button onClick={() => startEdit(task)}
-              className="text-xs px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 whitespace-nowrap">
-              ✏ Edit
-            </button>
-            <button onClick={() => remove(task.id)}
-              className="text-xs px-2.5 py-1 bg-red-50 text-red-400 rounded-lg hover:bg-red-100 whitespace-nowrap">
-              Delete
-            </button>
-          </div>
+      <div className={`rounded-xl border px-4 py-2.5 ${task.isUrgent ? 'border-orange-200 bg-orange-50' : 'border-gray-200 bg-white'}`}>
+        {/* Top row: name + badges */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-semibold text-gray-900">{task.supplierName}</span>
+          {task.isUrgent && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500 text-white">🔥 Urgent</span>}
+        </div>
+
+        {/* Date/time — slightly larger */}
+        {expectedStr && <p className="text-sm font-medium text-gray-500 mt-0.5">📅 {expectedStr}</p>}
+
+        {/* Description + notes */}
+        {task.description && <p className="text-sm text-gray-700 mt-0.5">{task.description}</p>}
+        {task.notes && <p className="text-xs text-gray-400 italic">{task.notes}</p>}
+        {task.notReceivedReason && (
+          <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-2 py-1 mt-1">
+            ⚠ Not received: {task.notReceivedReason}
+          </p>
+        )}
+
+        {/* Buttons — all in one horizontal row */}
+        <div className="flex items-center gap-1.5 flex-wrap mt-2 pt-2 border-t border-black/5">
+          {task.status === 'pending' && (
+            <>
+              <button onClick={() => markReceived(task.id)}
+                className="text-xs px-2.5 py-1 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 whitespace-nowrap">
+                ✓ Received
+              </button>
+              <button onClick={() => toggleUrgent(task)}
+                className={`text-xs px-2.5 py-1 rounded-lg font-medium whitespace-nowrap ${task.isUrgent ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-orange-100 text-orange-700 hover:bg-orange-200'}`}>
+                {task.isUrgent ? 'Not urgent' : '🔥 Urgent'}
+              </button>
+              <button onClick={() => { setNrId(id => id === task.id ? null : task.id); setNrText(''); }}
+                className="text-xs px-2.5 py-1 bg-red-50 text-red-600 rounded-lg font-medium hover:bg-red-100 whitespace-nowrap">
+                ⚠ Not received
+              </button>
+            </>
+          )}
+          <button onClick={() => startEdit(task)}
+            className="text-xs px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 whitespace-nowrap">
+            ✏ Edit
+          </button>
+          <button onClick={() => remove(task.id)}
+            className="text-xs px-2.5 py-1 bg-red-50 text-red-400 rounded-lg hover:bg-red-100 whitespace-nowrap">
+            Delete
+          </button>
         </div>
 
         {/* Not received reason input */}
         {nrId === task.id && (
-          <div className="flex gap-2 pt-1 border-t border-red-100">
+          <div className="flex gap-2 pt-2 mt-1 border-t border-red-100">
             <input
               autoFocus
               value={nrText}
