@@ -160,7 +160,7 @@ function IncomingParcels({ suppliers }) {
     setTasks(prev => prev.filter(t => t.id !== id));
   };
 
-  const TaskCard = ({ task }) => {
+  const TaskCard = ({ task, num }) => {
     const expectedStr = [
       task.expectedDate ? formatDate(task.expectedDate) : '',
       task.expectedTime || '',
@@ -187,9 +187,12 @@ function IncomingParcels({ suppliers }) {
     }
 
     return (
-      <div className={`rounded-xl border px-4 py-2.5 ${task.isUrgent ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'}`}>
-        {/* Top row: name + badges */}
+      <div className={`rounded-xl border px-4 py-2.5 ${task.isUrgent ? 'border-red-200 bg-red-50' : 'border-orange-200 bg-orange-50'}`}>
+        {/* Top row: number + name + badges */}
         <div className="flex items-center gap-2 flex-wrap">
+          {num != null && (
+            <span className={`text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${task.isUrgent ? 'bg-red-600 text-white' : 'bg-orange-500 text-white'}`}>{num}</span>
+          )}
           <span className="font-semibold text-gray-900">{task.supplierName}</span>
           {task.isUrgent && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-600 text-white">🔥 Urgent</span>}
         </div>
@@ -290,7 +293,7 @@ function IncomingParcels({ suppliers }) {
       {urgent.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-bold text-red-600 uppercase tracking-wide">🔥 Urgent — {urgent.length}</p>
-          {urgent.map(t => <TaskCard key={t.id} task={t} />)}
+          {urgent.map((t, i) => <TaskCard key={t.id} task={t} num={i + 1} />)}
         </div>
       )}
 
@@ -298,7 +301,7 @@ function IncomingParcels({ suppliers }) {
       {normal.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-bold text-orange-500 uppercase tracking-wide">Pending — {normal.length}</p>
-          {normal.map(t => <TaskCard key={t.id} task={t} />)}
+          {normal.map((t, i) => <TaskCard key={t.id} task={t} num={urgent.length + i + 1} />)}
         </div>
       )}
 
