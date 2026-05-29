@@ -343,7 +343,7 @@ export default function PurchaseInvoiceList() {
   const { suppliers } = useSuppliers();
   const navigate = useNavigate();
   const [search, setSearch]   = useState('');
-  const [tab, setTab]         = useState('invoices'); // 'invoices' | 'parcels'
+  const [tab, setTab]         = useState('parcels'); // 'invoices' | 'parcels'
 
   const supplierLabel = (inv) => {
     const s = suppliers?.find(x => x.id === inv.supplierId);
