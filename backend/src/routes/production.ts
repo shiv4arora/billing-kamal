@@ -147,13 +147,14 @@ router.post('/', async (req, res, next) => {
 
         let productId = out.productId;
         let productName = out.productName;
+        let sku = out.sku || '';
 
         let unit = out.unit || 'Pcs';
         if (out.isNew) {
-          const sku = String(await allocateSkuNumbers(1, tx));
+          const skuStr = String(await allocateSkuNumbers(1, tx));
           const newProd = await tx.product.create({
             data: {
-              sku, name: out.productName.trim(), unit,
+              sku: skuStr, name: out.productName.trim(), unit,
               gstRate: 0, pricing: JSON.stringify(pricing), costPrice: 0,
               currentStock: qty, isActive: true,
               ...(out.supplierId ? { supplierId: out.supplierId } : {}),
@@ -161,6 +162,7 @@ router.post('/', async (req, res, next) => {
           });
           productId = newProd.id;
           productName = newProd.name;
+          sku = newProd.sku || skuStr;
           unit = newProd.unit;
           await tx.stockLedger.create({ data: { productId, date: today, movementType: 'production_in', quantity: qty, referenceId: '', referenceNo: entryNumber } });
         } else {
@@ -171,10 +173,11 @@ router.post('/', async (req, res, next) => {
           await tx.stockLedger.create({ data: { productId, date: today, movementType: 'production_in', quantity: qty, referenceId: '', referenceNo: entryNumber } });
           const prod = await tx.product.findUnique({ where: { id: productId } });
           productName = prod?.name || productName;
+          sku = prod?.sku || sku;
           unit = prod?.unit || unit;
         }
 
-        resolvedOutputs.push({ productId, productName, sku: '', quantity: qty, pricing, unit });
+        resolvedOutputs.push({ productId, productName, sku, quantity: qty, pricing, unit });
       }
 
       const firstOut = resolvedOutputs[0];

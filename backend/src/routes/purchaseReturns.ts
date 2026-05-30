@@ -40,6 +40,33 @@ router.post('/', async (req, res, next) => {
     const { date, originalInvoiceId, originalInvoiceNo, supplierId, supplierName, items, notes } = req.body;
     if (!items?.length) return res.status(400).json({ error: 'Add at least one item' });
 
+    // Guard: cannot return more than was purchased on the original invoice
+    // (accounting for quantities already returned against it).
+    if (originalInvoiceId) {
+      const orig = await prisma.purchaseInvoice.findUnique({ where: { id: originalInvoiceId } });
+      if (orig) {
+        const remainingMap: Record<string, number> = {};
+        for (const it of parseItems(orig.items)) {
+          if (it.productId) remainingMap[it.productId] = (remainingMap[it.productId] || 0) + Number(it.quantity || 0);
+        }
+        const priorReturns = await prisma.purchaseReturn.findMany({ where: { originalInvoiceId } });
+        for (const r of priorReturns) {
+          for (const it of parseItems(r.items)) {
+            if (it.productId) remainingMap[it.productId] = (remainingMap[it.productId] || 0) - Number(it.quantity || 0);
+          }
+        }
+        for (const it of items) {
+          if (!it.productId) continue;
+          const remaining = remainingMap[it.productId] ?? 0;
+          if (Number(it.quantity) > remaining + 0.0001) {
+            return res.status(400).json({
+              error: `Cannot return ${it.quantity} of "${it.productName || it.productId}" — only ${Math.max(0, remaining)} remain returnable on ${originalInvoiceNo || 'this invoice'}`,
+            });
+          }
+        }
+      }
+    }
+
     const result = await prisma.$transaction(async (tx) => {
       const returnNumber = await nextReturnNumber(tx);
       const today = date || new Date().toISOString().slice(0, 10);

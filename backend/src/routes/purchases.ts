@@ -390,31 +390,37 @@ router.delete('/:id', async (req, res, next) => {
     const inv = await prisma.purchaseInvoice.findUniqueOrThrow({ where: { id: req.params.id } });
     const items = parseItems(inv.items);
 
+    // A draft purchase (e.g. one whose issue step failed) never added stock or
+    // posted ledger/supplier balance, so it must not be reversed on delete.
+    const wasActive = inv.status !== 'draft';
+
     await prisma.$transaction(async (tx) => {
-      // 1. Delete stock ledger entries for this invoice
+      // 1. Delete stock ledger entries for this invoice (safe regardless of state)
       await tx.stockLedger.deleteMany({ where: { referenceId: inv.id } });
 
-      // 2. Reverse stock for each item
-      for (const item of items) {
-        if (item.productId && Number(item.quantity) > 0) {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { currentStock: { decrement: Number(item.quantity) } },
-          });
+      if (wasActive) {
+        // 2. Reverse stock for each item
+        for (const item of items) {
+          if (item.productId && Number(item.quantity) > 0) {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { currentStock: { decrement: Number(item.quantity) } },
+            });
+          }
         }
-      }
 
-      // 3. Delete all ledger entries tied to this invoice
-      await tx.ledgerEntry.deleteMany({ where: { referenceId: inv.id } });
+        // 3. Delete all ledger entries tied to this invoice
+        await tx.ledgerEntry.deleteMany({ where: { referenceId: inv.id } });
 
-      // 4. Reverse supplier balance (net amount that was outstanding)
-      if (inv.supplierId) {
-        const netOwed = Number(inv.grandTotal) - Number(inv.amountPaid || 0);
-        if (netOwed !== 0) {
-          await tx.supplier.update({
-            where: { id: inv.supplierId },
-            data: { balance: { decrement: netOwed } },
-          });
+        // 4. Reverse supplier balance (net amount that was outstanding)
+        if (inv.supplierId) {
+          const netOwed = Number(inv.grandTotal) - Number(inv.amountPaid || 0);
+          if (netOwed !== 0) {
+            await tx.supplier.update({
+              where: { id: inv.supplierId },
+              data: { balance: { decrement: netOwed } },
+            });
+          }
         }
       }
 

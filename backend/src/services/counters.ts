@@ -20,10 +20,12 @@ export async function nextPurchaseInvoiceNumber(prefix: string, tx?: any): Promi
   return `${prefix}-${String(n).padStart(4, '0')}`;
 }
 
-// Returns the highest numeric SKU currently in the database
-async function maxExistingSku(): Promise<number> {
-  const products = await prisma.product.findMany({ select: { sku: true } });
-  return products.reduce((max, p) => {
+// Returns the highest numeric SKU currently in the database.
+// Accepts an optional tx client so allocations inside a transaction see
+// products created earlier in that same (uncommitted) transaction.
+async function maxExistingSku(client: any = prisma): Promise<number> {
+  const products = await client.product.findMany({ select: { sku: true } });
+  return products.reduce((max: number, p: { sku: string | null }) => {
     const n = parseInt(p.sku || '0', 10);
     return isNaN(n) ? max : Math.max(max, n);
   }, 0);
@@ -37,7 +39,7 @@ export async function allocateSkuNumbers(count = 1, tx?: any): Promise<number> {
   const row = await client.counter.findUnique({ where: { key: 'sku' } });
   if (!row) throw new Error("Counter 'sku' not found");
 
-  const maxDb = await maxExistingSku();
+  const maxDb = await maxExistingSku(client);
   // Use whichever is higher so we never collide or fall behind
   const candidate = Math.max(row.value, maxDb + 1);
 

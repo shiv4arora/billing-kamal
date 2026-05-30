@@ -85,24 +85,86 @@ router.post('/', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
   try {
     const oldInv = await prisma.saleInvoice.findUniqueOrThrow({ where: { id: req.params.id } });
-    const inv = await prisma.saleInvoice.update({ where: { id: req.params.id }, data: pickSaleData(req.body) });
 
-    // Sync ledger + customer balance if invoice was already issued
-    if (oldInv.status !== 'draft' && inv.customerId) {
-      const oldTotal = Number(oldInv.grandTotal) || 0;
-      const newTotal = Number(inv.grandTotal) || 0;
-      const delta = newTotal - oldTotal;
-      if (Math.abs(delta) > 0.001) {
-        await prisma.ledgerEntry.updateMany({
-          where: { referenceId: inv.id, type: 'sale_invoice' },
+    // ── DRAFT: no stock/ledger impact yet — store as-is. The issue step
+    //    recomputes totals from items and applies stock + ledger.
+    if (oldInv.status === 'draft') {
+      const inv = await prisma.saleInvoice.update({ where: { id: req.params.id }, data: pickSaleData(req.body) });
+      return res.json(inv);
+    }
+
+    // ── ISSUED / COMPLETED / PAID: recompute totals server-side, diff stock,
+    //    and sync the ledger + customer balance.
+    const settings = await prisma.settings.findUnique({ where: { id: 'singleton' } });
+    const s = parseSettings(settings?.data);
+    const isInterState = s.tax?.intraState === false;
+
+    const oldItems = parseItems(oldInv.items);
+    const newItems = parseItems(req.body.items);
+
+    // productId → total quantity, for old and new item sets
+    const oldQtyMap: Record<string, number> = {};
+    for (const it of oldItems) {
+      if (it.productId) oldQtyMap[it.productId] = (oldQtyMap[it.productId] || 0) + Number(it.quantity || 0);
+    }
+    const newQtyMap: Record<string, number> = {};
+    for (const it of newItems) {
+      if (it.productId) newQtyMap[it.productId] = (newQtyMap[it.productId] || 0) + Number(it.quantity || 0);
+    }
+
+    const totals = buildInvoiceTotals(newItems, isInterState);
+    const newTotal = totals.grandTotal;
+    const oldTotal = Number(oldInv.grandTotal) || 0;
+    const delta = newTotal - oldTotal;
+    const paid = Number(req.body.amountPaid ?? oldInv.amountPaid) || 0;
+    const payStatus = paid >= newTotal - 0.01 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
+
+    const inv = await prisma.$transaction(async (tx) => {
+      // Apply stock diffs — a sale DEDUCTS stock, so extra qty => decrement more,
+      // reduced qty => restock.
+      const allIds = new Set([...Object.keys(oldQtyMap), ...Object.keys(newQtyMap)]);
+      for (const productId of allIds) {
+        const diff = (newQtyMap[productId] || 0) - (oldQtyMap[productId] || 0);
+        if (diff === 0) continue;
+        await tx.product.update({ where: { id: productId }, data: { currentStock: { decrement: diff } } });
+        await tx.stockLedger.create({
+          data: {
+            productId, date: req.body.date || oldInv.date,
+            movementType: diff > 0 ? 'sale' : 'sale_edit_reversal',
+            quantity: -diff, referenceId: oldInv.id, referenceNo: oldInv.invoiceNumber || '',
+          },
+        });
+      }
+
+      const body = {
+        ...req.body,
+        items: totals.items,
+        subtotal: totals.subtotal,
+        totalDiscount: totals.totalDiscount,
+        totalCGST: totals.totalCGST,
+        totalSGST: totals.totalSGST,
+        totalIGST: totals.totalIGST,
+        totalGST: totals.totalGST,
+        grandTotal: newTotal,
+        roundOff: totals.roundOff,
+        paymentStatus: payStatus,
+      };
+      const updated = await tx.saleInvoice.update({ where: { id: req.params.id }, data: pickSaleData(body) });
+
+      // Sync ledger debit + customer balance
+      if (oldInv.customerId && Math.abs(delta) > 0.001) {
+        await tx.ledgerEntry.updateMany({
+          where: { referenceId: updated.id, type: 'sale_invoice' },
           data: { debit: newTotal },
         });
-        await prisma.customer.update({
-          where: { id: inv.customerId },
+        await tx.customer.update({
+          where: { id: oldInv.customerId },
           data: { balance: { increment: delta } },
         });
       }
-    }
+
+      return updated;
+    });
 
     res.json(inv);
   } catch (err) { next(err); }
@@ -260,15 +322,37 @@ router.patch('/:id/void', async (req, res, next) => {
     const inv = await prisma.$transaction(async (tx) => {
       const existing = await tx.saleInvoice.findUniqueOrThrow({ where: { id: req.params.id } });
 
-      // Remove ledger entries and reverse customer balance
-      if (existing.status !== 'void' && existing.customerId) {
-        await tx.ledgerEntry.deleteMany({ where: { referenceId: existing.id } });
-        const netOwed = Number(existing.grandTotal) - Number(existing.amountPaid || 0);
-        if (netOwed !== 0) {
-          await tx.customer.update({
-            where: { id: existing.customerId },
-            data: { balance: { decrement: netOwed } },
-          });
+      // Only reverse effects if the invoice was actually issued — drafts never
+      // deducted stock, posted ledger, or moved the customer balance.
+      const wasActive = existing.status !== 'void' && existing.status !== 'draft';
+      if (wasActive) {
+        // Restore stock that the sale had deducted
+        const items = parseItems(existing.items);
+        for (const item of items) {
+          if (item.productId && Number(item.quantity) > 0) {
+            await tx.stockLedger.create({
+              data: {
+                productId: item.productId, date: existing.date, movementType: 'sale_void_reversal',
+                quantity: Number(item.quantity), referenceId: existing.id, referenceNo: existing.invoiceNumber || '',
+              },
+            });
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { currentStock: { increment: Number(item.quantity) } },
+            });
+          }
+        }
+
+        // Remove ledger entries and reverse customer balance
+        if (existing.customerId) {
+          await tx.ledgerEntry.deleteMany({ where: { referenceId: existing.id } });
+          const netOwed = Number(existing.grandTotal) - Number(existing.amountPaid || 0);
+          if (netOwed !== 0) {
+            await tx.customer.update({
+              where: { id: existing.customerId },
+              data: { balance: { decrement: netOwed } },
+            });
+          }
         }
       }
 
@@ -288,10 +372,28 @@ router.patch('/:id/unvoid', async (req, res, next) => {
       // Determine restored status
       const amountPaid = Number(existing.amountPaid || 0);
       const grandTotal = Number(existing.grandTotal);
-      const restoredStatus = amountPaid >= grandTotal - 0.01 ? 'paid' : amountPaid > 0 ? 'issued' : 'issued';
-      const paymentStatus = amountPaid >= grandTotal - 0.01 ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid';
+      const isPaid = amountPaid >= grandTotal - 0.01;
+      const restoredStatus = isPaid ? 'paid' : 'issued';
+      const paymentStatus = isPaid ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid';
 
-      // Re-create ledger entries
+      // Re-deduct stock that void had restored
+      const items = parseItems(existing.items);
+      for (const item of items) {
+        if (item.productId && Number(item.quantity) > 0) {
+          await tx.stockLedger.create({
+            data: {
+              productId: item.productId, date: existing.date, movementType: 'sale',
+              quantity: -Number(item.quantity), referenceId: existing.id, referenceNo: existing.invoiceNumber || '',
+            },
+          });
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { currentStock: { decrement: Number(item.quantity) } },
+          });
+        }
+      }
+
+      // Re-create ledger entries + restore customer balance
       if (existing.customerId) {
         await postSaleInvoice(tx, {
           customerId: existing.customerId, customerName: existing.customerName,
@@ -303,6 +405,13 @@ router.patch('/:id/unvoid', async (req, res, next) => {
             date: existing.date, amount: amountPaid, method: existing.paymentMethod,
             referenceId: existing.id, referenceNo: existing.invoiceNumber,
             narration: `Payment received against ${existing.invoiceNumber} (${existing.paymentMethod})`,
+          });
+        }
+        const netOwed = grandTotal - amountPaid;
+        if (netOwed !== 0) {
+          await tx.customer.update({
+            where: { id: existing.customerId },
+            data: { balance: { increment: netOwed } },
           });
         }
       }
@@ -340,31 +449,38 @@ router.delete('/:id', async (req, res, next) => {
     const inv = await prisma.saleInvoice.findUniqueOrThrow({ where: { id: req.params.id } });
     const items = parseItems(inv.items);
 
+    // A draft never deducted stock / posted ledger / moved the balance, and a
+    // voided invoice already had those effects reversed by the void route. Only
+    // an active (issued/completed/paid) invoice needs reversing here.
+    const wasActive = inv.status !== 'draft' && inv.status !== 'void';
+
     await prisma.$transaction(async (tx) => {
-      // 1. Delete stock ledger entries for this invoice
+      // 1. Delete stock ledger entries for this invoice (safe regardless of state)
       await tx.stockLedger.deleteMany({ where: { referenceId: inv.id } });
 
-      // 2. Reverse stock — sale reduces stock, so add it back
-      for (const item of items) {
-        if (item.productId && Number(item.quantity) > 0) {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { currentStock: { increment: Number(item.quantity) } },
-          });
+      if (wasActive) {
+        // 2. Reverse stock — sale reduces stock, so add it back
+        for (const item of items) {
+          if (item.productId && Number(item.quantity) > 0) {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { currentStock: { increment: Number(item.quantity) } },
+            });
+          }
         }
-      }
 
-      // 3. Delete all ledger entries tied to this invoice
-      await tx.ledgerEntry.deleteMany({ where: { referenceId: inv.id } });
+        // 3. Delete all ledger entries tied to this invoice
+        await tx.ledgerEntry.deleteMany({ where: { referenceId: inv.id } });
 
-      // 4. Reverse customer balance (net amount that was outstanding)
-      if (inv.customerId) {
-        const netOwed = Number(inv.grandTotal) - Number(inv.amountPaid || 0);
-        if (netOwed !== 0) {
-          await tx.customer.update({
-            where: { id: inv.customerId },
-            data: { balance: { decrement: netOwed } },
-          });
+        // 4. Reverse customer balance (net amount that was outstanding)
+        if (inv.customerId) {
+          const netOwed = Number(inv.grandTotal) - Number(inv.amountPaid || 0);
+          if (netOwed !== 0) {
+            await tx.customer.update({
+              where: { id: inv.customerId },
+              data: { balance: { decrement: netOwed } },
+            });
+          }
         }
       }
 
