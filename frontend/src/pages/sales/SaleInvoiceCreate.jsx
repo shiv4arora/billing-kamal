@@ -277,25 +277,31 @@ export default function SaleInvoiceCreate() {
       const invData = { date, dueDate: dueD, customerId, customerName: customer?.name || '', customerPlace: customer?.place || '', customerType, customerAddress: customer?.address || '', customerGstin: customer?.gstin || '', items: totals.items, ...totals, grandTotal: finalTotal, packingCharges: packingAmt, shippingCharges: shippingAmt, amountPaid: paid, paymentMethod, paymentStatus: payStatus, paymentDate: paid > 0 ? today() : null, notes, status: 'draft' };
 
       setIsDirty(false);
-      if (effectiveId) {
+      if (isEdit) {
+        // Editing an existing invoice — update data + status, no re-issue
         await updateSaleInvoice(effectiveId, { ...invData, status });
+        toast.success('Invoice updated');
+        navigate(`/sales/${effectiveId}`);
+      } else if (effectiveId) {
+        // New invoice that was auto-saved as a draft — update data, then issue if needed
+        await updateSaleInvoice(effectiveId, invData); // invData already has status:'draft'
         if (status === 'issued') {
           const issued = await issueSaleInvoice(effectiveId);
           toast.success(`Invoice ${issued.invoiceNumber} issued`);
         } else {
-          toast.success(isEdit ? 'Invoice updated' : 'Draft saved');
+          toast.success('Draft saved');
         }
         navigate(`/sales/${effectiveId}`);
       } else {
+        // Brand-new invoice, never auto-saved
         const saved = await addSaleInvoice(invData);
         if (status === 'issued') {
           const issued = await issueSaleInvoice(saved.id);
           toast.success(`Invoice ${issued.invoiceNumber} issued`);
-          navigate(`/sales/${saved.id}`);
         } else {
           toast.success('Draft saved');
-          navigate(`/sales/${saved.id}`);
         }
+        navigate(`/sales/${saved.id}`);
       }
     } catch (err) {
       toast.error(err.message || 'Failed to save invoice');
