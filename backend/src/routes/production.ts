@@ -52,14 +52,14 @@ router.get('/', async (_req, res, next) => {
 /* ── POST /production/immediate — create SKU + entry, no components ── */
 router.post('/immediate', async (req, res, next) => {
   try {
-    const { name, wholesale, unit, qty, supplierId, date } = req.body;
+    const { name, wholesale, shop, unit, qty, supplierId, date } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'Product name is required' });
 
     const entry = await prisma.$transaction(async (tx) => {
       const entryNumber = await nextProductionNumber(tx);
       const today = date || new Date().toISOString().slice(0, 10);
       const sku = String(await allocateSkuNumbers(1, tx));
-      const pricing = { wholesale: Number(wholesale) || 0, shop: 0 };
+      const pricing = { wholesale: Number(wholesale) || 0, shop: Number(shop) || 0 };
       const quantity = Number(qty) || 0;
 
       const product = await tx.product.create({

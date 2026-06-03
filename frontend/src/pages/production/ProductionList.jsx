@@ -14,7 +14,7 @@ export default function ProductionList() {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showImmediate, setShowImmediate] = useState(false);
-  const [ipForm, setIpForm] = useState({ name: '', wholesale: '', unit: 'Pcs', qty: '' });
+  const [ipForm, setIpForm] = useState({ name: '', wholesale: '', shop: '', unit: 'Pcs', qty: '' });
   const [ipCreating, setIpCreating] = useState(false);
   const [ipList, setIpList] = useState([]);
   const ipNameRef = useRef(null);
@@ -35,11 +35,11 @@ export default function ProductionList() {
     try {
       const entry = await api('/production/immediate', {
         method: 'POST',
-        body: { name: ipForm.name.trim(), wholesale: +ipForm.wholesale || 0, unit: ipForm.unit, qty: +ipForm.qty || 0, supplierId: maliFionna?.id || null },
+        body: { name: ipForm.name.trim(), wholesale: +ipForm.wholesale || 0, shop: +ipForm.shop || 0, unit: ipForm.unit, qty: +ipForm.qty || 0, supplierId: maliFionna?.id || null },
       });
       const product = entry.outputs?.[0];
-      setIpList(prev => [{ entryNumber: entry.entryNumber, productId: product?.productId, sku: product?.sku, name: product?.productName, wholesale: ipForm.wholesale }, ...prev]);
-      setIpForm(f => ({ ...f, name: '', wholesale: '', qty: '' }));
+      setIpList(prev => [{ entryNumber: entry.entryNumber, productId: product?.productId, sku: product?.sku, name: product?.productName, wholesale: ipForm.wholesale, shop: ipForm.shop }, ...prev]);
+      setIpForm(f => ({ ...f, name: '', wholesale: '', shop: '', qty: '' }));
       refreshProducts();
       setTimeout(() => ipNameRef.current?.focus(), 50);
     } catch {
@@ -101,7 +101,15 @@ export default function ProductionList() {
               onChange={e => setIpForm(f => ({ ...f, wholesale: e.target.value }))}
               onKeyDown={e => e.key === 'Enter' && createImmediate()}
               placeholder="Wholesale ₹"
-              className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+              className="w-28 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+            />
+            <input
+              type="number"
+              value={ipForm.shop}
+              onChange={e => setIpForm(f => ({ ...f, shop: e.target.value }))}
+              onKeyDown={e => e.key === 'Enter' && createImmediate()}
+              placeholder="Shop ₹"
+              className="w-24 border border-purple-200 bg-purple-50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 text-purple-800"
             />
             <input
               type="number"
@@ -137,7 +145,8 @@ export default function ProductionList() {
                   <div>
                     <span className="font-mono text-sm font-bold text-purple-700 mr-2">{p.sku}</span>
                     <span className="text-sm text-gray-800">{p.name}</span>
-                    {p.wholesale > 0 && <span className="text-xs text-gray-400 ml-2">W: D.No.{Math.round(+p.wholesale * 2)}</span>}
+                    {p.wholesale > 0 && <span className="text-xs text-gray-400 ml-2">W: ₹{p.wholesale}</span>}
+                    {p.shop > 0 && <span className="text-xs text-purple-400 ml-1">S: ₹{p.shop}</span>}
                     <span className="text-xs text-gray-400 ml-2 font-mono">{p.entryNumber}</span>
                   </div>
                   <button
