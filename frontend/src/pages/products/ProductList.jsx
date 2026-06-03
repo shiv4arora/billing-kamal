@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useCallback, memo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useProducts } from '../../context/ProductContext';
 import { useSuppliers } from '../../context/SupplierContext';
@@ -6,15 +6,31 @@ import { Button, Table, ConfirmDialog, Card, Modal } from '../../components/ui';
 import { formatCurrency, formatDate } from '../../utils/helpers';
 import { api } from '../../hooks/useApi';
 
+// Defined OUTSIDE ProductList so React never sees a new component type on re-render.
+// memo() means it only re-renders if onSearch/inputRef change — which they never do
+// (useCallback + useRef are stable). The input DOM node is 100% browser-controlled.
+const SearchBox = memo(function SearchBox({ onSearch, inputRef }) {
+  return (
+    <div className="relative flex-1">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-sm">🔍</span>
+      <input
+        ref={inputRef}
+        defaultValue=""
+        onChange={e => onSearch(e.target.value)}
+        placeholder="Search by name, SKU ID, category…"
+        className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-full"
+      />
+    </div>
+  );
+});
+
 export default function ProductList() {
   const { active, remove } = useProducts();
   const { suppliers } = useSuppliers();
   const navigate = useNavigate();
-  // Uncontrolled input — typing is always instant (no React re-render per keystroke)
-  // setSearch only fires after 200ms debounce, triggering the filter recompute then.
   const searchInputRef = useRef(null);
-  const searchTimerRef = useRef(null);
   const [search, setSearch]   = useState('');
+  const handleSearch = useCallback((val) => setSearch(val), []);
   const [confirm, setConfirm] = useState(null);
   const [selected, setSelected] = useState(new Set());
   const [skuModal, setSkuModal]   = useState(null);
@@ -211,19 +227,7 @@ export default function ProductList() {
       <Card padding={false}>
         <div className="p-4 border-b border-gray-100 space-y-3">
           <div className="flex items-center gap-3">
-            <div className="relative flex-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-sm">🔍</span>
-              <input
-                ref={searchInputRef}
-                defaultValue=""
-                onChange={e => {
-                  clearTimeout(searchTimerRef.current);
-                  searchTimerRef.current = setTimeout(() => setSearch(e.target.value), 200);
-                }}
-                placeholder="Search by name, SKU ID, category…"
-                className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-full"
-              />
-            </div>
+            <SearchBox onSearch={handleSearch} inputRef={searchInputRef} />
             <button
               onClick={() => setShowFilters(f => !f)}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors whitespace-nowrap ${showFilters || activeFilters > 0 ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}`}
@@ -273,7 +277,12 @@ export default function ProductList() {
             </div>
           )}
         </div>
-        <Table columns={columns} data={filtered} onRowClick={p => navigate(`/products/${p.id}/edit`)} emptyMsg="No products found. Add your first product!" />
+        <Table columns={columns} data={filtered.slice(0, 100)} onRowClick={p => navigate(`/products/${p.id}/edit`)} emptyMsg="No products found. Add your first product!" />
+        {filtered.length > 100 && (
+          <p className="text-xs text-center text-gray-400 py-3 border-t border-gray-100">
+            Showing first 100 of {filtered.length} — type to search and narrow down
+          </p>
+        )}
       </Card>
       <ConfirmDialog open={!!confirm} onClose={() => setConfirm(null)} onConfirm={() => remove(confirm)} title="Delete Product" message="Are you sure you want to delete this product?" />
 
