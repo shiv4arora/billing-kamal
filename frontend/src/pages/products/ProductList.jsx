@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useProducts } from '../../context/ProductContext';
 import { useSuppliers } from '../../context/SupplierContext';
-import { Button, Table, SearchInput, ConfirmDialog, Card, Modal } from '../../components/ui';
+import { Button, Table, ConfirmDialog, Card, Modal } from '../../components/ui';
 import { formatCurrency, formatDate } from '../../utils/helpers';
 import { api } from '../../hooks/useApi';
 
@@ -10,6 +10,10 @@ export default function ProductList() {
   const { active, remove } = useProducts();
   const { suppliers } = useSuppliers();
   const navigate = useNavigate();
+  // Uncontrolled input — typing is always instant (no React re-render per keystroke)
+  // setSearch only fires after 200ms debounce, triggering the filter recompute then.
+  const searchInputRef = useRef(null);
+  const searchTimerRef = useRef(null);
   const [search, setSearch]   = useState('');
   const [confirm, setConfirm] = useState(null);
   const [selected, setSelected] = useState(new Set());
@@ -45,27 +49,30 @@ export default function ProductList() {
     </span>
   );
 
-  const filtered = active
-    .filter(p =>
-      (p.name?.toLowerCase().includes(search.toLowerCase()) ||
-       p.sku?.toLowerCase().includes(search.toLowerCase())) &&
-      (!filterSupplier || p.supplierId === filterSupplier) &&
-      (filterStock === 'out' ? (p.currentStock || 0) === 0
-       : filterStock === 'low' ? (p.currentStock || 0) > 0 && (p.currentStock || 0) <= (p.lowStockThreshold || 10)
-       : true)
-    )
-    .sort((a, b) => {
-      let va, vb;
-      if (sortKey === 'name')       { va = a.name?.toLowerCase() || ''; vb = b.name?.toLowerCase() || ''; }
-      else if (sortKey === 'sku')   { va = +(a.sku) || 0;               vb = +(b.sku) || 0; }
-      else if (sortKey === 'stock') { va = a.currentStock || 0;         vb = b.currentStock || 0; }
-      else if (sortKey === 'wholesale') { va = a.pricing?.wholesale || 0; vb = b.pricing?.wholesale || 0; }
-      else if (sortKey === 'shop')      { va = a.pricing?.shop || 0;      vb = b.pricing?.shop || 0; }
-      else { va = a.name?.toLowerCase() || ''; vb = b.name?.toLowerCase() || ''; }
-      if (va < vb) return sortDir === 'asc' ? -1 : 1;
-      if (va > vb) return sortDir === 'asc' ? 1 : -1;
-      return 0;
-    });
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return active
+      .filter(p =>
+        (p.name?.toLowerCase().includes(q) ||
+         p.sku?.toLowerCase().includes(q)) &&
+        (!filterSupplier || p.supplierId === filterSupplier) &&
+        (filterStock === 'out' ? (p.currentStock || 0) === 0
+         : filterStock === 'low' ? (p.currentStock || 0) > 0 && (p.currentStock || 0) <= (p.lowStockThreshold || 10)
+         : true)
+      )
+      .sort((a, b) => {
+        let va, vb;
+        if (sortKey === 'name')           { va = a.name?.toLowerCase() || '';   vb = b.name?.toLowerCase() || ''; }
+        else if (sortKey === 'sku')       { va = +(a.sku) || 0;                 vb = +(b.sku) || 0; }
+        else if (sortKey === 'stock')     { va = a.currentStock || 0;           vb = b.currentStock || 0; }
+        else if (sortKey === 'wholesale') { va = a.pricing?.wholesale || 0;     vb = b.pricing?.wholesale || 0; }
+        else if (sortKey === 'shop')      { va = a.pricing?.shop || 0;          vb = b.pricing?.shop || 0; }
+        else                              { va = a.name?.toLowerCase() || '';   vb = b.name?.toLowerCase() || ''; }
+        if (va < vb) return sortDir === 'asc' ? -1 : 1;
+        if (va > vb) return sortDir === 'asc' ? 1 : -1;
+        return 0;
+      });
+  }, [active, search, filterSupplier, filterStock, sortKey, sortDir]);
 
   const activeFilters = [filterSupplier, filterStock].filter(Boolean).length;
 
@@ -204,7 +211,19 @@ export default function ProductList() {
       <Card padding={false}>
         <div className="p-4 border-b border-gray-100 space-y-3">
           <div className="flex items-center gap-3">
-            <SearchInput value={search} onChange={setSearch} placeholder="Search by name, SKU ID, category…" />
+            <div className="relative flex-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-sm">🔍</span>
+              <input
+                ref={searchInputRef}
+                defaultValue=""
+                onChange={e => {
+                  clearTimeout(searchTimerRef.current);
+                  searchTimerRef.current = setTimeout(() => setSearch(e.target.value), 200);
+                }}
+                placeholder="Search by name, SKU ID, category…"
+                className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-full"
+              />
+            </div>
             <button
               onClick={() => setShowFilters(f => !f)}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors whitespace-nowrap ${showFilters || activeFilters > 0 ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}`}
@@ -243,7 +262,7 @@ export default function ProductList() {
 
               {activeFilters > 0 && (
                 <button
-                  onClick={() => { setFilterSupplier(''); setFilterStock(''); }}
+                  onClick={() => { setFilterSupplier(''); setFilterStock(''); setSearch(''); if (searchInputRef.current) searchInputRef.current.value = ''; }}
                   className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 border border-red-200 rounded-lg hover:bg-red-50"
                 >
                   ✕ Clear filters
