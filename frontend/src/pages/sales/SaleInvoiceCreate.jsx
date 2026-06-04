@@ -193,6 +193,8 @@ export default function SaleInvoiceCreate() {
     if (isNaN(pct) || pct < 0 || pct > 100) return;
     if (bulkDiscount === 'all') {
       setItems(prev => prev.map(item => ({ ...item, discountPct: pct })));
+    } else if (bulkDiscount === '__freetext__') {
+      setItems(prev => prev.map(item => item.isFreeText ? { ...item, discountPct: pct } : item));
     } else {
       setItems(prev => prev.map(item =>
         item.vendorCode === bulkDiscount ? { ...item, discountPct: pct } : item
@@ -210,10 +212,10 @@ export default function SaleInvoiceCreate() {
     setIsDirty(true);
   };
 
-  // Unique vendors present in current items (exclude free-text rows)
   const uniqueVendors = [...new Set(
     items.filter(i => i.productId && i.vendorCode).map(i => i.vendorCode)
   )];
+  const hasFreeTextItems = items.some(i => i.isFreeText && i.productName?.trim());
 
   const addItem = () => setItems(prev => [...prev, { ...BLANK_ITEM }]);
   const insertAfter = (idx) => {
@@ -509,6 +511,7 @@ export default function SaleInvoiceCreate() {
                   <select value={bulkDiscount} onChange={e => setBulkDiscount(e.target.value)}
                     className="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                     <option value="all">All Items</option>
+                    {hasFreeTextItems && <option value="__freetext__">Free Text Items</option>}
                     {uniqueVendors.map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
                   <input type="number" min="0" max="100" value={vendorDiscounts['__input__'] ?? ''}
