@@ -227,15 +227,12 @@ export default function SaleInvoiceView() {
             {checkMode ? '✕ End Check' : '🔍 Check Bill'}
           </button>
           <Link to={`/customers/${inv.customerId}/ledger`}>
-            <button className="shrink-0 px-3 py-2 text-xs text-gray-600 bg-gray-100 rounded-lg font-medium active:bg-gray-200 whitespace-nowrap">📒 Ledger</button>
+            <button className="shrink-0 px-3 py-2 text-xs text-amber-700 bg-amber-50 rounded-lg font-medium active:bg-amber-100 whitespace-nowrap">📒 Ledger</button>
           </Link>
           {inv.status !== 'void' && (
             <Link to={`/sales/${id}/edit`}>
               <button className="shrink-0 px-3 py-2 text-xs text-gray-600 bg-gray-100 rounded-lg font-medium active:bg-gray-200">✏️ Edit</button>
             </Link>
-          )}
-          {inv.status !== 'void' && (
-            <button onClick={() => setRetOpen(true)} className="shrink-0 px-3 py-2 text-xs text-gray-600 bg-gray-100 rounded-lg font-medium active:bg-gray-200 whitespace-nowrap">↩ Return</button>
           )}
           {inv.status !== 'void' && (
             <button onClick={voidInv} className="shrink-0 px-3 py-2 text-xs text-red-500 bg-red-50 rounded-lg font-medium active:bg-red-100">Void</button>
@@ -258,7 +255,7 @@ export default function SaleInvoiceView() {
           <Button variant={checkMode ? 'primary' : 'outline'} onClick={() => { setCheckMode(v => !v); setItemChecks({}); }}>
             {checkMode ? '✕ End Check' : '🔍 Check Bill'}
           </Button>
-          <Link to={`/customers/${inv.customerId}/ledger`}><Button variant="secondary">📒 Ledger</Button></Link>
+          <Link to={`/customers/${inv.customerId}/ledger`}><button className="inline-flex items-center gap-2 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 px-4 py-2 text-sm bg-amber-50 text-amber-700 hover:bg-amber-100 focus:ring-amber-400">📒 Ledger</button></Link>
           <Button variant="outline" onClick={() => setWaOpen(true)}>📱 WhatsApp</Button>
           <Link to={`/sales/${id}/print`}><Button variant="outline">🖨 Print</Button></Link>
           {inv.status !== 'void' && <Link to={`/sales/${id}/edit`}><Button variant="secondary">Edit</Button></Link>}
@@ -267,7 +264,6 @@ export default function SaleInvoiceView() {
               + Record Payment
             </Button>
           )}
-          {inv.status !== 'void' && <Button variant="outline" onClick={() => setRetOpen(true)}>↩ Return</Button>}
           {inv.status !== 'completed' && inv.status !== 'void' && <Button variant="success" onClick={complete}>✓ Complete</Button>}
           {inv.status !== 'void' && <Button variant="danger" onClick={voidInv}>Void</Button>}
           {inv.status === 'void' && <Button variant="success" onClick={unvoidInv}>↩ Restore Invoice</Button>}
