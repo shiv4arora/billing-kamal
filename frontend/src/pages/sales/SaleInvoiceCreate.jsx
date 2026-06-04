@@ -50,7 +50,7 @@ export default function SaleInvoiceCreate() {
   const [bulkDiscount, setBulkDiscount] = useState('all');
   const [bulkGst, setBulkGst] = useState('');
   const [vendorDiscounts, setVendorDiscounts] = useState({});
-  const [extraCharges, setExtraCharges] = useState({ packing: '', shipping: '' });
+  const [extraCharges, setExtraCharges] = useState({ charges: '' });
   const [autoSavedId, setAutoSavedId] = useState(null); // draft ID created by auto-save on new invoices
   const dropdownRefs = useRef({});
   const searchInputRefs = useRef({});
@@ -69,7 +69,9 @@ export default function SaleInvoiceCreate() {
         setNotes(inv.notes || '');
         setAmountPaid(inv.amountPaid || '');
         setPaymentMethod(inv.paymentMethod || 'cash');
-        setExtraCharges({ packing: inv.packingCharges || '', shipping: inv.shippingCharges || '' });
+        // Combine packing + shipping into a single field (old invoices may have both)
+        const combined = (Number(inv.packingCharges) || 0) + (Number(inv.shippingCharges) || 0);
+        setExtraCharges({ charges: combined > 0 ? String(combined) : '' });
         // Restore bulk GST from first item that has a rate set
         const firstGst = (inv.items || []).find(i => i.gstRate > 0)?.gstRate;
         if (firstGst != null) setBulkGst(String(firstGst));
@@ -222,9 +224,8 @@ export default function SaleInvoiceCreate() {
   const showDiscCol = items.some(i => (i.discountPct || 0) > 0);
   const validItems = items.filter(i => i.productId || (i.isFreeText && i.productName?.trim()));
   const totals = buildInvoiceTotals(validItems, settings.tax.intraState === false);
-  const packingAmt = parseFloat(extraCharges.packing) || 0;
-  const shippingAmt = parseFloat(extraCharges.shipping) || 0;
-  const finalTotal = totals.grandTotal + packingAmt + shippingAmt;
+  const chargesAmt = parseFloat(extraCharges.charges) || 0;
+  const finalTotal = totals.grandTotal + chargesAmt;
 
   // ── Auto-save ────────────────────────────────────────────────────────────
   const effectiveId = isEdit ? id : autoSavedId;
@@ -233,7 +234,7 @@ export default function SaleInvoiceCreate() {
     date, dueDate, customerId, customerType,
     items: items.map(i => ({ productId: i.productId, productName: i.productName, isFreeText: i.isFreeText, quantity: i.quantity, unitPrice: i.unitPrice, discountPct: i.discountPct, gstRate: i.gstRate })),
     amountPaid, paymentMethod, notes,
-    packing: extraCharges.packing, shipping: extraCharges.shipping,
+    charges: extraCharges.charges,
   }), [date, dueDate, customerId, customerType, items, amountPaid, paymentMethod, notes, extraCharges]);
 
   const performAutoSave = useCallback(async () => {
@@ -246,7 +247,7 @@ export default function SaleInvoiceCreate() {
       customerPlace: customer?.place || '', customerType,
       customerAddress: customer?.address || '', customerGstin: customer?.gstin || '',
       items: totals.items, ...totals,
-      grandTotal: finalTotal, packingCharges: packingAmt, shippingCharges: shippingAmt,
+      grandTotal: finalTotal, packingCharges: chargesAmt, shippingCharges: 0,
       amountPaid: paid, paymentMethod, paymentStatus: payStatus,
       paymentDate: paid > 0 ? today() : null, notes, status: 'draft',
     };
@@ -274,7 +275,7 @@ export default function SaleInvoiceCreate() {
       const payStatus = paid >= finalTotal ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
       const dueD = dueDate || (() => { const d = new Date(date); d.setDate(d.getDate() + (settings.invoice?.defaultDueDays || 14)); return d.toISOString().slice(0,10); })();
 
-      const invData = { date, dueDate: dueD, customerId, customerName: customer?.name || '', customerPlace: customer?.place || '', customerType, customerAddress: customer?.address || '', customerGstin: customer?.gstin || '', items: totals.items, ...totals, grandTotal: finalTotal, packingCharges: packingAmt, shippingCharges: shippingAmt, amountPaid: paid, paymentMethod, paymentStatus: payStatus, paymentDate: paid > 0 ? today() : null, notes, status: 'draft' };
+      const invData = { date, dueDate: dueD, customerId, customerName: customer?.name || '', customerPlace: customer?.place || '', customerType, customerAddress: customer?.address || '', customerGstin: customer?.gstin || '', items: totals.items, ...totals, grandTotal: finalTotal, packingCharges: chargesAmt, shippingCharges: 0, amountPaid: paid, paymentMethod, paymentStatus: payStatus, paymentDate: paid > 0 ? today() : null, notes, status: 'draft' };
 
       setIsDirty(false);
       if (isEdit) {
@@ -518,7 +519,7 @@ export default function SaleInvoiceCreate() {
                 </div>
               </div>
 
-              {/* GST + packing + shipping */}
+              {/* GST + extra charges */}
               <div>
                 <p className="text-xs font-medium text-gray-500 mb-1">GST % · All Items</p>
                 <select value={bulkGst} onChange={e => { setBulkGst(e.target.value); applyBulkGst(e.target.value); }}
@@ -527,18 +528,10 @@ export default function SaleInvoiceCreate() {
                   {GST_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
                 </select>
               </div>
-              <div className="hidden">{/* spacer */}</div>
               <div>
-                <p className="text-xs font-medium text-gray-500 mb-1">Packing (₹)</p>
-                <input type="number" min="0" value={extraCharges.packing}
-                  onChange={e => { setExtraCharges(p => ({ ...p, packing: e.target.value })); setIsDirty(true); }}
-                  placeholder="0" onWheel={e => e.target.blur()}
-                  className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500 mb-1">Shipping (₹)</p>
-                <input type="number" min="0" value={extraCharges.shipping}
-                  onChange={e => { setExtraCharges(p => ({ ...p, shipping: e.target.value })); setIsDirty(true); }}
+                <p className="text-xs font-medium text-gray-500 mb-1">Packing / Shipping (₹)</p>
+                <input type="number" min="0" value={extraCharges.charges}
+                  onChange={e => { setExtraCharges({ charges: e.target.value }); setIsDirty(true); }}
                   placeholder="0" onWheel={e => e.target.blur()}
                   className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
@@ -867,8 +860,7 @@ export default function SaleInvoiceCreate() {
               {totals.totalSGST > 0 && <div className="flex justify-between"><span className="text-gray-500">SGST</span><span>{formatCurrency(totals.totalSGST)}</span></div>}
               {totals.totalIGST > 0 && <div className="flex justify-between"><span className="text-gray-500">IGST</span><span>{formatCurrency(totals.totalIGST)}</span></div>}
               {totals.roundOff !== 0 && <div className="flex justify-between"><span className="text-gray-500">Round Off</span><span>{formatCurrency(totals.roundOff)}</span></div>}
-              {packingAmt > 0 && <div className="flex justify-between"><span className="text-gray-500">Packing</span><span>{formatCurrency(packingAmt)}</span></div>}
-              {shippingAmt > 0 && <div className="flex justify-between"><span className="text-gray-500">Shipping</span><span>{formatCurrency(shippingAmt)}</span></div>}
+              {chargesAmt > 0 && <div className="flex justify-between"><span className="text-gray-500">Packing / Shipping</span><span>{formatCurrency(chargesAmt)}</span></div>}
               <div className="flex justify-between font-bold text-base border-t pt-2"><span>Grand Total</span><span className="text-blue-700">{formatCurrency(finalTotal)}</span></div>
               {+amountPaid > 0 && <div className="flex justify-between text-green-600"><span>Paid</span><span>{formatCurrency(+amountPaid)}</span></div>}
               {+amountPaid < finalTotal && +amountPaid >= 0 && <div className="flex justify-between text-red-600 font-medium"><span>Balance</span><span>{formatCurrency(finalTotal - (+amountPaid || 0))}</span></div>}

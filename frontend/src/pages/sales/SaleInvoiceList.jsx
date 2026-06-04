@@ -1,8 +1,36 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback, memo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useInvoices } from '../../context/InvoiceContext';
-import { Button, Table, Badge, SearchInput, Card } from '../../components/ui';
+import { Button, Table, Badge, Card } from '../../components/ui';
 import { formatCurrency, formatDate, formatCustomerDisplay } from '../../utils/helpers';
+
+const FILTERS = [
+  { label: 'All',     value: 'all' },
+  { label: 'Draft',   value: 'draft' },
+  { label: 'Issued',  value: 'issued' },
+  { label: 'Unpaid',  value: 'unpaid' },
+  { label: 'Partial', value: 'partial' },
+  { label: 'Paid',    value: 'paid' },
+  { label: 'Void',    value: 'void' },
+];
+
+const SearchBox = memo(function SearchBox({ onSearch }) {
+  const timerRef = useRef(null);
+  return (
+    <div className="relative flex-1">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-sm">🔍</span>
+      <input
+        defaultValue=""
+        onChange={e => {
+          clearTimeout(timerRef.current);
+          timerRef.current = setTimeout(() => onSearch(e.target.value), 150);
+        }}
+        placeholder="Search invoice #, customer…"
+        className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-full"
+      />
+    </div>
+  );
+});
 
 const payColor   = { paid: 'green', partial: 'yellow', unpaid: 'red' };
 const statusColor = { draft: 'gray', issued: 'blue', paid: 'green', completed: 'green', void: 'red' };
@@ -18,6 +46,7 @@ export default function SaleInvoiceList() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
+  const handleSearch = useCallback(v => setSearch(v), []);
 
   const filtered = [...saleInvoices]
     .filter(i => {
@@ -53,22 +82,36 @@ export default function SaleInvoiceList() {
         </div>
       </div>
 
-      {/* Search + Filter */}
-      <div className="flex gap-2">
-        <div className="flex-1">
-          <SearchInput value={search} onChange={setSearch} placeholder="Search invoice, customer…" />
-        </div>
-        <select
-          value={filter} onChange={e => setFilter(e.target.value)}
-          className="border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white"
-        >
-          <option value="all">All</option>
-          <option value="draft">Draft</option>
-          <option value="issued">Issued</option>
-          <option value="paid">Paid</option>
-          <option value="unpaid">Unpaid</option>
-          <option value="void">Void</option>
-        </select>
+      {/* Search */}
+      <SearchBox onSearch={handleSearch} />
+
+      {/* Filter buttons */}
+      <div className="flex gap-1.5 flex-wrap">
+        {FILTERS.map(f => (
+          <button
+            key={f.value}
+            onClick={() => setFilter(f.value)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+              filter === f.value
+                ? f.value === 'void'    ? 'bg-red-600 text-white border-red-600'
+                : f.value === 'draft'   ? 'bg-gray-600 text-white border-gray-600'
+                : f.value === 'unpaid'  ? 'bg-red-500 text-white border-red-500'
+                : f.value === 'partial' ? 'bg-yellow-500 text-white border-yellow-500'
+                : f.value === 'paid'    ? 'bg-green-600 text-white border-green-600'
+                : f.value === 'issued'  ? 'bg-blue-600 text-white border-blue-600'
+                :                        'bg-gray-800 text-white border-gray-800'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            {f.label}
+            {f.value !== 'all' && (() => {
+              const count = saleInvoices.filter(i =>
+                i.status === f.value || i.paymentStatus === f.value
+              ).length;
+              return count > 0 ? <span className="ml-1 opacity-75">({count})</span> : null;
+            })()}
+          </button>
+        ))}
       </div>
 
       {/* Mobile card list */}
