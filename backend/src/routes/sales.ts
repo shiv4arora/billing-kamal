@@ -121,7 +121,8 @@ router.put('/:id', async (req, res, next) => {
     }
 
     const totals = buildInvoiceTotals(newItems, isInterState);
-    const newTotal = totals.grandTotal;
+    const newCharges = Number(req.body.packingCharges ?? oldInv.packingCharges ?? 0) + Number(req.body.shippingCharges ?? oldInv.shippingCharges ?? 0);
+    const newTotal = totals.grandTotal + newCharges;
     const oldTotal = Number(oldInv.grandTotal) || 0;
     const delta = newTotal - oldTotal;
     const paid = Number(req.body.amountPaid ?? oldInv.amountPaid) || 0;
@@ -191,8 +192,11 @@ router.post('/:id/issue', async (req, res, next) => {
 
     const rawItems = parseItems(existing.items);
     const totals = buildInvoiceTotals(rawItems, isInterState);
+    // Include any packing/shipping charges saved on the draft in the final total
+    const extraCharges = Number(existing.packingCharges || 0) + Number(existing.shippingCharges || 0);
+    const finalGrandTotal = totals.grandTotal + extraCharges;
     const paid = Number(existing.amountPaid);
-    const payStatus = paid >= totals.grandTotal - 0.01 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
+    const payStatus = paid >= finalGrandTotal - 0.01 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
 
     const issued = await prisma.$transaction(async (tx) => {
       // Drafts now get a number at creation time; fall back to minting one for old numberless drafts
@@ -206,7 +210,7 @@ router.post('/:id/issue', async (req, res, next) => {
           subtotal: totals.subtotal, totalDiscount: totals.totalDiscount,
           totalCGST: totals.totalCGST, totalSGST: totals.totalSGST,
           totalIGST: totals.totalIGST, totalGST: totals.totalGST,
-          grandTotal: totals.grandTotal, roundOff: totals.roundOff,
+          grandTotal: finalGrandTotal, roundOff: totals.roundOff,
           paymentStatus: payStatus, status: 'issued',
           ...(paid > 0 ? { paymentDate: existing.date } : {}),
         },
@@ -231,7 +235,7 @@ router.post('/:id/issue', async (req, res, next) => {
       if (existing.customerId) {
         await postSaleInvoice(tx, {
           customerId: existing.customerId, customerName: existing.customerName,
-          date: existing.date, invoiceId: existing.id, invoiceNo: invNo, amount: totals.grandTotal,
+          date: existing.date, invoiceId: existing.id, invoiceNo: invNo, amount: finalGrandTotal,
         });
         if (paid > 0) {
           await postPaymentIn(tx, {
@@ -243,7 +247,7 @@ router.post('/:id/issue', async (req, res, next) => {
         }
         await tx.customer.update({
           where: { id: existing.customerId },
-          data: { balance: { increment: totals.grandTotal - paid } },
+          data: { balance: { increment: finalGrandTotal - paid } },
         });
       }
 
