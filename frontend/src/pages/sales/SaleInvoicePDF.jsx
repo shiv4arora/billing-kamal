@@ -266,11 +266,8 @@ export function InvoicePDF({ inv, company, invSettings, customerAddress, custome
             {totalTax > 0 && (
               <View style={S.sumTaxSep}><Text>Total Tax</Text><Text><Cur v={totalTax} /></Text></View>
             )}
-            {inv.packingCharges > 0 && (
-              <View style={S.sumRow}><Text>Packing</Text><Text><Cur v={inv.packingCharges} /></Text></View>
-            )}
-            {inv.shippingCharges > 0 && (
-              <View style={S.sumRow}><Text>Shipping</Text><Text><Cur v={inv.shippingCharges} /></Text></View>
+            {((inv.packingCharges || 0) + (inv.shippingCharges || 0)) > 0 && (
+              <View style={S.sumRow}><Text>Packing &amp; Shipping</Text><Text><Cur v={(inv.packingCharges || 0) + (inv.shippingCharges || 0)} /></Text></View>
             )}
             <View style={S.sumRowBold}>
               <Text>Grand Total</Text><Text><Cur v={inv.grandTotal} /></Text>
