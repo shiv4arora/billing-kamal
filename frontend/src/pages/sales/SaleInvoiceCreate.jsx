@@ -530,7 +530,7 @@ export default function SaleInvoiceCreate() {
                 </select>
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-500 mb-1">Packing / Shipping (₹)</p>
+                <p className="text-xs font-medium text-gray-500 mb-1">Packing &amp; Shipping Charges (₹)</p>
                 <input type="number" min="0" value={extraCharges.charges}
                   onChange={e => { setExtraCharges({ charges: e.target.value }); setIsDirty(true); }}
                   placeholder="0" onWheel={e => e.target.blur()}
@@ -861,7 +861,7 @@ export default function SaleInvoiceCreate() {
               {totals.totalSGST > 0 && <div className="flex justify-between"><span className="text-gray-500">SGST</span><span>{formatCurrency(totals.totalSGST)}</span></div>}
               {totals.totalIGST > 0 && <div className="flex justify-between"><span className="text-gray-500">IGST</span><span>{formatCurrency(totals.totalIGST)}</span></div>}
               {totals.roundOff !== 0 && <div className="flex justify-between"><span className="text-gray-500">Round Off</span><span>{formatCurrency(totals.roundOff)}</span></div>}
-              {chargesAmt > 0 && <div className="flex justify-between"><span className="text-gray-500">Packing / Shipping</span><span>{formatCurrency(chargesAmt)}</span></div>}
+              {chargesAmt > 0 && <div className="flex justify-between"><span className="text-gray-500">Packing &amp; Shipping Charges</span><span>{formatCurrency(chargesAmt)}</span></div>}
               <div className="flex justify-between font-bold text-base border-t pt-2"><span>Grand Total</span><span className="text-blue-700">{formatCurrency(finalTotal)}</span></div>
               {+amountPaid > 0 && <div className="flex justify-between text-green-600"><span>Paid</span><span>{formatCurrency(+amountPaid)}</span></div>}
               {+amountPaid < finalTotal && +amountPaid >= 0 && <div className="flex justify-between text-red-600 font-medium"><span>Balance</span><span>{formatCurrency(finalTotal - (+amountPaid || 0))}</span></div>}
