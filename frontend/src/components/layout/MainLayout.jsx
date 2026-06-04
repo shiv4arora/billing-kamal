@@ -115,7 +115,6 @@ export default function MainLayout({ children }) {
           <span className="text-xs text-gray-400">Billing</span>
         </div>
 
-        <ReminderBanner />
         <div className="p-4 pb-24 lg:pb-6 lg:p-6 flex-1 dark:text-gray-100">{children}</div>
       </main>
 
