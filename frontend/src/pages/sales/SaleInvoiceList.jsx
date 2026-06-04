@@ -86,24 +86,6 @@ export default function SaleInvoiceList() {
       {/* Search */}
       <SearchBox onSearch={handleSearch} />
 
-      {/* Total summary strip */}
-      {filtered.length > 0 && (
-        <div className="flex items-center gap-4 text-sm px-1">
-          <span className="text-gray-400">{filtered.length} invoice{filtered.length !== 1 ? 's' : ''}</span>
-          <span className="font-semibold text-gray-700">
-            Total: <span className="text-blue-700">{formatCurrency(filtered.reduce((s, i) => s + (i.grandTotal || 0), 0))}</span>
-          </span>
-          {filtered.some(i => (i.grandTotal || 0) - (i.amountPaid || 0) > 0.01 && i.status !== 'void') && (
-            <span className="text-red-600 font-medium">
-              Due: {formatCurrency(filtered.reduce((s, i) => {
-                const bal = (i.grandTotal || 0) - (i.amountPaid || 0);
-                return s + (bal > 0.01 && i.status !== 'void' ? bal : 0);
-              }, 0))}
-            </span>
-          )}
-        </div>
-      )}
-
       {/* Filter buttons */}
       <div className="flex gap-1.5 flex-wrap">
         {FILTERS.map(f => (

@@ -263,7 +263,7 @@ export default function SaleInvoiceCreate() {
       const saved = await api('/sales', { method: 'POST', body: invData });
       setAutoSavedId(saved.id);
     }
-  }, [saving, amountPaid, finalTotal, date, dueDate, customerId, customer, customerType, totals, packingAmt, shippingAmt, paymentMethod, notes, effectiveId]);
+  }, [saving, amountPaid, finalTotal, date, dueDate, customerId, customer, customerType, totals, chargesAmt, paymentMethod, notes, effectiveId]);
 
   const autoSaveStatus = useAutoSave(autoSaveData, performAutoSave, { delay: 60000 });
   // ─────────────────────────────────────────────────────────────────────────
