@@ -465,6 +465,7 @@ export default function SaleInvoiceView() {
           {inv.totalCGST > 0 && <div className="flex justify-between"><span className="text-gray-500">CGST</span><span>{formatCurrency(inv.totalCGST)}</span></div>}
           {inv.totalSGST > 0 && <div className="flex justify-between"><span className="text-gray-500">SGST</span><span>{formatCurrency(inv.totalSGST)}</span></div>}
           {inv.totalIGST > 0 && <div className="flex justify-between"><span className="text-gray-500">IGST</span><span>{formatCurrency(inv.totalIGST)}</span></div>}
+          {((inv.packingCharges || 0) + (inv.shippingCharges || 0)) > 0 && <div className="flex justify-between"><span className="text-gray-500">Packing / Shipping</span><span>{formatCurrency((inv.packingCharges || 0) + (inv.shippingCharges || 0))}</span></div>}
           <div className="flex justify-between font-bold text-base border-t pt-2"><span>Grand Total</span><span className="text-blue-700">{formatCurrency(inv.grandTotal)}</span></div>
           {(inv.amountPaid || 0) > 0 && <div className="flex justify-between text-green-600"><span>Paid</span><span>{formatCurrency(inv.amountPaid)}</span></div>}
           {remaining > 0.01 && <div className="flex justify-between font-semibold text-red-600"><span>Balance Due</span><span>{formatCurrency(remaining)}</span></div>}
@@ -599,6 +600,7 @@ export default function SaleInvoiceView() {
             {inv.totalCGST > 0 && <div className="flex justify-between"><span className="text-gray-500">CGST</span><span>{formatCurrency(inv.totalCGST)}</span></div>}
             {inv.totalSGST > 0 && <div className="flex justify-between"><span className="text-gray-500">SGST</span><span>{formatCurrency(inv.totalSGST)}</span></div>}
             {inv.totalIGST > 0 && <div className="flex justify-between"><span className="text-gray-500">IGST</span><span>{formatCurrency(inv.totalIGST)}</span></div>}
+            {((inv.packingCharges || 0) + (inv.shippingCharges || 0)) > 0 && <div className="flex justify-between"><span className="text-gray-500">Packing / Shipping</span><span>{formatCurrency((inv.packingCharges || 0) + (inv.shippingCharges || 0))}</span></div>}
             <div className="flex justify-between font-bold text-base border-t pt-2"><span>Grand Total</span><span className="text-blue-700">{formatCurrency(inv.grandTotal)}</span></div>
             {(inv.amountPaid || 0) > 0 && (
               <div className="flex justify-between text-green-600"><span>Amount Paid</span><span>{formatCurrency(inv.amountPaid)}</span></div>
