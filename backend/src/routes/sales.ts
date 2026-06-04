@@ -88,6 +88,12 @@ router.put('/:id', async (req, res, next) => {
   try {
     const oldInv = await prisma.saleInvoice.findUniqueOrThrow({ where: { id: req.params.id } });
 
+    // Safety: never allow a PUT to downgrade an issued/completed/paid invoice
+    // back to draft (e.g. from a stale auto-save firing after issue).
+    if (req.body.status === 'draft' && oldInv.status !== 'draft') {
+      req.body = { ...req.body, status: oldInv.status };
+    }
+
     // ── DRAFT: no stock/ledger impact yet — store as-is. The issue step
     //    recomputes totals from items and applies stock + ledger.
     if (oldInv.status === 'draft') {

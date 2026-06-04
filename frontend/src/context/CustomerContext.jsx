@@ -58,14 +58,22 @@ export function CustomerProvider({ children }) {
   const get = (id) => customers.find(c => c.id === id);
 
   const updateBalance = (id, delta) => {
-    // Optimistic local update; authoritative balance comes from ledger
     setCustomers(p => p.map(x => x.id === id ? { ...x, balance: (Number(x.balance) || 0) + delta } : x));
+  };
+
+  // Hard-refresh a single customer from the backend (authoritative balance)
+  const refreshOne = async (id) => {
+    if (!isApiAvailable()) return;
+    try {
+      const fresh = await api(`/customers/${id}`);
+      setCustomers(p => p.map(x => x.id === id ? fresh : x));
+    } catch {}
   };
 
   const active = customers.filter(c => c.isActive !== false);
 
   return (
-    <Ctx.Provider value={{ customers, active, add, update, remove, get, updateBalance }}>
+    <Ctx.Provider value={{ customers, active, add, update, remove, get, updateBalance, refreshOne }}>
       {children}
     </Ctx.Provider>
   );

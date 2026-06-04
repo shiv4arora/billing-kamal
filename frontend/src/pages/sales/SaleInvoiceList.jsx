@@ -5,13 +5,14 @@ import { Button, Table, Badge, Card } from '../../components/ui';
 import { formatCurrency, formatDate, formatCustomerDisplay } from '../../utils/helpers';
 
 const FILTERS = [
-  { label: 'All',     value: 'all' },
-  { label: 'Draft',   value: 'draft' },
-  { label: 'Issued',  value: 'issued' },
-  { label: 'Unpaid',  value: 'unpaid' },
-  { label: 'Partial', value: 'partial' },
-  { label: 'Paid',    value: 'paid' },
-  { label: 'Void',    value: 'void' },
+  { label: 'All',       value: 'all' },
+  { label: 'Draft',     value: 'draft' },
+  { label: 'Issued',    value: 'issued' },
+  { label: 'Unpaid',    value: 'unpaid' },
+  { label: 'Partial',   value: 'partial' },
+  { label: 'Paid',      value: 'paid' },
+  { label: 'Completed', value: 'completed' },
+  { label: 'Void',      value: 'void' },
 ];
 
 const SearchBox = memo(function SearchBox({ onSearch }) {
@@ -85,6 +86,24 @@ export default function SaleInvoiceList() {
       {/* Search */}
       <SearchBox onSearch={handleSearch} />
 
+      {/* Total summary strip */}
+      {filtered.length > 0 && (
+        <div className="flex items-center gap-4 text-sm px-1">
+          <span className="text-gray-400">{filtered.length} invoice{filtered.length !== 1 ? 's' : ''}</span>
+          <span className="font-semibold text-gray-700">
+            Total: <span className="text-blue-700">{formatCurrency(filtered.reduce((s, i) => s + (i.grandTotal || 0), 0))}</span>
+          </span>
+          {filtered.some(i => (i.grandTotal || 0) - (i.amountPaid || 0) > 0.01 && i.status !== 'void') && (
+            <span className="text-red-600 font-medium">
+              Due: {formatCurrency(filtered.reduce((s, i) => {
+                const bal = (i.grandTotal || 0) - (i.amountPaid || 0);
+                return s + (bal > 0.01 && i.status !== 'void' ? bal : 0);
+              }, 0))}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Filter buttons */}
       <div className="flex gap-1.5 flex-wrap">
         {FILTERS.map(f => (
@@ -93,13 +112,14 @@ export default function SaleInvoiceList() {
             onClick={() => setFilter(f.value)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
               filter === f.value
-                ? f.value === 'void'    ? 'bg-red-600 text-white border-red-600'
-                : f.value === 'draft'   ? 'bg-gray-600 text-white border-gray-600'
-                : f.value === 'unpaid'  ? 'bg-red-500 text-white border-red-500'
-                : f.value === 'partial' ? 'bg-yellow-500 text-white border-yellow-500'
-                : f.value === 'paid'    ? 'bg-green-600 text-white border-green-600'
-                : f.value === 'issued'  ? 'bg-blue-600 text-white border-blue-600'
-                :                        'bg-gray-800 text-white border-gray-800'
+                ? f.value === 'void'      ? 'bg-red-600 text-white border-red-600'
+                : f.value === 'draft'     ? 'bg-gray-600 text-white border-gray-600'
+                : f.value === 'unpaid'    ? 'bg-red-500 text-white border-red-500'
+                : f.value === 'partial'   ? 'bg-yellow-500 text-white border-yellow-500'
+                : f.value === 'paid'      ? 'bg-green-600 text-white border-green-600'
+                : f.value === 'completed' ? 'bg-emerald-600 text-white border-emerald-600'
+                : f.value === 'issued'    ? 'bg-blue-600 text-white border-blue-600'
+                :                          'bg-gray-800 text-white border-gray-800'
                 : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
             }`}
           >

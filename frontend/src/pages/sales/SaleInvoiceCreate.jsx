@@ -24,7 +24,7 @@ export default function SaleInvoiceCreate() {
   const toast = useGlobalToast();
   const { addSaleInvoice, issueSaleInvoice, updateSaleInvoice, getSaleInvoice, addStockEntry } = useInvoices();
   const { active: products, updateStock } = useProducts();
-  const { active: customers, updateBalance, add: addCustomer } = useCustomers();
+  const { active: customers, updateBalance, refreshOne: refreshCustomer, add: addCustomer } = useCustomers();
   const { settings, bumpSaleNo } = useSettings();
   const { addSaleEntry, addPaymentIn } = useLedger();
   const isEdit = !!id;
@@ -239,6 +239,12 @@ export default function SaleInvoiceCreate() {
 
   const performAutoSave = useCallback(async () => {
     if (saving) return;
+    // Don't auto-save if the invoice has already been issued — sending status:'draft'
+    // would downgrade it. The backend also guards against this, but prevent the call entirely.
+    if (effectiveId) {
+      const existing = getSaleInvoice(effectiveId);
+      if (existing && existing.status !== 'draft') return;
+    }
     const paid = +amountPaid || 0;
     const payStatus = paid >= finalTotal ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
     const invData = {
@@ -280,28 +286,23 @@ export default function SaleInvoiceCreate() {
       setIsDirty(false);
       if (isEdit) {
         // Editing an existing invoice — update data + status, no re-issue
-        await updateSaleInvoice(effectiveId, { ...invData, status });
+        const updated = await updateSaleInvoice(effectiveId, { ...invData, status });
+        if (updated?.customerId) refreshCustomer(updated.customerId);
         toast.success('Invoice updated');
         navigate(`/sales/${effectiveId}`);
       } else if (effectiveId) {
-        // New invoice that was auto-saved as a draft — update data, then issue if needed
-        await updateSaleInvoice(effectiveId, invData); // invData already has status:'draft'
-        if (status === 'issued') {
-          const issued = await issueSaleInvoice(effectiveId);
-          toast.success(`Invoice ${issued.invoiceNumber} issued`);
-        } else {
-          toast.success('Draft saved');
-        }
+        // New invoice that was auto-saved as a draft — update data, then issue
+        await updateSaleInvoice(effectiveId, invData);
+        const issued = await issueSaleInvoice(effectiveId);
+        if (issued.customerId) refreshCustomer(issued.customerId);
+        toast.success(`Invoice ${issued.invoiceNumber} issued`);
         navigate(`/sales/${effectiveId}`);
       } else {
         // Brand-new invoice, never auto-saved
         const saved = await addSaleInvoice(invData);
-        if (status === 'issued') {
-          const issued = await issueSaleInvoice(saved.id);
-          toast.success(`Invoice ${issued.invoiceNumber} issued`);
-        } else {
-          toast.success('Draft saved');
-        }
+        const issued = await issueSaleInvoice(saved.id);
+        if (issued.customerId) refreshCustomer(issued.customerId);
+        toast.success(`Invoice ${issued.invoiceNumber} issued`);
         navigate(`/sales/${saved.id}`);
       }
     } catch (err) {
@@ -882,8 +883,9 @@ export default function SaleInvoiceCreate() {
           )}
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3">
             <Button variant="secondary" type="button" onClick={() => { if (confirmLeave()) navigate('/sales'); }} className="justify-center">Cancel</Button>
-            <Button variant="outline" onClick={() => handleSave('draft')} disabled={saving} className="justify-center">Save as Draft</Button>
-            <Button variant="success" onClick={() => handleSave('issued')} disabled={saving} className="justify-center">Issue Invoice</Button>
+            <Button variant="success" onClick={() => handleSave('issued')} disabled={saving} className="justify-center">
+              {saving ? 'Saving…' : 'Issue Invoice'}
+            </Button>
           </div>
         </div>
       </div>
