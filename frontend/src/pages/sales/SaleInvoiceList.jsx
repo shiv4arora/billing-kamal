@@ -5,15 +5,20 @@ import { Button, Table, Badge, Card } from '../../components/ui';
 import { formatCurrency, formatDate, formatCustomerDisplay } from '../../utils/helpers';
 
 const FILTERS = [
-  { label: 'All',       value: 'all' },
-  { label: 'Draft',     value: 'draft' },
-  { label: 'Issued',    value: 'issued' },
-  { label: 'Unpaid',    value: 'unpaid' },
-  { label: 'Partial',   value: 'partial' },
-  { label: 'Paid',      value: 'paid' },
-  { label: 'Completed', value: 'completed' },
-  { label: 'Void',      value: 'void' },
+  { label: 'All',        value: 'all' },
+  { label: 'Today',      value: 'today' },
+  { label: 'Last 3 Days',value: 'last3' },
+  { label: 'Draft',      value: 'draft' },
+  { label: 'Issued',     value: 'issued' },
+  { label: 'Unpaid',     value: 'unpaid' },
+  { label: 'Partial',    value: 'partial' },
+  { label: 'Paid',       value: 'paid' },
+  { label: 'Completed',  value: 'completed' },
+  { label: 'Void',       value: 'void' },
 ];
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const nDaysAgoStr = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
 
 const SearchBox = memo(function SearchBox({ onSearch }) {
   const timerRef = useRef(null);
@@ -51,7 +56,11 @@ export default function SaleInvoiceList() {
 
   const filtered = [...saleInvoices]
     .filter(i => {
-      const matchFilter = filter === 'all' || i.status === filter || i.paymentStatus === filter;
+      const matchFilter =
+        filter === 'all'   ? true :
+        filter === 'today' ? i.date === todayStr() :
+        filter === 'last3' ? i.date >= nDaysAgoStr(3) && i.date <= todayStr() :
+        i.status === filter || i.paymentStatus === filter;
       const matchSearch = i.invoiceNumber?.toLowerCase().includes(search.toLowerCase())
                        || i.customerName?.toLowerCase().includes(search.toLowerCase());
       return matchFilter && matchSearch;
@@ -101,12 +110,14 @@ export default function SaleInvoiceList() {
                 : f.value === 'paid'      ? 'bg-green-600 text-white border-green-600'
                 : f.value === 'completed' ? 'bg-emerald-600 text-white border-emerald-600'
                 : f.value === 'issued'    ? 'bg-blue-600 text-white border-blue-600'
+                : f.value === 'today'     ? 'bg-purple-600 text-white border-purple-600'
+                : f.value === 'last3'     ? 'bg-indigo-600 text-white border-indigo-600'
                 :                          'bg-gray-800 text-white border-gray-800'
                 : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
             }`}
           >
             {f.label}
-            {f.value !== 'all' && (() => {
+            {f.value !== 'all' && f.value !== 'today' && f.value !== 'last3' && (() => {
               const count = saleInvoices.filter(i =>
                 i.status === f.value || i.paymentStatus === f.value
               ).length;

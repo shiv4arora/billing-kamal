@@ -227,7 +227,7 @@ export default function SaleInvoiceView() {
             {checkMode ? '✕ End Check' : '🔍 Check Bill'}
           </button>
           <Link to={`/customers/${inv.customerId}/ledger`}>
-            <button className="shrink-0 px-3 py-2 text-xs text-blue-700 bg-blue-50 rounded-lg font-medium active:bg-blue-100 whitespace-nowrap">📒 Ledger</button>
+            <button className="shrink-0 px-3 py-2 text-xs text-white bg-blue-600 rounded-lg font-medium active:bg-blue-700 whitespace-nowrap">📒 Ledger</button>
           </Link>
           {inv.status !== 'void' && (
             <Link to={`/sales/${id}/edit`}>
@@ -255,7 +255,7 @@ export default function SaleInvoiceView() {
           <Button variant={checkMode ? 'primary' : 'outline'} onClick={() => { setCheckMode(v => !v); setItemChecks({}); }}>
             {checkMode ? '✕ End Check' : '🔍 Check Bill'}
           </Button>
-          <Link to={`/customers/${inv.customerId}/ledger`}><button className="inline-flex items-center gap-2 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 px-4 py-2 text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 focus:ring-blue-400">📒 Ledger</button></Link>
+          <Link to={`/customers/${inv.customerId}/ledger`}><button className="inline-flex items-center gap-2 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 px-4 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500">📒 Ledger</button></Link>
           <Button variant="outline" onClick={() => setWaOpen(true)}>📱 WhatsApp</Button>
           <Link to={`/sales/${id}/print`}><Button variant="outline">🖨 Print</Button></Link>
           {inv.status !== 'void' && <Link to={`/sales/${id}/edit`}><Button variant="secondary">Edit</Button></Link>}
