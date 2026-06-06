@@ -94,10 +94,15 @@ router.put('/:id', async (req, res, next) => {
       req.body = { ...req.body, status: oldInv.status };
     }
 
-    // ── DRAFT: no stock/ledger impact yet — store as-is. The issue step
-    //    recomputes totals from items and applies stock + ledger.
+    // ── DRAFT: no stock/ledger impact yet. A draft can ONLY be saved as a draft
+    //    here — it must never transition to issued via PUT (that would set the
+    //    status without posting the ledger / moving stock). The draft→issued
+    //    transition MUST go through POST /:id/issue. We force status to 'draft'.
     if (oldInv.status === 'draft') {
-      const inv = await prisma.saleInvoice.update({ where: { id: req.params.id }, data: pickSaleData(req.body) });
+      const inv = await prisma.saleInvoice.update({
+        where: { id: req.params.id },
+        data: pickSaleData({ ...req.body, status: 'draft' }),
+      });
       return res.json(inv);
     }
 
@@ -161,15 +166,34 @@ router.put('/:id', async (req, res, next) => {
       const updated = await tx.saleInvoice.update({ where: { id: req.params.id }, data: pickSaleData(body) });
 
       // Sync ledger debit + customer balance
-      if (oldInv.customerId && Math.abs(delta) > 0.001) {
-        await tx.ledgerEntry.updateMany({
+      if (oldInv.customerId) {
+        const existingLedger = await tx.ledgerEntry.findFirst({
           where: { referenceId: updated.id, type: 'sale_invoice' },
-          data: { debit: newTotal },
         });
-        await tx.customer.update({
-          where: { id: oldInv.customerId },
-          data: { balance: { increment: delta } },
-        });
+        if (existingLedger) {
+          // Normal path: adjust the existing entry + balance if the total changed
+          if (Math.abs(delta) > 0.001) {
+            await tx.ledgerEntry.updateMany({
+              where: { referenceId: updated.id, type: 'sale_invoice' },
+              data: { debit: newTotal },
+            });
+            await tx.customer.update({
+              where: { id: oldInv.customerId },
+              data: { balance: { increment: delta } },
+            });
+          }
+        } else {
+          // Self-heal: invoice is issued but has no ledger entry (corrupted by an
+          // older bug). Create it now and add the full outstanding to the balance.
+          await postSaleInvoice(tx, {
+            customerId: oldInv.customerId, customerName: oldInv.customerName,
+            date: updated.date, invoiceId: updated.id, invoiceNo: updated.invoiceNumber || '', amount: newTotal,
+          });
+          await tx.customer.update({
+            where: { id: oldInv.customerId },
+            data: { balance: { increment: newTotal - (Number(oldInv.amountPaid) || 0) } },
+          });
+        }
       }
 
       return updated;

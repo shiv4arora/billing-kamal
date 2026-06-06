@@ -287,10 +287,20 @@ export default function SaleInvoiceCreate() {
 
       setIsDirty(false);
       if (isEdit) {
-        // Editing an existing invoice — update data + status, no re-issue
-        const updated = await updateSaleInvoice(effectiveId, { ...invData, status });
-        if (updated?.customerId) refreshCustomer(updated.customerId);
-        toast.success('Invoice updated');
+        const current = getSaleInvoice(effectiveId);
+        if (current?.status === 'draft' && status === 'issued') {
+          // Issuing a draft from the edit screen — save data first (as draft),
+          // then run the dedicated issue endpoint so the ledger + stock post.
+          await updateSaleInvoice(effectiveId, invData); // invData has status:'draft'
+          const issued = await issueSaleInvoice(effectiveId);
+          if (issued.customerId) refreshCustomer(issued.customerId);
+          toast.success(`Invoice ${issued.invoiceNumber} issued`);
+        } else {
+          // Editing an already-issued/completed invoice — update data + status
+          const updated = await updateSaleInvoice(effectiveId, { ...invData, status });
+          if (updated?.customerId) refreshCustomer(updated.customerId);
+          toast.success('Invoice updated');
+        }
         navigate(`/sales/${effectiveId}`);
       } else if (effectiveId) {
         // New invoice that was auto-saved as a draft — update data, then issue
