@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { prisma } from '../lib/prisma';
 import { postSaleInvoice, postPaymentIn } from '../services/ledgerService';
 
@@ -14,15 +16,43 @@ import { postSaleInvoice, postPaymentIn } from '../services/ledgerService';
 //   3. customer balance += (grandTotal - amountPaid)
 //   4. stock decrement + 'sale' stock-ledger row for each line item
 //
+// Before applying any changes it makes a timestamped copy of the SQLite DB
+// file (billing.db -> billing.db.backup-YYYYMMDD-HHMMSS) so you can roll back.
+//
 // Usage:
-//   DRY=1 npx tsx src/scripts/backfillSaleLedger.ts   # preview only
-//         npx tsx src/scripts/backfillSaleLedger.ts   # apply
+//   DRY=1 npx tsx src/scripts/backfillSaleLedger.ts   # preview only (no backup)
+//         npx tsx src/scripts/backfillSaleLedger.ts   # backup + apply
 //   STOCK=0 ... npx tsx ...                            # skip stock fix (ledger only)
+//   NOBACKUP=1 ... npx tsx ...                         # skip the DB backup
 // ─────────────────────────────────────────────────────────────────────────────
 
 function parseItems(raw: any): any[] {
   if (Array.isArray(raw)) return raw;
   try { return JSON.parse(raw || '[]'); } catch { return []; }
+}
+
+// Copy the SQLite DB file (resolved from DATABASE_URL) to a timestamped backup.
+function backupDatabase(): string | null {
+  const url = process.env.DATABASE_URL || 'file:./billing.db';
+  if (!url.startsWith('file:')) {
+    console.warn(`⚠ DATABASE_URL is not a file: URL (${url}) — skipping backup.`);
+    return null;
+  }
+  // Prisma resolves the file path relative to the prisma/ directory
+  const rel = url.replace(/^file:/, '');
+  const dbPath = path.isAbsolute(rel) ? rel : path.resolve(__dirname, '../../prisma', rel);
+  if (!fs.existsSync(dbPath)) {
+    console.warn(`⚠ DB file not found at ${dbPath} — skipping backup.`);
+    return null;
+  }
+  const ts = new Date().toISOString().replace(/[:T]/g, '').slice(0, 15); // YYYYMMDD-HHMMSS
+  const dest = `${dbPath}.backup-${ts.slice(0, 8)}-${ts.slice(8)}`;
+  fs.copyFileSync(dbPath, dest);
+  // SQLite WAL/SHM sidecars, if present, so the backup is fully consistent
+  for (const ext of ['-wal', '-shm']) {
+    if (fs.existsSync(dbPath + ext)) fs.copyFileSync(dbPath + ext, dest + ext);
+  }
+  return dest;
 }
 
 async function main() {
@@ -52,6 +82,14 @@ async function main() {
 
   if (dryRun) { console.log('\nDRY run — no changes written. Re-run without DRY=1 to apply.'); return; }
   if (broken.length === 0) { console.log('Nothing to fix.'); return; }
+
+  // Back up the DB file before writing anything
+  if (process.env.NOBACKUP !== '1') {
+    const backup = backupDatabase();
+    if (backup) console.log(`\n💾 Backup created: ${backup}`);
+  } else {
+    console.log('\n⚠ NOBACKUP=1 — skipping DB backup.');
+  }
 
   console.log(`\nApplying fixes (stock fix: ${fixStock ? 'ON' : 'OFF'})…\n`);
   for (const inv of broken) {
