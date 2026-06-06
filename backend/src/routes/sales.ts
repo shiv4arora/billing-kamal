@@ -223,6 +223,12 @@ router.post('/:id/issue', async (req, res, next) => {
     const payStatus = paid >= finalGrandTotal - 0.01 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
 
     const issued = await prisma.$transaction(async (tx) => {
+      // Idempotency guard: re-read inside the transaction. If a concurrent/duplicate
+      // request already issued this invoice, bail out without re-applying any
+      // stock, ledger, or balance side-effects.
+      const fresh = await tx.saleInvoice.findUniqueOrThrow({ where: { id: existing.id } });
+      if (fresh.status !== 'draft') return fresh;
+
       // Drafts now get a number at creation time; fall back to minting one for old numberless drafts
       const invNo = existing.invoiceNumber || await nextSaleInvoiceNumber(prefix, tx);
 

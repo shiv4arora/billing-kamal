@@ -1,13 +1,20 @@
 import { prisma } from '../lib/prisma';
 
-// Accept an optional tx so callers inside prisma.$transaction don't create a nested one
+// Accept an optional tx so callers inside prisma.$transaction don't create a nested one.
+// Uses an ATOMIC increment (single read-modify-write statement) so two concurrent
+// callers can never receive the same number — a plain read-then-write could mint
+// duplicate invoice numbers under concurrency.
 async function nextCounter(key: string, tx?: any): Promise<number> {
   const client = tx || prisma;
-  const row = await client.counter.findUnique({ where: { key } });
-  if (!row) throw new Error(`Counter '${key}' not found`);
-  const n = row.value;
-  await client.counter.update({ where: { key }, data: { value: n + 1 } });
-  return n;
+  try {
+    const updated = await client.counter.update({
+      where: { key },
+      data: { value: { increment: 1 } },
+    });
+    return updated.value - 1; // value held before this increment
+  } catch {
+    throw new Error(`Counter '${key}' not found`);
+  }
 }
 
 export async function nextSaleInvoiceNumber(prefix: string, tx?: any): Promise<string> {
