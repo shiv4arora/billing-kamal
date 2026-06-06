@@ -17,6 +17,15 @@ function parseSettings(raw: any): any {
   try { return JSON.parse(raw || '{}'); } catch { return {}; }
 }
 
+// Rebuild a customer's balance from their ledger entries (authoritative — keeps
+// the cached balance field exactly in sync with the ledger after any edit).
+async function recomputeCustomerBalance(tx: any, customerId: string | null | undefined) {
+  if (!customerId) return;
+  const rows = await tx.ledgerEntry.findMany({ where: { partyType: 'customer', partyId: customerId } });
+  const bal = rows.reduce((s: number, r: any) => s + (Number(r.debit) || 0) - (Number(r.credit) || 0), 0);
+  await tx.customer.update({ where: { id: customerId }, data: { balance: Math.round(bal * 100) / 100 } });
+}
+
 // Pick only the schema fields from the request body — ignores unknown frontend fields (e.g. totalTaxable)
 function pickSaleData(b: any) {
   return {
@@ -128,8 +137,6 @@ router.put('/:id', async (req, res, next) => {
     const totals = buildInvoiceTotals(newItems, isInterState);
     const newCharges = Number(req.body.packingCharges ?? oldInv.packingCharges ?? 0) + Number(req.body.shippingCharges ?? oldInv.shippingCharges ?? 0);
     const newTotal = totals.grandTotal + newCharges;
-    const oldTotal = Number(oldInv.grandTotal) || 0;
-    const delta = newTotal - oldTotal;
     const paid = Number(req.body.amountPaid ?? oldInv.amountPaid) || 0;
     const payStatus = paid >= newTotal - 0.01 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
 
@@ -165,36 +172,44 @@ router.put('/:id', async (req, res, next) => {
       };
       const updated = await tx.saleInvoice.update({ where: { id: req.params.id }, data: pickSaleData(body) });
 
-      // Sync ledger debit + customer balance
-      if (oldInv.customerId) {
+      // ── Fully sync the ledger to the edited invoice ──
+      const oldCust = oldInv.customerId;
+      const newCust = updated.customerId;
+      const narration = `Sale Invoice ${updated.invoiceNumber || ''}`;
+
+      if (newCust) {
         const existingLedger = await tx.ledgerEntry.findFirst({
           where: { referenceId: updated.id, type: 'sale_invoice' },
         });
         if (existingLedger) {
-          // Normal path: adjust the existing entry + balance if the total changed
-          if (Math.abs(delta) > 0.001) {
-            await tx.ledgerEntry.updateMany({
-              where: { referenceId: updated.id, type: 'sale_invoice' },
-              data: { debit: newTotal },
-            });
-            await tx.customer.update({
-              where: { id: oldInv.customerId },
-              data: { balance: { increment: delta } },
-            });
-          }
+          // Update the entry to reflect every editable field — amount, date,
+          // customer and narration (not just the amount).
+          await tx.ledgerEntry.updateMany({
+            where: { referenceId: updated.id, type: 'sale_invoice' },
+            data: { debit: newTotal, date: updated.date, partyId: newCust, partyName: updated.customerName, narration },
+          });
         } else {
-          // Self-heal: invoice is issued but has no ledger entry (corrupted by an
-          // older bug). Create it now and add the full outstanding to the balance.
+          // Issued invoice with no ledger entry (corrupted by an older bug) — create it
           await postSaleInvoice(tx, {
-            customerId: oldInv.customerId, customerName: oldInv.customerName,
+            customerId: newCust, customerName: updated.customerName,
             date: updated.date, invoiceId: updated.id, invoiceNo: updated.invoiceNumber || '', amount: newTotal,
           });
-          await tx.customer.update({
-            where: { id: oldInv.customerId },
-            data: { balance: { increment: newTotal - (Number(oldInv.amountPaid) || 0) } },
+        }
+        // If the customer was changed, move the related payment/return entries too
+        if (oldCust && oldCust !== newCust) {
+          await tx.ledgerEntry.updateMany({
+            where: { referenceId: updated.id, type: { in: ['payment_in', 'sale_return'] } },
+            data: { partyId: newCust, partyName: updated.customerName },
           });
         }
+      } else if (oldCust) {
+        // Invoice no longer has a customer — drop all its ledger entries
+        await tx.ledgerEntry.deleteMany({ where: { referenceId: updated.id } });
       }
+
+      // Rebuild affected customer balances straight from the ledger (no drift)
+      await recomputeCustomerBalance(tx, oldCust);
+      if (newCust && newCust !== oldCust) await recomputeCustomerBalance(tx, newCust);
 
       return updated;
     });
