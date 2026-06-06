@@ -3,7 +3,7 @@ import { api, setToken, clearToken, checkApiAvailable, isApiAvailable } from '..
 
 // ── localStorage fallback helpers ──────────────────────────────────────────
 const LS_USERS = 'bms_users';
-const DEFAULT_ADMIN = { id: 'usr_admin', username: 'admin', password: 'admin123', name: 'Admin', role: 'admin', permissions: [], isActive: true };
+const DEFAULT_ADMIN = { id: 'usr_admin', username: 'admin', password: 'Kamal123', name: 'Admin', role: 'admin', permissions: [], isActive: true };
 
 function lsGetUsers() {
   try { return JSON.parse(localStorage.getItem(LS_USERS) || 'null') || [DEFAULT_ADMIN]; } catch { return [DEFAULT_ADMIN]; }
@@ -102,9 +102,7 @@ export function AuthProvider({ children }) {
         .catch(() => {});
     };
     window.addEventListener('focus', refresh);
-    // Also poll every 60 s so permissions update even without a focus event
-    const timer = setInterval(refresh, 60_000);
-    return () => { window.removeEventListener('focus', refresh); clearInterval(timer); };
+    return () => window.removeEventListener('focus', refresh);
   }, []);
 
   // Auto-logout when any API call gets a 401 (token expired)

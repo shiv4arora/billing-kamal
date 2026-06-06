@@ -9,7 +9,7 @@ export interface JwtPayload {
 }
 
 export function signToken(payload: JwtPayload): string {
-  return jwt.sign(payload, SECRET, { expiresIn: '14h' });
+  return jwt.sign(payload, SECRET); // no expiry — login persists until explicitly logged out
 }
 
 export function verifyToken(token: string): JwtPayload {
