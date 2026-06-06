@@ -235,13 +235,16 @@ router.put('/entry/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// Delete a ledger entry and reverse its balance effect — payment/return/adjustment only
+// Delete a ledger entry and reverse its balance effect.
+// payment/return/adjustment can be deleted by anyone; invoice-type entries
+// (sale_invoice / purchase_invoice) can only be deleted by an admin override.
 router.delete('/entry/:id', async (req, res, next) => {
   try {
     const entry = await prisma.ledgerEntry.findUniqueOrThrow({ where: { id: req.params.id } });
 
-    if (!EDITABLE_TYPES.includes(entry.type)) {
-      return res.status(400).json({ error: 'Invoice entries cannot be deleted here.' });
+    const isAdmin = req.user?.role === 'admin';
+    if (!EDITABLE_TYPES.includes(entry.type) && !isAdmin) {
+      return res.status(403).json({ error: 'Only an admin can delete invoice ledger entries.' });
     }
 
     const debit  = Number(entry.debit)  || 0;

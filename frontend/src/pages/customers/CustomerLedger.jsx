@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useCustomers } from '../../context/CustomerContext';
 import { useLedger } from '../../context/LedgerContext';
+import { useAuth } from '../../context/AuthContext';
 import { Card, Badge, Button, Modal, Input, Select, useToast, Toast } from '../../components/ui';
 import { formatCurrency, formatDate, formatCustomerDisplay, today } from '../../utils/helpers';
 
@@ -21,6 +22,7 @@ export default function CustomerLedger() {
   const toast = useToast();
   const { get } = useCustomers();
   const { addPaymentIn, addSaleReturn, addAdjustment, editEntry, deleteEntry, getEntriesByParty, getBalance } = useLedger();
+  const { isAdmin } = useAuth();
 
   const customer = get(id);
 
@@ -114,7 +116,11 @@ export default function CustomerLedger() {
   };
 
   const handleDelete = async (e) => {
-    if (!window.confirm(`Delete this ${TYPE_META[e.type]?.label || e.type} entry of ${formatCurrency(entryAmount(e))}?`)) return;
+    const isInvoiceEntry = !EDITABLE_TYPES.includes(e.type);
+    const msg = isInvoiceEntry
+      ? `ADMIN: Remove this ${TYPE_META[e.type]?.label || e.type} entry (${formatCurrency(entryAmount(e))}) from the ledger?\n\nThis removes only the ledger entry and adjusts the balance — the invoice record itself is not deleted. Use this to clear a duplicate ledger entry.`
+      : `Delete this ${TYPE_META[e.type]?.label || e.type} entry of ${formatCurrency(entryAmount(e))}?`;
+    if (!window.confirm(msg)) return;
     try {
       await deleteEntry(e.id);
       toast.success('Entry deleted');
@@ -234,12 +240,14 @@ export default function CustomerLedger() {
                       ) : <span className="text-gray-400 font-normal">Nil</span>}
                     </td>
                     <td className="px-4 py-3">
-                      {EDITABLE_TYPES.includes(e.type) && (
+                      {EDITABLE_TYPES.includes(e.type) ? (
                         <div className="flex items-center gap-1">
                           <button onClick={() => openEdit(e)} title="Edit" className="text-blue-400 hover:text-blue-600 p-1 rounded hover:bg-blue-50">✏</button>
                           <button onClick={() => handleDelete(e)} title="Delete" className="text-red-300 hover:text-red-500 p-1 rounded hover:bg-red-50">🗑</button>
                         </div>
-                      )}
+                      ) : isAdmin ? (
+                        <button onClick={() => handleDelete(e)} title="Admin: remove this ledger entry" className="text-red-300 hover:text-red-600 p-1 rounded hover:bg-red-50">🗑</button>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
