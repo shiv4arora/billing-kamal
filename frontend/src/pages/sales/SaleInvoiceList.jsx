@@ -11,8 +11,11 @@ const FILTERS = [
   { label: 'Draft',      value: 'draft' },
   { label: 'Issued',     value: 'issued' },
   { label: 'Completed',  value: 'completed' },
-  { label: 'Void',       value: 'void' },
+  { label: 'Deleted',    value: 'void' },
 ];
+
+// 'void' is the internal status; shown to users as "Deleted"
+const statusLabel = (s) => (s === 'void' ? 'deleted' : s);
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const nDaysAgoStr = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
@@ -62,7 +65,7 @@ export default function SaleInvoiceList() {
     { header: 'Customer',  render: i => <p className="font-medium">{formatCustomerDisplay(i.customerName, i.customerPlace, i.customerType)}</p> },
     { header: 'Date',      render: i => formatDate(i.date) },
     { header: 'Amount',    align: 'right', render: i => formatCurrency(i.grandTotal) },
-    { header: 'Status',    render: i => <Badge color={statusColor[i.status]}>{i.status}</Badge> },
+    { header: 'Status',    render: i => <Badge color={statusColor[i.status]}>{statusLabel(i.status)}</Badge> },
     { header: '',          render: i => (
       <div className="flex gap-2" onClick={e => e.stopPropagation()}>
         <Button size="sm" variant="ghost" onClick={() => navigate(`/sales/${i.id}/print`)}>🖨</Button>
@@ -136,7 +139,7 @@ export default function SaleInvoiceList() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="font-bold text-blue-600 text-sm">{i.invoiceNumber}</span>
-                    {i.status === 'void' && <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-medium">Void</span>}
+                    {i.status === 'void' && <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-medium">Deleted</span>}
                     {i.status === 'draft' && <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full font-medium">Draft</span>}
                     {i.status === 'completed' && <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-medium">Completed</span>}
                   </div>

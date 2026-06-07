@@ -8,6 +8,8 @@ import { Button, Badge, Card, Modal, Input, Select, useToast, Toast } from '../.
 import { formatCurrency, formatDate, amountInWords, formatCustomerDisplay, today } from '../../utils/helpers';
 
 const statusColor = { draft: 'gray', issued: 'blue', paid: 'green', completed: 'green', void: 'red' };
+// 'void' is the internal status; shown to users as "Deleted"
+const statusLabel = (s) => (s === 'void' ? 'deleted' : s);
 
 export default function SaleInvoiceView() {
   const { id } = useParams();
@@ -78,12 +80,12 @@ export default function SaleInvoiceView() {
   };
 
   const voidInv = async () => {
-    if (!confirm('Void this invoice? This will remove it from the ledger.')) return;
+    if (!confirm('Delete this invoice? This will remove it from the ledger and reverse stock.')) return;
     try {
       const updated = await api(`/sales/${id}/void`, { method: 'PATCH' });
       updateSaleInvoiceLocal(id, updated);
       if (inv.customerId) refreshCustomer(inv.customerId);
-      toast.success('Invoice voided · removed from ledger');
+      toast.success('Invoice deleted · removed from ledger');
     } catch (e) { toast.error(e.message); }
   };
 
@@ -145,7 +147,7 @@ export default function SaleInvoiceView() {
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <h1 className="text-lg font-bold text-gray-900">{inv.invoiceNumber}</h1>
-                <Badge color={statusColor[inv.status]}>{inv.status}</Badge>
+                <Badge color={statusColor[inv.status]}>{statusLabel(inv.status)}</Badge>
               </div>
               <p className="text-xs text-gray-400 truncate">
                 {formatDate(inv.date)} · {formatCustomerDisplay(inv.customerName, inv.customerPlace, inv.customerType)}
@@ -188,7 +190,7 @@ export default function SaleInvoiceView() {
             </Link>
           )}
           {inv.status !== 'void' && (
-            <button onClick={voidInv} className="shrink-0 px-3 py-2 text-xs text-red-500 bg-red-50 rounded-lg font-medium active:bg-red-100">Void</button>
+            <button onClick={voidInv} className="shrink-0 px-3 py-2 text-xs text-red-500 bg-red-50 rounded-lg font-medium active:bg-red-100">Delete</button>
           )}
           {inv.status === 'void' && (
             <button onClick={unvoidInv} className="shrink-0 px-3 py-2 text-xs text-green-700 bg-green-50 rounded-lg font-medium active:bg-green-100 whitespace-nowrap">↩ Restore</button>
@@ -201,7 +203,7 @@ export default function SaleInvoiceView() {
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/sales')} className="text-gray-400 hover:text-gray-600">←</button>
           <h1 className="text-xl font-bold text-gray-900">{inv.invoiceNumber}</h1>
-          <Badge color={statusColor[inv.status]}>{inv.status}</Badge>
+          <Badge color={statusColor[inv.status]}>{statusLabel(inv.status)}</Badge>
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button variant={checkMode ? 'primary' : 'outline'} onClick={() => { setCheckMode(v => !v); setItemChecks({}); }}>
@@ -212,7 +214,7 @@ export default function SaleInvoiceView() {
           <Link to={`/sales/${id}/print`}><Button variant="outline">🖨 Print</Button></Link>
           {inv.status !== 'void' && <Link to={`/sales/${id}/edit`}><Button variant="secondary">Edit</Button></Link>}
           {inv.status !== 'completed' && inv.status !== 'void' && <Button variant="success" onClick={complete}>✓ Mark Complete</Button>}
-          {inv.status !== 'void' && <Button variant="danger" onClick={voidInv}>Void</Button>}
+          {inv.status !== 'void' && <Button variant="danger" onClick={voidInv}>Delete</Button>}
           {inv.status === 'void' && <Button variant="success" onClick={unvoidInv}>↩ Restore Invoice</Button>}
         </div>
       </div>
