@@ -66,26 +66,20 @@ export default function SalesReport() {
     discount: filtered.reduce((s, i) => s + (i.totalDiscount || 0), 0),
   }), [filtered]);
 
-  // Ledger-based outstanding: sum of customer.balance for customers in the filtered period.
-  // customer.balance is the authoritative all-time net amount owed (positive = owes us).
-  // This captures payments made through ledger entries that may not update invoice.amountPaid.
-  const totalLedgerOutstanding = useMemo(() => {
-    const ids = new Set(filtered.map(i => i.customerId).filter(Boolean));
-    return customers
-      .filter(c => ids.has(c.id) && (c.balance || 0) > 0.01)
-      .reduce((s, c) => s + (c.balance || 0), 0);
-  }, [filtered, customers]);
+  // EXACT current receivable across ALL customers, derived from the live ledger
+  // balance (positive = owes us). This is the real money owed right now and is
+  // independent of the date filter — it always reconciles with the customer ledgers.
+  const totalReceivable = useMemo(
+    () => customers.reduce((s, c) => s + Math.max(0, c.balance || 0), 0),
+    [customers]
+  );
 
-  // Ledger-based collected = period revenue minus what those customers still owe (all-time).
-  // More accurate than sum(amountPaid) when payments are recorded via ledger entries.
-  const totalLedgerCollected = useMemo(() => {
-    const ids = new Set(filtered.map(i => i.customerId).filter(Boolean));
-    const periodRevenue = filtered.reduce((s, i) => s + (i.grandTotal || 0), 0);
-    const outstanding = customers
-      .filter(c => ids.has(c.id))
-      .reduce((s, c) => s + Math.max(0, c.balance || 0), 0);
-    return Math.max(0, periodRevenue - outstanding);
-  }, [filtered, customers]);
+  // Period figures derived purely from the invoices in range (these reconcile:
+  // Revenue = Collected + Period Outstanding).
+  const periodOutstanding = useMemo(
+    () => filtered.reduce((s, i) => s + Math.max(0, (i.grandTotal || 0) - (i.amountPaid || 0)), 0),
+    [filtered]
+  );
 
   const chartData = useMemo(() => {
     const map = {};
@@ -248,14 +242,19 @@ export default function SalesReport() {
           <p className="text-xs text-blue-400 mt-1">{totals.invoices} invoice{totals.invoices !== 1 ? 's' : ''}</p>
         </div>
         <div className="bg-green-50 rounded-xl p-4">
-          <p className="text-xs text-green-500 font-medium">Collected (Ledger)</p>
-          <p className="text-xl font-bold text-green-900">{formatCurrency(totalLedgerCollected)}</p>
-          <p className="text-xs text-green-400 mt-1">Invoice-based: {formatCurrency(totals.paid)}</p>
+          <p className="text-xs text-green-500 font-medium">Collected (period)</p>
+          <p className="text-xl font-bold text-green-900">{formatCurrency(totals.paid)}</p>
+          <p className="text-xs text-green-400 mt-1">Received against these invoices</p>
+        </div>
+        <div className="bg-orange-50 rounded-xl p-4">
+          <p className="text-xs text-orange-500 font-medium">Period Outstanding</p>
+          <p className="text-xl font-bold text-orange-900">{formatCurrency(periodOutstanding)}</p>
+          <p className="text-xs text-orange-400 mt-1">Revenue − Collected (this period)</p>
         </div>
         <div className="bg-red-50 rounded-xl p-4">
-          <p className="text-xs text-red-500 font-medium">Outstanding (Ledger)</p>
-          <p className="text-xl font-bold text-red-900">{formatCurrency(totalLedgerOutstanding)}</p>
-          <p className="text-xs text-red-400 mt-1">Invoice-based: {formatCurrency(totals.revenue - totals.paid)}</p>
+          <p className="text-xs text-red-500 font-medium">Total Receivable (live)</p>
+          <p className="text-xl font-bold text-red-900">{formatCurrency(totalReceivable)}</p>
+          <p className="text-xs text-red-400 mt-1">All customers · current ledger balance</p>
         </div>
         <div className="bg-purple-50 rounded-xl p-4">
           <p className="text-xs text-purple-500 font-medium">Total GST</p>

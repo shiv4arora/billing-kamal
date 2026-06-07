@@ -20,7 +20,7 @@ export default function CustomerLedger() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const { get } = useCustomers();
+  const { get, refreshOne: refreshCustomer } = useCustomers();
   const { addPaymentIn, addSaleReturn, addAdjustment, editEntry, deleteEntry, getEntriesByParty, getBalance } = useLedger();
   const { isAdmin } = useAuth();
 
@@ -47,6 +47,7 @@ export default function CustomerLedger() {
     setRawEntries(data);
     setBalance(bal);
     setLoading(false);
+    refreshCustomer(id); // keep shared context (reports, lists) in sync
   };
   useEffect(() => { refresh(); }, [id]);
 

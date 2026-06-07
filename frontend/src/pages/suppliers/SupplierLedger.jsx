@@ -20,7 +20,7 @@ export default function SupplierLedger() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const { get } = useSuppliers();
+  const { get, refreshOne: refreshSupplier } = useSuppliers();
   const { addPaymentOut, addPurchaseReturn, addAdjustment, editEntry, deleteEntry, getEntriesByParty, getBalance } = useLedger();
   const { isAdmin } = useAuth();
 
@@ -47,6 +47,7 @@ export default function SupplierLedger() {
     setRawEntries(data);
     setBalance(bal);
     setLoading(false);
+    refreshSupplier(id); // keep shared context (reports, lists) in sync
   };
   useEffect(() => { refresh(); }, [id]);
 

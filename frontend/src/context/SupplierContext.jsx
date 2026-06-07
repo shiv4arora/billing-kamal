@@ -61,10 +61,19 @@ export function SupplierProvider({ children }) {
     setSuppliers(p => p.map(x => x.id === id ? { ...x, balance: (Number(x.balance) || 0) + delta } : x));
   };
 
+  // Hard-refresh a single supplier from the backend (authoritative balance)
+  const refreshOne = async (id) => {
+    if (!isApiAvailable()) return;
+    try {
+      const fresh = await api(`/suppliers/${id}`);
+      setSuppliers(p => p.map(x => x.id === id ? fresh : x));
+    } catch {}
+  };
+
   const active = suppliers.filter(s => s.isActive !== false);
 
   return (
-    <Ctx.Provider value={{ suppliers, active, add, update, remove, get, updateBalance }}>
+    <Ctx.Provider value={{ suppliers, active, add, update, remove, get, updateBalance, refreshOne }}>
       {children}
     </Ctx.Provider>
   );

@@ -16,7 +16,7 @@ export default function SaleInvoiceView() {
   const toast = useToast();
   const { getSaleInvoice, updateSaleInvoiceLocal } = useInvoices();
   const { settings } = useSettings();
-  const { get: getCustomer } = useCustomers();
+  const { get: getCustomer, refreshOne: refreshCustomer } = useCustomers();
   const inv = getSaleInvoice(id);
 
   const [payOpen, setPayOpen] = useState(false);
@@ -81,6 +81,7 @@ export default function SaleInvoiceView() {
     try {
       const updated = await api(`/sales/${id}/complete`, { method: 'PATCH' });
       updateSaleInvoiceLocal(id, updated);
+      if (inv.customerId) refreshCustomer(inv.customerId);
       toast.success('Invoice marked as completed');
     } catch (e) { toast.error(e.message); }
   };
@@ -90,6 +91,7 @@ export default function SaleInvoiceView() {
     try {
       const updated = await api(`/sales/${id}/void`, { method: 'PATCH' });
       updateSaleInvoiceLocal(id, updated);
+      if (inv.customerId) refreshCustomer(inv.customerId);
       toast.success('Invoice voided · removed from ledger');
     } catch (e) { toast.error(e.message); }
   };
@@ -99,6 +101,7 @@ export default function SaleInvoiceView() {
     try {
       const updated = await api(`/sales/${id}/unvoid`, { method: 'PATCH' });
       updateSaleInvoiceLocal(id, updated);
+      if (inv.customerId) refreshCustomer(inv.customerId);
       toast.success('Invoice restored · ledger updated');
     } catch (e) { toast.error(e.message); }
   };
@@ -111,6 +114,7 @@ export default function SaleInvoiceView() {
         body: { date: payForm.date, amount: +payForm.amount, method: payForm.method, notes: payForm.notes },
       });
       updateSaleInvoiceLocal(id, updated);
+      if (inv.customerId) refreshCustomer(inv.customerId);
       toast.success(`₹${(+payForm.amount).toLocaleString('en-IN')} recorded`);
       setPayOpen(false);
       setPayForm({ date: today(), amount: '', method: 'cash', notes: '' });
@@ -124,6 +128,7 @@ export default function SaleInvoiceView() {
         method: 'POST',
         body: { date: retForm.date, amount: +retForm.amount, notes: retForm.notes },
       });
+      if (inv.customerId) refreshCustomer(inv.customerId);
       toast.success('Sale return recorded in ledger');
       setRetOpen(false);
       setRetForm({ date: today(), amount: '', notes: '' });
