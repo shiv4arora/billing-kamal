@@ -28,7 +28,6 @@ export default function SaleInvoicePrint() {
   const totalQty    = items.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
   const totalTax    = (inv.totalCGST || 0) + (inv.totalSGST || 0) + (inv.totalIGST || 0);
   const totalTaxable = items.reduce((s, i) => s + (Number(i.taxableAmount) || Number(i.lineTotal) || 0), 0);
-  const balanceDue  = (inv.grandTotal || 0) - (inv.amountPaid || 0);
 
   const buildMessage = () => {
     const lines = [
@@ -38,7 +37,6 @@ export default function SaleInvoicePrint() {
       `Invoice No : ${inv.invoiceNumber}`,
       `Date       : ${formatDate(inv.date)}`,
       `Amount     : ${formatCurrency(inv.grandTotal)}`,
-      ...(balanceDue > 0.01 ? [`Balance Due: ${formatCurrency(balanceDue)}`] : [`Status     : Paid`]),
       '',
       `${company.name || 'Kamal Jewellers'}`,
       company.address || 'Sadar Bazar, New Delhi- 110006',
@@ -246,16 +244,6 @@ export default function SaleInvoicePrint() {
             <div className="flex justify-between font-bold text-sm border-t border-gray-400 mt-1 pt-1">
               <span>Grand Total</span><span>{formatCurrency(inv.grandTotal)}</span>
             </div>
-            {(inv.amountPaid || 0) > 0 && (
-              <div className="flex justify-between py-0.5 text-green-700">
-                <span>Amount Paid ({inv.paymentMethod})</span><span>{formatCurrency(inv.amountPaid)}</span>
-              </div>
-            )}
-            {balanceDue > 0.01 && (
-              <div className="flex justify-between py-0.5 font-semibold text-red-700">
-                <span>Balance Due</span><span>{formatCurrency(balanceDue)}</span>
-              </div>
-            )}
           </div>
         </div>
 

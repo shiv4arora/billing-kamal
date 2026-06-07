@@ -234,8 +234,6 @@ router.post('/:id/issue', async (req, res, next) => {
     // Include any packing/shipping charges saved on the draft in the final total
     const extraCharges = Number(existing.packingCharges || 0) + Number(existing.shippingCharges || 0);
     const finalGrandTotal = totals.grandTotal + extraCharges;
-    const paid = Number(existing.amountPaid);
-    const payStatus = paid >= finalGrandTotal - 0.01 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
 
     const issued = await prisma.$transaction(async (tx) => {
       // Idempotency guard: re-read inside the transaction. If a concurrent/duplicate
@@ -256,8 +254,7 @@ router.post('/:id/issue', async (req, res, next) => {
           totalCGST: totals.totalCGST, totalSGST: totals.totalSGST,
           totalIGST: totals.totalIGST, totalGST: totals.totalGST,
           grandTotal: finalGrandTotal, roundOff: totals.roundOff,
-          paymentStatus: payStatus, status: 'issued',
-          ...(paid > 0 ? { paymentDate: existing.date } : {}),
+          status: 'issued',
         },
       });
 
@@ -276,23 +273,16 @@ router.post('/:id/issue', async (req, res, next) => {
         });
       }
 
-      // Ledger
+      // Ledger — post the full invoice as a debit. Payments are recorded
+      // separately against the customer ledger, never on the invoice.
       if (existing.customerId) {
         await postSaleInvoice(tx, {
           customerId: existing.customerId, customerName: existing.customerName,
           date: existing.date, invoiceId: existing.id, invoiceNo: invNo, amount: finalGrandTotal,
         });
-        if (paid > 0) {
-          await postPaymentIn(tx, {
-            customerId: existing.customerId, customerName: existing.customerName,
-            date: existing.date, amount: paid, method: existing.paymentMethod,
-            referenceId: existing.id, referenceNo: invNo,
-            narration: `Payment received against ${invNo} (${existing.paymentMethod})`,
-          });
-        }
         await tx.customer.update({
           where: { id: existing.customerId },
-          data: { balance: { increment: finalGrandTotal - paid } },
+          data: { balance: { increment: finalGrandTotal } },
         });
       }
 
@@ -309,65 +299,15 @@ router.post('/:id/issue', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// ── RECORD PAYMENT ───────────────────────────────────────────────────────────
-router.post('/:id/payment', async (req, res, next) => {
-  try {
-    const { amount, method, date, narration } = req.body;
-    const inv = await prisma.saleInvoice.findUniqueOrThrow({ where: { id: req.params.id } });
-    const amt = Number(amount);
-    const newPaid = Number(inv.amountPaid) + amt;
-    const newStatus = newPaid >= Number(inv.grandTotal) - 0.01 ? 'paid' : 'partial';
-
-    const updated = await prisma.$transaction(async (tx) => {
-      const upd = await tx.saleInvoice.update({
-        where: { id: req.params.id },
-        data: { amountPaid: newPaid, paymentStatus: newStatus, paymentMethod: method, paymentDate: date },
-      });
-      if (inv.customerId) {
-        await postPaymentIn(tx, {
-          customerId: inv.customerId, customerName: inv.customerName,
-          date, amount: amt, method, referenceId: inv.id, referenceNo: inv.invoiceNumber, narration,
-        });
-        await tx.customer.update({
-          where: { id: inv.customerId },
-          data: { balance: { decrement: amt } },
-        });
-      }
-      return upd;
-    });
-    logActivity({
-      userId: req.user?.id, userName: req.user?.name || req.user?.username,
-      action: 'PAYMENT', entity: 'SaleInvoice',
-      entityId: inv.id, entityRef: inv.invoiceNumber || '',
-      details: `₹${amount} via ${method} — ${inv.customerName || ''}`,
-    });
-    res.json(updated);
-  } catch (err) { next(err); }
-});
-
 // ── COMPLETE ─────────────────────────────────────────────────────────────────
+// "Complete" marks the billing as finalised / checked. It is a WORKFLOW flag only —
+// it does NOT record any payment. Payments are recorded against the customer ledger.
 router.patch('/:id/mark-paid', async (req, res, next) => next()); // legacy alias → fall through
 router.patch('/:id/complete', async (req, res, next) => {
   try {
-    const inv = await prisma.saleInvoice.findUniqueOrThrow({ where: { id: req.params.id } });
-    const remaining = Number(inv.grandTotal) - Number(inv.amountPaid);
-    const today = new Date().toISOString().slice(0, 10);
-
-    const updated = await prisma.$transaction(async (tx) => {
-      const upd = await tx.saleInvoice.update({
-        where: { id: req.params.id },
-        data: { paymentStatus: 'paid', amountPaid: Number(inv.grandTotal), status: 'completed', paymentDate: today },
-      });
-      if (remaining > 0.01 && inv.customerId) {
-        await postPaymentIn(tx, {
-          customerId: inv.customerId, customerName: inv.customerName,
-          date: today, amount: remaining, method: inv.paymentMethod,
-          referenceId: inv.id, referenceNo: inv.invoiceNumber,
-          narration: `Full payment — ${inv.invoiceNumber}`,
-        });
-        await tx.customer.update({ where: { id: inv.customerId }, data: { balance: { decrement: remaining } } });
-      }
-      return upd;
+    const updated = await prisma.saleInvoice.update({
+      where: { id: req.params.id },
+      data: { status: 'completed' },
     });
     res.json(updated);
   } catch (err) { next(err); }

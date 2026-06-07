@@ -10,9 +10,6 @@ const FILTERS = [
   { label: 'Last 3 Days',value: 'last3' },
   { label: 'Draft',      value: 'draft' },
   { label: 'Issued',     value: 'issued' },
-  { label: 'Unpaid',     value: 'unpaid' },
-  { label: 'Partial',    value: 'partial' },
-  { label: 'Paid',       value: 'paid' },
   { label: 'Completed',  value: 'completed' },
   { label: 'Void',       value: 'void' },
 ];
@@ -38,14 +35,7 @@ const SearchBox = memo(function SearchBox({ onSearch }) {
   );
 });
 
-const payColor   = { paid: 'green', partial: 'yellow', unpaid: 'red' };
-const statusColor = { draft: 'gray', issued: 'blue', paid: 'green', completed: 'green', void: 'red' };
-
-const payBg = {
-  paid:    'bg-green-100 text-green-700',
-  partial: 'bg-yellow-100 text-yellow-700',
-  unpaid:  'bg-red-100 text-red-700',
-};
+const statusColor = { draft: 'gray', issued: 'blue', completed: 'green', void: 'red' };
 
 export default function SaleInvoiceList() {
   const { saleInvoices, invoicesLoading } = useInvoices();
@@ -60,7 +50,7 @@ export default function SaleInvoiceList() {
         filter === 'all'   ? true :
         filter === 'today' ? i.date === todayStr() :
         filter === 'last3' ? i.date >= nDaysAgoStr(3) && i.date <= todayStr() :
-        i.status === filter || i.paymentStatus === filter;
+        i.status === filter;
       const matchSearch = i.invoiceNumber?.toLowerCase().includes(search.toLowerCase())
                        || i.customerName?.toLowerCase().includes(search.toLowerCase());
       return matchFilter && matchSearch;
@@ -73,7 +63,6 @@ export default function SaleInvoiceList() {
     { header: 'Date',      render: i => formatDate(i.date) },
     { header: 'Amount',    align: 'right', render: i => formatCurrency(i.grandTotal) },
     { header: 'Status',    render: i => <Badge color={statusColor[i.status]}>{i.status}</Badge> },
-    { header: 'Payment',   render: i => <Badge color={payColor[i.paymentStatus]}>{i.paymentStatus}</Badge> },
     { header: '',          render: i => (
       <div className="flex gap-2" onClick={e => e.stopPropagation()}>
         <Button size="sm" variant="ghost" onClick={() => navigate(`/sales/${i.id}/print`)}>🖨</Button>
@@ -118,9 +107,7 @@ export default function SaleInvoiceList() {
           >
             {f.label}
             {f.value !== 'all' && f.value !== 'today' && f.value !== 'last3' && (() => {
-              const count = saleInvoices.filter(i =>
-                i.status === f.value || i.paymentStatus === f.value
-              ).length;
+              const count = saleInvoices.filter(i => i.status === f.value).length;
               return count > 0 ? <span className="ml-1 opacity-75">({count})</span> : null;
             })()}
           </button>
@@ -139,9 +126,7 @@ export default function SaleInvoiceList() {
             <p className="text-3xl mb-2">🧾</p>
             <p className="font-medium">No invoices found</p>
           </div>
-        ) : filtered.map(i => {
-          const balance = (i.grandTotal || 0) - (i.amountPaid || 0);
-          return (
+        ) : filtered.map(i => (
             <div
               key={i.id}
               onClick={() => navigate(`/sales/${i.id}`)}
@@ -153,29 +138,20 @@ export default function SaleInvoiceList() {
                     <span className="font-bold text-blue-600 text-sm">{i.invoiceNumber}</span>
                     {i.status === 'void' && <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-medium">Void</span>}
                     {i.status === 'draft' && <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full font-medium">Draft</span>}
+                    {i.status === 'completed' && <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-medium">Completed</span>}
                   </div>
                   <p className="font-semibold text-gray-900 truncate">{i.customerName || '—'}</p>
                   {i.customerPlace && <p className="text-xs text-gray-400">{i.customerPlace}</p>}
                 </div>
                 <div className="text-right shrink-0">
                   <p className="font-bold text-gray-900">{formatCurrency(i.grandTotal)}</p>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${payBg[i.paymentStatus] || 'bg-gray-100 text-gray-500'}`}>
-                    {i.paymentStatus}
-                  </span>
                 </div>
               </div>
               <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
                 <span className="text-xs text-gray-400">{formatDate(i.date)}</span>
-                {balance > 0.01 && i.status !== 'void' && (
-                  <span className="text-xs font-medium text-red-600">Due: {formatCurrency(balance)}</span>
-                )}
-                {balance <= 0.01 && i.paymentStatus === 'paid' && (
-                  <span className="text-xs font-medium text-green-600">✓ Paid</span>
-                )}
               </div>
             </div>
-          );
-        })}
+        ))}
       </div>
 
       {/* Desktop table */}

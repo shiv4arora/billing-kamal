@@ -5,7 +5,7 @@ import { useProducts } from '../../context/ProductContext';
 import { useCustomers } from '../../context/CustomerContext';
 import { useSettings } from '../../context/SettingsContext';
 import { useLedger } from '../../context/LedgerContext';
-import { Button, Input, Select, Textarea, Card } from '../../components/ui';
+import { Button, Input, Textarea, Card } from '../../components/ui';
 import { useGlobalToast } from '../../context/ToastContext';
 import { buildInvoiceTotals, formatCurrency, getPrice, nextInvoiceNumber, today, formatCustomerDisplay } from '../../utils/helpers';
 import { api } from '../../hooks/useApi';
@@ -508,12 +508,6 @@ export default function SaleInvoiceCreate() {
               <Input label="Invoice Date" type="date" value={date} onChange={e => setDate(e.target.value)} />
               <Input label="Due Date" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
 
-              {/* Row 2: payment */}
-              <Select label="Payment" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
-                <option value="cash">Cash</option><option value="upi">UPI</option><option value="bank">Bank Transfer</option><option value="credit">Credit</option>
-              </Select>
-              <Input label="Amt Paid (₹)" type="number" min="0" value={amountPaid} onChange={e => setAmountPaid(e.target.value)} placeholder="0" />
-
               {/* Discount — unified dropdown */}
               <div className="sm:col-span-2">
                 <p className="text-xs font-medium text-gray-500 mb-1">Discount %</p>
@@ -876,8 +870,6 @@ export default function SaleInvoiceCreate() {
               {totals.roundOff !== 0 && <div className="flex justify-between"><span className="text-gray-500">Round Off</span><span>{formatCurrency(totals.roundOff)}</span></div>}
               {chargesAmt > 0 && <div className="flex justify-between"><span className="text-gray-500">Packing &amp; Shipping</span><span>{formatCurrency(chargesAmt)}</span></div>}
               <div className="flex justify-between font-bold text-base border-t pt-2"><span>Grand Total</span><span className="text-blue-700">{formatCurrency(finalTotal)}</span></div>
-              {+amountPaid > 0 && <div className="flex justify-between text-green-600"><span>Paid</span><span>{formatCurrency(+amountPaid)}</span></div>}
-              {+amountPaid < finalTotal && +amountPaid >= 0 && <div className="flex justify-between text-red-600 font-medium"><span>Balance</span><span>{formatCurrency(finalTotal - (+amountPaid || 0))}</span></div>}
             </div>
           </div>
         </Card>

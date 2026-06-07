@@ -7,7 +7,6 @@ import { api } from '../../hooks/useApi';
 import { Button, Badge, Card, Modal, Input, Select, useToast, Toast } from '../../components/ui';
 import { formatCurrency, formatDate, amountInWords, formatCustomerDisplay, today } from '../../utils/helpers';
 
-const payColor = { paid: 'green', partial: 'yellow', unpaid: 'red' };
 const statusColor = { draft: 'gray', issued: 'blue', paid: 'green', completed: 'green', void: 'red' };
 
 export default function SaleInvoiceView() {
@@ -19,10 +18,8 @@ export default function SaleInvoiceView() {
   const { get: getCustomer, refreshOne: refreshCustomer } = useCustomers();
   const inv = getSaleInvoice(id);
 
-  const [payOpen, setPayOpen] = useState(false);
   const [retOpen, setRetOpen] = useState(false);
   const [waOpen, setWaOpen] = useState(false);
-  const [payForm, setPayForm] = useState({ date: today(), amount: '', method: 'cash', notes: '' });
   const [retForm, setRetForm] = useState({ date: today(), amount: '', notes: '' });
 
   // Check Bill
@@ -71,18 +68,12 @@ export default function SaleInvoiceView() {
     finally { setApplying(false); }
   };
 
-  const remaining = inv.grandTotal - (inv.amountPaid || 0);
-
   const complete = async () => {
-    const msg = remaining > 0.01
-      ? `Mark invoice ${inv.invoiceNumber} as completed?\n\nThis will record the outstanding ₹${remaining.toLocaleString('en-IN', { minimumFractionDigits: 2 })} as received and close the invoice.`
-      : `Mark invoice ${inv.invoiceNumber} as completed?`;
-    if (!window.confirm(msg)) return;
+    if (!window.confirm(`Mark invoice ${inv.invoiceNumber} as complete?\n\nThis marks the billing as finalised and checked. It does NOT record any payment — record payments in the customer ledger.`)) return;
     try {
       const updated = await api(`/sales/${id}/complete`, { method: 'PATCH' });
       updateSaleInvoiceLocal(id, updated);
-      if (inv.customerId) refreshCustomer(inv.customerId);
-      toast.success('Invoice marked as completed');
+      toast.success('Invoice marked as complete');
     } catch (e) { toast.error(e.message); }
   };
 
@@ -103,21 +94,6 @@ export default function SaleInvoiceView() {
       updateSaleInvoiceLocal(id, updated);
       if (inv.customerId) refreshCustomer(inv.customerId);
       toast.success('Invoice restored · ledger updated');
-    } catch (e) { toast.error(e.message); }
-  };
-
-  const handleRecordPayment = async () => {
-    if (!payForm.amount || +payForm.amount <= 0) { toast.error('Enter a valid amount'); return; }
-    try {
-      const updated = await api(`/sales/${id}/payment`, {
-        method: 'POST',
-        body: { date: payForm.date, amount: +payForm.amount, method: payForm.method, notes: payForm.notes },
-      });
-      updateSaleInvoiceLocal(id, updated);
-      if (inv.customerId) refreshCustomer(inv.customerId);
-      toast.success(`₹${(+payForm.amount).toLocaleString('en-IN')} recorded`);
-      setPayOpen(false);
-      setPayForm({ date: today(), amount: '', method: 'cash', notes: '' });
     } catch (e) { toast.error(e.message); }
   };
 
@@ -143,10 +119,7 @@ export default function SaleInvoiceView() {
       `  • ${it.productName} × ${it.quantity} = ${formatCurrency(it.lineTotal)}`
     ).join('\n');
     const moreItems = (inv.items || []).length > 5 ? `\n  ...and ${(inv.items || []).length - 5} more item(s)` : '';
-    const balanceLine = (inv.grandTotal - (inv.amountPaid || 0)) > 0.01
-      ? `Balance Due: ${formatCurrency(inv.grandTotal - (inv.amountPaid || 0))}`
-      : 'Fully Paid ✅';
-    return `*${settings.company.name || 'BillingPro'}*\n*Invoice: ${inv.invoiceNumber}*\nDate: ${formatDate(inv.date)}\nCustomer: ${displayName}\n\n*Items:*\n${itemLines}${moreItems}\n\n*Total: ${formatCurrency(inv.grandTotal)}*\nPaid: ${formatCurrency(inv.amountPaid || 0)}\n${balanceLine}\n\nThank you for your business! 🙏`;
+    return `*${settings.company.name || 'BillingPro'}*\n*Invoice: ${inv.invoiceNumber}*\nDate: ${formatDate(inv.date)}\nCustomer: ${displayName}\n\n*Items:*\n${itemLines}${moreItems}\n\n*Total: ${formatCurrency(inv.grandTotal)}*\n\nThank you for your business! 🙏`;
   };
 
   const sendWhatsApp = () => {
@@ -173,7 +146,6 @@ export default function SaleInvoiceView() {
               <div className="flex items-center gap-1.5 flex-wrap">
                 <h1 className="text-lg font-bold text-gray-900">{inv.invoiceNumber}</h1>
                 <Badge color={statusColor[inv.status]}>{inv.status}</Badge>
-                <Badge color={payColor[inv.paymentStatus]}>{inv.paymentStatus}</Badge>
               </div>
               <p className="text-xs text-gray-400 truncate">
                 {formatDate(inv.date)} · {formatCustomerDisplay(inv.customerName, inv.customerPlace, inv.customerType)}
@@ -186,42 +158,18 @@ export default function SaleInvoiceView() {
           </div>
         </div>
 
-        {/* Total / Balance tiles */}
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-xs text-gray-400 mb-0.5">Total</p>
-            <p className="font-bold text-gray-900 text-base">{formatCurrency(inv.grandTotal)}</p>
-            {(inv.amountPaid || 0) > 0 && <p className="text-xs text-green-600 mt-0.5">Paid {formatCurrency(inv.amountPaid)}</p>}
-          </div>
-          {remaining > 0.01 ? (
-            <div className="bg-red-50 rounded-xl p-3">
-              <p className="text-xs text-red-400 mb-0.5">Balance Due</p>
-              <p className="font-bold text-red-600 text-base">{formatCurrency(remaining)}</p>
-            </div>
-          ) : (
-            <div className="bg-green-50 rounded-xl p-3">
-              <p className="text-xs text-green-500 mb-0.5">Payment</p>
-              <p className="font-bold text-green-600">Fully Paid ✓</p>
-            </div>
-          )}
+        {/* Total tile */}
+        <div className="bg-gray-50 rounded-xl p-3">
+          <p className="text-xs text-gray-400 mb-0.5">Grand Total</p>
+          <p className="font-bold text-gray-900 text-lg">{formatCurrency(inv.grandTotal)}</p>
         </div>
 
-        {/* Primary actions */}
-        {(inv.status !== 'void' && (remaining > 0.01 || inv.paymentStatus !== 'paid')) && (
-          <div className="flex gap-2">
-            {remaining > 0.01 && (
-              <button onClick={() => { setPayForm(f => ({ ...f, amount: remaining.toFixed(2) })); setPayOpen(true); }}
-                className="flex-1 py-3 bg-green-600 text-white text-sm font-semibold rounded-xl active:bg-green-700">
-                + Record Payment
-              </button>
-            )}
-            {inv.status !== 'completed' && inv.status !== 'void' && (
-              <button onClick={complete}
-                className="flex-1 py-3 bg-green-100 text-green-700 text-sm font-semibold rounded-xl active:bg-green-200">
-                ✓ Complete
-              </button>
-            )}
-          </div>
+        {/* Primary action — Complete (billing checked, no payment) */}
+        {inv.status !== 'completed' && inv.status !== 'void' && (
+          <button onClick={complete}
+            className="w-full py-3 bg-green-100 text-green-700 text-sm font-semibold rounded-xl active:bg-green-200">
+            ✓ Mark Complete
+          </button>
         )}
 
         {/* Secondary actions — horizontal scroll row */}
@@ -254,7 +202,6 @@ export default function SaleInvoiceView() {
           <button onClick={() => navigate('/sales')} className="text-gray-400 hover:text-gray-600">←</button>
           <h1 className="text-xl font-bold text-gray-900">{inv.invoiceNumber}</h1>
           <Badge color={statusColor[inv.status]}>{inv.status}</Badge>
-          <Badge color={payColor[inv.paymentStatus]}>{inv.paymentStatus}</Badge>
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button variant={checkMode ? 'primary' : 'outline'} onClick={() => { setCheckMode(v => !v); setItemChecks({}); }}>
@@ -264,12 +211,7 @@ export default function SaleInvoiceView() {
           <Button variant="outline" onClick={() => setWaOpen(true)}>📱 WhatsApp</Button>
           <Link to={`/sales/${id}/print`}><Button variant="outline">🖨 Print</Button></Link>
           {inv.status !== 'void' && <Link to={`/sales/${id}/edit`}><Button variant="secondary">Edit</Button></Link>}
-          {inv.status !== 'void' && remaining > 0.01 && (
-            <Button variant="success" onClick={() => { setPayForm(f => ({ ...f, amount: remaining.toFixed(2) })); setPayOpen(true); }}>
-              + Record Payment
-            </Button>
-          )}
-          {inv.status !== 'completed' && inv.status !== 'void' && <Button variant="success" onClick={complete}>✓ Complete</Button>}
+          {inv.status !== 'completed' && inv.status !== 'void' && <Button variant="success" onClick={complete}>✓ Mark Complete</Button>}
           {inv.status !== 'void' && <Button variant="danger" onClick={voidInv}>Void</Button>}
           {inv.status === 'void' && <Button variant="success" onClick={unvoidInv}>↩ Restore Invoice</Button>}
         </div>
@@ -295,10 +237,6 @@ export default function SaleInvoiceView() {
         <div className="flex justify-between">
           <span className="text-gray-400">Due</span>
           <span className="font-medium">{formatDate(inv.dueDate)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-gray-400">Payment</span>
-          <span className="font-medium capitalize">{inv.paymentMethod || '—'}</span>
         </div>
         {inv.notes && <p className="text-xs text-gray-400 italic border-t pt-2">{inv.notes}</p>}
       </div>
@@ -329,18 +267,10 @@ export default function SaleInvoiceView() {
           </div>
         </Card>
         <Card>
-          <p className="text-xs text-gray-500 font-medium uppercase mb-2">Payment</p>
+          <p className="text-xs text-gray-500 font-medium uppercase mb-2">Total</p>
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-gray-500">Method</span><span className="font-medium capitalize">{inv.paymentMethod || '—'}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Grand Total</span><span className="font-semibold text-gray-900">{formatCurrency(inv.grandTotal)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">Paid</span><span className="font-semibold text-green-600">{formatCurrency(inv.amountPaid || 0)}</span></div>
-            {(inv.grandTotal - (inv.amountPaid || 0)) > 0.01 && (
-              <div className="flex justify-between border-t pt-1">
-                <span className="text-red-600 font-medium">Balance Due</span>
-                <span className="font-bold text-red-600">{formatCurrency(inv.grandTotal - (inv.amountPaid || 0))}</span>
-              </div>
-            )}
-            {inv.paymentDate && <p className="text-xs text-gray-400">Paid on {formatDate(inv.paymentDate)}</p>}
+            <Link to={`/customers/${inv.customerId}/ledger`} className="text-xs text-blue-600 hover:underline">View customer ledger for payments →</Link>
           </div>
         </Card>
       </div>
@@ -468,8 +398,6 @@ export default function SaleInvoiceView() {
           {inv.totalIGST > 0 && <div className="flex justify-between"><span className="text-gray-500">IGST</span><span>{formatCurrency(inv.totalIGST)}</span></div>}
           {((inv.packingCharges || 0) + (inv.shippingCharges || 0)) > 0 && <div className="flex justify-between"><span className="text-gray-500">Packing &amp; Shipping</span><span>{formatCurrency((inv.packingCharges || 0) + (inv.shippingCharges || 0))}</span></div>}
           <div className="flex justify-between font-bold text-base border-t pt-2"><span>Grand Total</span><span className="text-blue-700">{formatCurrency(inv.grandTotal)}</span></div>
-          {(inv.amountPaid || 0) > 0 && <div className="flex justify-between text-green-600"><span>Paid</span><span>{formatCurrency(inv.amountPaid)}</span></div>}
-          {remaining > 0.01 && <div className="flex justify-between font-semibold text-red-600"><span>Balance Due</span><span>{formatCurrency(remaining)}</span></div>}
           <p className="text-xs text-gray-400 italic pt-1">{amountInWords(inv.grandTotal)}</p>
         </div>
       </Card>
@@ -603,39 +531,12 @@ export default function SaleInvoiceView() {
             {inv.totalIGST > 0 && <div className="flex justify-between"><span className="text-gray-500">IGST</span><span>{formatCurrency(inv.totalIGST)}</span></div>}
             {((inv.packingCharges || 0) + (inv.shippingCharges || 0)) > 0 && <div className="flex justify-between"><span className="text-gray-500">Packing &amp; Shipping</span><span>{formatCurrency((inv.packingCharges || 0) + (inv.shippingCharges || 0))}</span></div>}
             <div className="flex justify-between font-bold text-base border-t pt-2"><span>Grand Total</span><span className="text-blue-700">{formatCurrency(inv.grandTotal)}</span></div>
-            {(inv.amountPaid || 0) > 0 && (
-              <div className="flex justify-between text-green-600"><span>Amount Paid</span><span>{formatCurrency(inv.amountPaid)}</span></div>
-            )}
-            {(inv.grandTotal - (inv.amountPaid || 0)) > 0.01 && (
-              <div className="flex justify-between font-semibold text-red-600"><span>Balance Due</span><span>{formatCurrency(inv.grandTotal - (inv.amountPaid || 0))}</span></div>
-            )}
           </div>
         </div>
         <div className="px-5 pb-4 text-xs text-gray-500 italic">{amountInWords(inv.grandTotal)}</div>
       </Card>
     </div>
 
-    {/* ── Record Payment Modal ── */}
-    <Modal open={payOpen} onClose={() => setPayOpen(false)} title={`Record Payment — ${inv.invoiceNumber}`}>
-      <div className="space-y-4">
-        <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
-          Balance due: <strong>{formatCurrency(remaining)}</strong>
-        </div>
-        <Input label="Date *" type="date" value={payForm.date} onChange={e => setPayForm(f => ({ ...f, date: e.target.value }))} />
-        <Input label="Amount (₹) *" type="number" min="0.01" step="0.01" value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))} placeholder="0.00" />
-        <Select label="Payment Method" value={payForm.method} onChange={e => setPayForm(f => ({ ...f, method: e.target.value }))}>
-          <option value="cash">Cash</option>
-          <option value="upi">UPI</option>
-          <option value="bank">Bank Transfer</option>
-          <option value="cheque">Cheque</option>
-        </Select>
-        <Input label="Notes (optional)" value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))} placeholder="e.g. Partial payment for this invoice" />
-        <div className="flex justify-end gap-2 pt-2 border-t">
-          <Button variant="secondary" onClick={() => setPayOpen(false)}>Cancel</Button>
-          <Button variant="success" onClick={handleRecordPayment}>✓ Record Payment</Button>
-        </div>
-      </div>
-    </Modal>
 
     {/* ── Sale Return Modal ── */}
     <Modal open={retOpen} onClose={() => setRetOpen(false)} title={`Sale Return — ${inv.invoiceNumber}`}>

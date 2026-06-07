@@ -149,7 +149,6 @@ export function InvoicePDF({ inv, company, invSettings, customerAddress, custome
   const totalTax     = (inv.totalCGST || 0) + (inv.totalSGST || 0) + (inv.totalIGST || 0);
   const totalTaxable = items.reduce((s, i) => s + (Number(i.taxableAmount) || Number(i.lineTotal) || 0), 0);
   const grossTotal   = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
-  const balanceDue   = (inv.grandTotal || 0) - (inv.amountPaid || 0);
 
   return (
     <Document>
@@ -272,17 +271,6 @@ export function InvoicePDF({ inv, company, invSettings, customerAddress, custome
             <View style={S.sumRowBold}>
               <Text>Grand Total</Text><Text><Cur v={inv.grandTotal} /></Text>
             </View>
-            {(inv.amountPaid || 0) > 0 && (
-              <View style={S.sumRowGreen}>
-                <Text>Amount Paid ({inv.paymentMethod})</Text>
-                <Text><Cur v={inv.amountPaid} /></Text>
-              </View>
-            )}
-            {balanceDue > 0.01 && (
-              <View style={S.sumRowRed}>
-                <Text>Balance Due</Text><Text><Cur v={balanceDue} /></Text>
-              </View>
-            )}
           </View>
         </View>
 
