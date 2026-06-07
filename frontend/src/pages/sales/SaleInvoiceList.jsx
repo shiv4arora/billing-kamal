@@ -28,6 +28,20 @@ const PAY = {
 };
 const payOf = (s) => (s === 'partial' ? 'credit' : (PAY[s] ? s : 'unpaid'));
 
+// Active-chip colours by filter value
+const FILTER_ACTIVE = {
+  all:       'bg-gray-900 text-white border-gray-900',
+  today:     'bg-purple-600 text-white border-purple-600',
+  last3:     'bg-indigo-600 text-white border-indigo-600',
+  paid:      'bg-green-600 text-white border-green-600',
+  unpaid:    'bg-red-500 text-white border-red-500',
+  credit:    'bg-amber-500 text-white border-amber-500',
+  draft:     'bg-gray-600 text-white border-gray-600',
+  issued:    'bg-blue-600 text-white border-blue-600',
+  completed: 'bg-emerald-600 text-white border-emerald-600',
+  void:      'bg-red-600 text-white border-red-600',
+};
+
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const nDaysAgoStr = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
 
@@ -55,18 +69,35 @@ export default function SaleInvoiceList() {
   const { saleInvoices, invoicesLoading } = useInvoices();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('all');
+  // Multi-select chips. Empty set = "All". Within a group it's OR, across groups AND.
+  const [selected, setSelected] = useState(new Set());
   const handleSearch = useCallback(v => setSearch(v), []);
+
+  const toggleFilter = (value) => {
+    if (value === 'all') { setSelected(new Set()); return; }
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(value) ? next.delete(value) : next.add(value);
+      return next;
+    });
+  };
+
+  const DATE_VALS = ['today', 'last3'];
+  const PAY_VALS = ['paid', 'unpaid', 'credit'];
 
   const filtered = [...saleInvoices]
     .filter(i => {
-      const matchFilter =
-        filter === 'all'    ? true :
-        filter === 'today'  ? i.date === todayStr() :
-        filter === 'last3'  ? i.date >= nDaysAgoStr(3) && i.date <= todayStr() :
-        (filter === 'paid' || filter === 'unpaid' || filter === 'credit')
-                            ? payOf(i.paymentStatus) === filter && i.status !== 'void' :
-        i.status === filter;
+      const sel = [...selected];
+      const dateSel   = sel.filter(v => DATE_VALS.includes(v));
+      const paySel    = sel.filter(v => PAY_VALS.includes(v));
+      const statusSel = sel.filter(v => !DATE_VALS.includes(v) && !PAY_VALS.includes(v));
+
+      const dateMatch = dateSel.length === 0 || dateSel.some(v =>
+        v === 'today' ? i.date === todayStr() : i.date >= nDaysAgoStr(3) && i.date <= todayStr());
+      const payMatch  = paySel.length === 0 || (i.status !== 'void' && paySel.includes(payOf(i.paymentStatus)));
+      const statusMatch = statusSel.length === 0 || statusSel.includes(i.status);
+
+      const matchFilter = dateMatch && payMatch && statusMatch;
       const matchSearch = i.invoiceNumber?.toLowerCase().includes(search.toLowerCase())
                        || i.customerName?.toLowerCase().includes(search.toLowerCase());
       return matchFilter && matchSearch;
@@ -109,40 +140,32 @@ export default function SaleInvoiceList() {
       {/* Search */}
       <SearchBox onSearch={handleSearch} />
 
-      {/* Filter buttons */}
-      <div className="flex gap-1.5 flex-wrap">
-        {FILTERS.map(f => (
-          <button
-            key={f.value}
-            onClick={() => setFilter(f.value)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-              filter === f.value
-                ? f.value === 'void'      ? 'bg-red-600 text-white border-red-600'
-                : f.value === 'draft'     ? 'bg-gray-600 text-white border-gray-600'
-                : f.value === 'unpaid'    ? 'bg-red-500 text-white border-red-500'
-                : f.value === 'partial'   ? 'bg-yellow-500 text-white border-yellow-500'
-                : f.value === 'paid'      ? 'bg-green-600 text-white border-green-600'
-                : f.value === 'completed' ? 'bg-emerald-600 text-white border-emerald-600'
-                : f.value === 'issued'    ? 'bg-blue-600 text-white border-blue-600'
-                : f.value === 'today'     ? 'bg-purple-600 text-white border-purple-600'
-                : f.value === 'last3'     ? 'bg-indigo-600 text-white border-indigo-600'
-                : f.value === 'paid'      ? 'bg-green-600 text-white border-green-600'
-                : f.value === 'unpaid'    ? 'bg-red-500 text-white border-red-500'
-                : f.value === 'credit'    ? 'bg-amber-500 text-white border-amber-500'
-                :                          'bg-gray-800 text-white border-gray-800'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            {f.label}
-            {f.value !== 'all' && f.value !== 'today' && f.value !== 'last3' && (() => {
-              const count =
-                (f.value === 'paid' || f.value === 'unpaid' || f.value === 'credit')
+      {/* Filter chips — multi-select (tap to toggle; All clears) */}
+      <div className="flex gap-1.5 flex-wrap items-center">
+        {FILTERS.map(f => {
+          const isActive = f.value === 'all' ? selected.size === 0 : selected.has(f.value);
+          return (
+            <button
+              key={f.value}
+              onClick={() => toggleFilter(f.value)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                isActive ? FILTER_ACTIVE[f.value] || 'bg-gray-800 text-white border-gray-800'
+                         : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {f.label}
+              {f.value !== 'all' && f.value !== 'today' && f.value !== 'last3' && (() => {
+                const count = PAY[f.value]
                   ? saleInvoices.filter(i => payOf(i.paymentStatus) === f.value && i.status !== 'void').length
                   : saleInvoices.filter(i => i.status === f.value).length;
-              return count > 0 ? <span className="ml-1 opacity-75">({count})</span> : null;
-            })()}
-          </button>
-        ))}
+                return count > 0 ? <span className="ml-1 opacity-75">({count})</span> : null;
+              })()}
+            </button>
+          );
+        })}
+        {selected.size > 0 && (
+          <button onClick={() => setSelected(new Set())} className="text-xs text-gray-400 hover:text-gray-600 ml-1">Clear</button>
+        )}
       </div>
 
       {/* Mobile card list */}
