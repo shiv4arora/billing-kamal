@@ -70,12 +70,13 @@ export default function SaleInvoiceView() {
     finally { setApplying(false); }
   };
 
-  const complete = async () => {
-    if (!window.confirm(`Mark invoice ${inv.invoiceNumber} as complete?\n\nThis marks the billing as finalised and checked. It does NOT record any payment — record payments in the customer ledger.`)) return;
+  // Classify the sale as Cash or Credit (label only — no ledger effect)
+  const setSaleType = async (isCreditSale) => {
+    if (inv.isCreditSale === isCreditSale) return;
     try {
-      const updated = await api(`/sales/${id}/complete`, { method: 'PATCH' });
-      updateSaleInvoiceLocal(id, updated);
-      toast.success('Invoice marked as complete');
+      const res = await api(`/sales/${id}/credit-sale`, { method: 'PATCH', body: { isCreditSale } });
+      updateSaleInvoiceLocal(id, { isCreditSale: res.isCreditSale });
+      toast.success(isCreditSale ? 'Marked as Credit' : 'Marked as Cash');
     } catch (e) { toast.error(e.message); }
   };
 
@@ -148,6 +149,7 @@ export default function SaleInvoiceView() {
               <div className="flex items-center gap-1.5 flex-wrap">
                 <h1 className="text-lg font-bold text-gray-900">{inv.invoiceNumber}</h1>
                 <Badge color={statusColor[inv.status]}>{statusLabel(inv.status)}</Badge>
+                {inv.status !== 'void' && <Badge color={inv.isCreditSale ? 'yellow' : 'green'}>{inv.isCreditSale ? 'Credit' : 'Cash'}</Badge>}
               </div>
               <p className="text-xs text-gray-400 truncate">
                 {formatDate(inv.date)} · {formatCustomerDisplay(inv.customerName, inv.customerPlace, inv.customerType)}
@@ -166,12 +168,21 @@ export default function SaleInvoiceView() {
           <p className="font-bold text-gray-900 text-lg">{formatCurrency(inv.grandTotal)}</p>
         </div>
 
-        {/* Primary action — Complete (billing checked, no payment) */}
-        {inv.status !== 'completed' && inv.status !== 'void' && (
-          <button onClick={complete}
-            className="w-full py-3 bg-green-100 text-green-700 text-sm font-semibold rounded-xl active:bg-green-200">
-            ✓ Mark Complete
-          </button>
+        {/* Sale type — Cash / Credit (label only) */}
+        {inv.status !== 'void' && (
+          <div>
+            <p className="text-xs text-gray-400 mb-1">Sale Type</p>
+            <div className="flex gap-2">
+              <button onClick={() => setSaleType(false)}
+                className={`flex-1 py-2.5 text-sm font-semibold rounded-xl border ${!inv.isCreditSale ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200 active:bg-gray-50'}`}>
+                💵 Cash
+              </button>
+              <button onClick={() => setSaleType(true)}
+                className={`flex-1 py-2.5 text-sm font-semibold rounded-xl border ${inv.isCreditSale ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200 active:bg-gray-50'}`}>
+                📒 Credit
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Secondary actions — horizontal scroll row */}
@@ -204,8 +215,17 @@ export default function SaleInvoiceView() {
           <button onClick={() => navigate('/sales')} className="text-gray-400 hover:text-gray-600">←</button>
           <h1 className="text-xl font-bold text-gray-900">{inv.invoiceNumber}</h1>
           <Badge color={statusColor[inv.status]}>{statusLabel(inv.status)}</Badge>
+          {inv.status !== 'void' && <Badge color={inv.isCreditSale ? 'yellow' : 'green'}>{inv.isCreditSale ? 'Credit' : 'Cash'}</Badge>}
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
+          {inv.status !== 'void' && (
+            <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+              <button onClick={() => setSaleType(false)}
+                className={`px-3 py-2 text-sm font-semibold ${!inv.isCreditSale ? 'bg-green-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>💵 Cash</button>
+              <button onClick={() => setSaleType(true)}
+                className={`px-3 py-2 text-sm font-semibold border-l border-gray-200 ${inv.isCreditSale ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>📒 Credit</button>
+            </div>
+          )}
           <Button variant={checkMode ? 'primary' : 'outline'} onClick={() => { setCheckMode(v => !v); setItemChecks({}); }}>
             {checkMode ? '✕ End Check' : '🔍 Check Bill'}
           </Button>
@@ -213,7 +233,6 @@ export default function SaleInvoiceView() {
           <Button variant="outline" onClick={() => setWaOpen(true)}>📱 WhatsApp</Button>
           <Link to={`/sales/${id}/print`}><Button variant="outline">🖨 Print</Button></Link>
           {inv.status !== 'void' && <Link to={`/sales/${id}/edit`}><Button variant="secondary">Edit</Button></Link>}
-          {inv.status !== 'completed' && inv.status !== 'void' && <Button variant="success" onClick={complete}>✓ Mark Complete</Button>}
           {inv.status !== 'void' && <Button variant="danger" onClick={voidInv}>Delete</Button>}
           {inv.status === 'void' && <Button variant="success" onClick={unvoidInv}>↩ Restore Invoice</Button>}
         </div>

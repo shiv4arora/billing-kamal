@@ -532,11 +532,15 @@ router.delete('/:id/lock', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Classify a sale as Cash (isCreditSale:false) or Credit (isCreditSale:true).
+// Body { isCreditSale } is optional; defaults to true so the Dashboard's
+// no-body "mark as credit" call keeps working.
 router.patch('/:id/credit-sale', async (req, res, next) => {
   try {
+    const isCreditSale = req.body?.isCreditSale === undefined ? true : !!req.body.isCreditSale;
     const inv = await prisma.saleInvoice.update({
       where: { id: req.params.id },
-      data: { isCreditSale: true },
+      data: { isCreditSale },
     });
     res.json({ id: inv.id, isCreditSale: inv.isCreditSale });
   } catch (err) { next(err); }
