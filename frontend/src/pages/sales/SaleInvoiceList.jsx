@@ -8,6 +8,8 @@ const FILTERS = [
   { label: 'All',        value: 'all' },
   { label: 'Today',      value: 'today' },
   { label: 'Last 3 Days',value: 'last3' },
+  { label: 'Cash',       value: 'cash' },
+  { label: 'Credit',     value: 'credit' },
   { label: 'Draft',      value: 'draft' },
   { label: 'Issued',     value: 'issued' },
   { label: 'Completed',  value: 'completed' },
@@ -50,9 +52,11 @@ export default function SaleInvoiceList() {
   const filtered = [...saleInvoices]
     .filter(i => {
       const matchFilter =
-        filter === 'all'   ? true :
-        filter === 'today' ? i.date === todayStr() :
-        filter === 'last3' ? i.date >= nDaysAgoStr(3) && i.date <= todayStr() :
+        filter === 'all'    ? true :
+        filter === 'today'  ? i.date === todayStr() :
+        filter === 'last3'  ? i.date >= nDaysAgoStr(3) && i.date <= todayStr() :
+        filter === 'cash'   ? !i.isCreditSale && i.status !== 'void' :
+        filter === 'credit' ? i.isCreditSale && i.status !== 'void' :
         i.status === filter;
       const matchSearch = i.invoiceNumber?.toLowerCase().includes(search.toLowerCase())
                        || i.customerName?.toLowerCase().includes(search.toLowerCase());
@@ -65,7 +69,16 @@ export default function SaleInvoiceList() {
     { header: 'Customer',  render: i => <p className="font-medium">{formatCustomerDisplay(i.customerName, i.customerPlace, i.customerType)}</p> },
     { header: 'Date',      render: i => formatDate(i.date) },
     { header: 'Amount',    align: 'right', render: i => formatCurrency(i.grandTotal) },
-    { header: 'Status',    render: i => <Badge color={statusColor[i.status]}>{statusLabel(i.status)}</Badge> },
+    { header: 'Status',    render: i => (
+      <div className="flex items-center gap-1.5">
+        <Badge color={statusColor[i.status]}>{statusLabel(i.status)}</Badge>
+        {i.status !== 'void' && (
+          <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${i.isCreditSale ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+            {i.isCreditSale ? 'Credit' : 'Cash'}
+          </span>
+        )}
+      </div>
+    ) },
     { header: '',          render: i => (
       <div className="flex gap-2" onClick={e => e.stopPropagation()}>
         <Button size="sm" variant="ghost" onClick={() => navigate(`/sales/${i.id}/print`)}>🖨</Button>
@@ -104,13 +117,18 @@ export default function SaleInvoiceList() {
                 : f.value === 'issued'    ? 'bg-blue-600 text-white border-blue-600'
                 : f.value === 'today'     ? 'bg-purple-600 text-white border-purple-600'
                 : f.value === 'last3'     ? 'bg-indigo-600 text-white border-indigo-600'
+                : f.value === 'cash'      ? 'bg-green-600 text-white border-green-600'
+                : f.value === 'credit'    ? 'bg-amber-500 text-white border-amber-500'
                 :                          'bg-gray-800 text-white border-gray-800'
                 : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
             }`}
           >
             {f.label}
             {f.value !== 'all' && f.value !== 'today' && f.value !== 'last3' && (() => {
-              const count = saleInvoices.filter(i => i.status === f.value).length;
+              const count =
+                f.value === 'cash'   ? saleInvoices.filter(i => !i.isCreditSale && i.status !== 'void').length :
+                f.value === 'credit' ? saleInvoices.filter(i => i.isCreditSale && i.status !== 'void').length :
+                saleInvoices.filter(i => i.status === f.value).length;
               return count > 0 ? <span className="ml-1 opacity-75">({count})</span> : null;
             })()}
           </button>
@@ -142,6 +160,7 @@ export default function SaleInvoiceList() {
                     {i.status === 'void' && <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-medium">Deleted</span>}
                     {i.status === 'draft' && <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full font-medium">Draft</span>}
                     {i.status === 'completed' && <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-medium">Completed</span>}
+                    {i.status !== 'void' && <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${i.isCreditSale ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>{i.isCreditSale ? 'Credit' : 'Cash'}</span>}
                   </div>
                   <p className="font-semibold text-gray-900 truncate">{i.customerName || '—'}</p>
                   {i.customerPlace && <p className="text-xs text-gray-400">{i.customerPlace}</p>}
