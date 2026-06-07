@@ -532,17 +532,21 @@ router.delete('/:id/lock', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// Classify a sale as Cash (isCreditSale:false) or Credit (isCreditSale:true).
-// Body { isCreditSale } is optional; defaults to true so the Dashboard's
-// no-body "mark as credit" call keeps working.
-router.patch('/:id/credit-sale', async (req, res, next) => {
+// Set the invoice payment status — a manual label only (no ledger effect):
+//   paid   = Fully paid
+//   unpaid = Pending for payment
+//   credit = Partially paid / to be paid later
+// Body { paymentStatus }. Legacy no-body call (Dashboard "mark credit") → 'credit'.
+const PAY_STATUSES = ['paid', 'unpaid', 'credit'];
+router.patch('/:id/payment-status', async (req, res, next) => {
   try {
-    const isCreditSale = req.body?.isCreditSale === undefined ? true : !!req.body.isCreditSale;
+    const raw = req.body?.paymentStatus;
+    const paymentStatus = PAY_STATUSES.includes(raw) ? raw : 'credit';
     const inv = await prisma.saleInvoice.update({
       where: { id: req.params.id },
-      data: { isCreditSale },
+      data: { paymentStatus, isCreditSale: paymentStatus === 'credit' },
     });
-    res.json({ id: inv.id, isCreditSale: inv.isCreditSale });
+    res.json({ id: inv.id, paymentStatus: inv.paymentStatus, isCreditSale: inv.isCreditSale });
   } catch (err) { next(err); }
 });
 

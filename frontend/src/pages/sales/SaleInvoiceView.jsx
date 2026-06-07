@@ -11,6 +11,14 @@ const statusColor = { draft: 'gray', issued: 'blue', paid: 'green', completed: '
 // 'void' is the internal status; shown to users as "Deleted"
 const statusLabel = (s) => (s === 'void' ? 'deleted' : s);
 
+// Manual payment status (label only) — Paid / Unpaid / Credit
+const PAY = {
+  paid:   { label: 'Paid',   badge: 'green',  pill: 'bg-green-100 text-green-700', active: 'bg-green-600 text-white border-green-600',  hint: 'Fully paid' },
+  unpaid: { label: 'Unpaid', badge: 'red',    pill: 'bg-red-100 text-red-700',     active: 'bg-red-500 text-white border-red-500',      hint: 'Pending for payment' },
+  credit: { label: 'Credit', badge: 'yellow', pill: 'bg-amber-100 text-amber-700', active: 'bg-amber-500 text-white border-amber-500',  hint: 'Partially paid / later payment' },
+};
+const payOf = (s) => (s === 'partial' ? 'credit' : (PAY[s] ? s : 'unpaid'));
+
 export default function SaleInvoiceView() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -70,13 +78,13 @@ export default function SaleInvoiceView() {
     finally { setApplying(false); }
   };
 
-  // Classify the sale as Cash or Credit (label only — no ledger effect)
-  const setSaleType = async (isCreditSale) => {
-    if (inv.isCreditSale === isCreditSale) return;
+  // Set payment status — a manual label only (no ledger effect)
+  const setPayStatus = async (paymentStatus) => {
+    if (payOf(inv.paymentStatus) === paymentStatus) return;
     try {
-      const res = await api(`/sales/${id}/credit-sale`, { method: 'PATCH', body: { isCreditSale } });
-      updateSaleInvoiceLocal(id, { isCreditSale: res.isCreditSale });
-      toast.success(isCreditSale ? 'Marked as Credit' : 'Marked as Cash');
+      const res = await api(`/sales/${id}/payment-status`, { method: 'PATCH', body: { paymentStatus } });
+      updateSaleInvoiceLocal(id, { paymentStatus: res.paymentStatus, isCreditSale: res.isCreditSale });
+      toast.success(`Marked as ${PAY[paymentStatus].label}`);
     } catch (e) { toast.error(e.message); }
   };
 
@@ -149,7 +157,7 @@ export default function SaleInvoiceView() {
               <div className="flex items-center gap-1.5 flex-wrap">
                 <h1 className="text-lg font-bold text-gray-900">{inv.invoiceNumber}</h1>
                 <Badge color={statusColor[inv.status]}>{statusLabel(inv.status)}</Badge>
-                {inv.status !== 'void' && <Badge color={inv.isCreditSale ? 'yellow' : 'green'}>{inv.isCreditSale ? 'Credit' : 'Cash'}</Badge>}
+                {inv.status !== 'void' && <Badge color={PAY[payOf(inv.paymentStatus)].badge}>{PAY[payOf(inv.paymentStatus)].label}</Badge>}
               </div>
               <p className="text-xs text-gray-400 truncate">
                 {formatDate(inv.date)} · {formatCustomerDisplay(inv.customerName, inv.customerPlace, inv.customerType)}
@@ -168,20 +176,19 @@ export default function SaleInvoiceView() {
           <p className="font-bold text-gray-900 text-lg">{formatCurrency(inv.grandTotal)}</p>
         </div>
 
-        {/* Sale type — Cash / Credit (label only) */}
+        {/* Payment status — Paid / Unpaid / Credit (label only) */}
         {inv.status !== 'void' && (
           <div>
-            <p className="text-xs text-gray-400 mb-1">Sale Type</p>
+            <p className="text-xs text-gray-400 mb-1">Payment Status</p>
             <div className="flex gap-2">
-              <button onClick={() => setSaleType(false)}
-                className={`flex-1 py-2.5 text-sm font-semibold rounded-xl border ${!inv.isCreditSale ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200 active:bg-gray-50'}`}>
-                💵 Cash
-              </button>
-              <button onClick={() => setSaleType(true)}
-                className={`flex-1 py-2.5 text-sm font-semibold rounded-xl border ${inv.isCreditSale ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200 active:bg-gray-50'}`}>
-                📒 Credit
-              </button>
+              {['paid', 'unpaid', 'credit'].map(k => (
+                <button key={k} onClick={() => setPayStatus(k)}
+                  className={`flex-1 py-2.5 text-sm font-semibold rounded-xl border ${payOf(inv.paymentStatus) === k ? PAY[k].active : 'bg-white text-gray-600 border-gray-200 active:bg-gray-50'}`}>
+                  {PAY[k].label}
+                </button>
+              ))}
             </div>
+            <p className="text-xs text-gray-400 mt-1">{PAY[payOf(inv.paymentStatus)].hint}</p>
           </div>
         )}
 
@@ -215,15 +222,17 @@ export default function SaleInvoiceView() {
           <button onClick={() => navigate('/sales')} className="text-gray-400 hover:text-gray-600">←</button>
           <h1 className="text-xl font-bold text-gray-900">{inv.invoiceNumber}</h1>
           <Badge color={statusColor[inv.status]}>{statusLabel(inv.status)}</Badge>
-          {inv.status !== 'void' && <Badge color={inv.isCreditSale ? 'yellow' : 'green'}>{inv.isCreditSale ? 'Credit' : 'Cash'}</Badge>}
+          {inv.status !== 'void' && <Badge color={PAY[payOf(inv.paymentStatus)].badge}>{PAY[payOf(inv.paymentStatus)].label}</Badge>}
         </div>
         <div className="flex gap-2 flex-wrap items-center">
           {inv.status !== 'void' && (
             <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
-              <button onClick={() => setSaleType(false)}
-                className={`px-3 py-2 text-sm font-semibold ${!inv.isCreditSale ? 'bg-green-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>💵 Cash</button>
-              <button onClick={() => setSaleType(true)}
-                className={`px-3 py-2 text-sm font-semibold border-l border-gray-200 ${inv.isCreditSale ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>📒 Credit</button>
+              {['paid', 'unpaid', 'credit'].map((k, idx) => (
+                <button key={k} onClick={() => setPayStatus(k)}
+                  className={`px-3 py-2 text-sm font-semibold ${idx > 0 ? 'border-l border-gray-200' : ''} ${payOf(inv.paymentStatus) === k ? PAY[k].active : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                  {PAY[k].label}
+                </button>
+              ))}
             </div>
           )}
           <Button variant={checkMode ? 'primary' : 'outline'} onClick={() => { setCheckMode(v => !v); setItemChecks({}); }}>

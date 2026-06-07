@@ -44,7 +44,7 @@ export default function Dashboard() {
   const markCredit = async (id) => {
     setLocalCreditIds(prev => new Set([...prev, id]));
     try {
-      await api(`/sales/${id}/credit-sale`, { method: 'PATCH' });
+      await api(`/sales/${id}/payment-status`, { method: 'PATCH', body: { paymentStatus: 'credit' } });
     } catch {
       // revert optimistic update on failure
       setLocalCreditIds(prev => { const s = new Set(prev); s.delete(id); return s; });
@@ -61,14 +61,14 @@ export default function Dashboard() {
     [saleInvoices, today]
   );
 
-  // Invoices in last 5 days with an outstanding balance, excluding credit sales
+  // Invoices in last 5 days still pending payment (paymentStatus 'unpaid'),
+  // excluding ones just marked paid/credit (optimistic) and deleted.
   const unsettledRecent = useMemo(() =>
     [...saleInvoices]
       .filter(i =>
         i.status !== 'void' &&
         i.date >= day5ago &&
-        (i.grandTotal || 0) - (i.amountPaid || 0) > 0.01 &&
-        !i.isCreditSale &&
+        (i.paymentStatus === 'unpaid' || i.paymentStatus == null) &&
         !localCreditIds.has(i.id)
       )
       .sort((a, b) => new Date(b.date) - new Date(a.date)),
