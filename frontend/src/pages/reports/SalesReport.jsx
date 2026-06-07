@@ -19,7 +19,8 @@ export default function SalesReport() {
   const [minAmount,   setMinAmount]   = useState('');
 
   const filtered = useMemo(() => {
-    let list = dateRangeFilter(saleInvoices.filter(i => i.status !== 'void'), 'date', start, end);
+    // Only real sales count as revenue — exclude drafts (work-in-progress) and deleted.
+    let list = dateRangeFilter(saleInvoices.filter(i => i.status !== 'void' && i.status !== 'draft'), 'date', start, end);
     if (custSearch) list = list.filter(i => (i.customerName || '').toLowerCase().includes(custSearch.toLowerCase()));
     if (custType)   list = list.filter(i => i.customerType === custType);
     if (minAmount)  list = list.filter(i => (i.grandTotal || 0) >= parseFloat(minAmount));
