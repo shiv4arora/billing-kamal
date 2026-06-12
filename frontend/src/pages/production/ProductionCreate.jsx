@@ -127,7 +127,17 @@ export default function ProductionCreate() {
   /* ── Output helpers ── */
   const addOutput = () => setOutputs(prev => [...prev, BLANK_OUTPUT()]);
   const removeOutput = (i) => setOutputs(prev => prev.length === 1 ? [BLANK_OUTPUT()] : prev.filter((_, idx) => idx !== i));
-  const updateOut = (i, field, value) => setOutputs(prev => prev.map((o, idx) => idx === i ? { ...o, [field]: value } : o));
+  const updateOut = (i, field, value) => setOutputs(prev => prev.map((o, idx) => {
+    if (idx !== i) return o;
+    // Typing the wholesale rate auto-fills the shop rate at 1.5× (rounded).
+    // You can still override the shop rate manually afterwards.
+    if (field === 'wholesale') {
+      const w = parseFloat(value);
+      const shop = (value === '' || isNaN(w)) ? '' : String(Math.round(w * 1.5));
+      return { ...o, wholesale: value, shop };
+    }
+    return { ...o, [field]: value };
+  }));
   const selectOutput = (i, prod) => {
     const pricing = (typeof prod.pricing === 'object' && prod.pricing !== null)
       ? prod.pricing
