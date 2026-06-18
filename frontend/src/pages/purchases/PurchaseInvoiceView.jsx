@@ -16,7 +16,7 @@ export default function PurchaseInvoiceView() {
   const toast = useToast();
   const { getPurchaseInvoice, updatePurchaseInvoiceLocal, deletePurchaseInvoice } = useInvoices();
   const { get: getProduct } = useProducts();
-  const { get: getSupplier } = useSuppliers();
+  const { get: getSupplier, refreshOne: refreshSupplier } = useSuppliers();
 
   const inv = getPurchaseInvoice(id);
 
@@ -78,6 +78,7 @@ export default function PurchaseInvoiceView() {
     try {
       const updated = await api(`/purchases/${id}/mark-paid`, { method: 'PATCH' });
       updatePurchaseInvoiceLocal(id, updated);
+      if (inv.supplierId) refreshSupplier(inv.supplierId);
     } catch (e) { toast.error(e.message); }
   };
 
@@ -89,6 +90,7 @@ export default function PurchaseInvoiceView() {
         body: { date: payForm.date, amount: +payForm.amount, method: payForm.method, notes: payForm.notes },
       });
       updatePurchaseInvoiceLocal(id, updated);
+      if (inv.supplierId) refreshSupplier(inv.supplierId);
       toast.success(`₹${(+payForm.amount).toLocaleString('en-IN')} recorded`);
       setPayOpen(false);
       setPayForm({ date: today(), amount: '', method: 'cash', notes: '' });
@@ -102,6 +104,7 @@ export default function PurchaseInvoiceView() {
         method: 'POST',
         body: { date: retForm.date, amount: +retForm.amount, notes: retForm.notes },
       });
+      if (inv.supplierId) refreshSupplier(inv.supplierId);
       toast.success('Purchase return recorded in ledger');
       setRetOpen(false);
       setRetForm({ date: today(), amount: '', notes: '' });
@@ -128,6 +131,7 @@ export default function PurchaseInvoiceView() {
       });
       const updated = await api(`/purchases/${id}`, { method: 'PUT', body: { ...inv, items: correctedItems } });
       updatePurchaseInvoiceLocal(id, updated);
+      if (inv.supplierId) refreshSupplier(inv.supplierId);
       toast.success(`${pendingFixes} correction${pendingFixes !== 1 ? 's' : ''} applied`);
       setCheckMode(false);
       setItemChecks({}); setItemNotes({}); setItemCorrections({});

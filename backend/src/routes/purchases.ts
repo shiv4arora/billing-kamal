@@ -16,6 +16,16 @@ function parseSettings(raw: any): any {
   try { return JSON.parse(raw || '{}'); } catch { return {}; }
 }
 
+// Rebuild a supplier's balance from their ledger entries (authoritative).
+// Supplier balance convention = Σ(credit − debit): purchase invoices credit
+// (we owe), payments/returns debit (reduces what we owe).
+async function recomputeSupplierBalance(tx: any, supplierId: string | null | undefined) {
+  if (!supplierId) return;
+  const rows = await tx.ledgerEntry.findMany({ where: { partyType: 'supplier', partyId: supplierId } });
+  const bal = rows.reduce((s: number, r: any) => s + (Number(r.credit) || 0) - (Number(r.debit) || 0), 0);
+  await tx.supplier.update({ where: { id: supplierId }, data: { balance: Math.round(bal * 100) / 100 } });
+}
+
 // Pick only schema fields — ignores unknown frontend fields (e.g. totalTaxable)
 function pickPurchaseData(b: any) {
   return {
@@ -81,6 +91,12 @@ async function issuePurchase(invoiceId: string) {
   const payStatus = paid >= finalGrandTotal - 0.01 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
 
   return prisma.$transaction(async (tx) => {
+    // Idempotency guard: re-read inside the transaction. If a concurrent/duplicate
+    // request already issued this invoice, bail out without re-applying stock,
+    // ledger, or balance side-effects.
+    const fresh = await tx.purchaseInvoice.findUniqueOrThrow({ where: { id: existing.id } });
+    if (fresh.status !== 'draft') return fresh;
+
     const invNo = await nextPurchaseInvoiceNumber(prefix, tx);
 
     // Resolve productIds first so we can store finalised items (isNew: false)
@@ -185,8 +201,9 @@ async function issuePurchase(invoiceId: string) {
 
 router.post('/', async (req, res, next) => {
   try {
-    // Create then immediately issue — stock is added right away
-    const draft = await prisma.purchaseInvoice.create({ data: pickPurchaseData(req.body) });
+    // Create as a draft, then immediately issue — issuePurchase posts ledger +
+    // stock once (it bails if the record is already non-draft).
+    const draft = await prisma.purchaseInvoice.create({ data: { ...pickPurchaseData(req.body), status: 'draft' } });
     const issued = await issuePurchase(draft.id);
     res.status(201).json(issued);
   } catch (err) { next(err); }
@@ -281,27 +298,54 @@ router.put('/:id', async (req, res, next) => {
       grandTotal: finalGrandTotal,
       paymentStatus: payStatus,
     };
-    const inv = await prisma.purchaseInvoice.update({
-      where: { id: req.params.id },
-      data: pickPurchaseData(body),
-    });
+    const inv = await prisma.$transaction(async (tx) => {
+      const updated = await tx.purchaseInvoice.update({
+        where: { id: req.params.id },
+        data: pickPurchaseData(body),
+      });
 
-    // Sync ledger + supplier balance if invoice was already issued
-    if (oldInv.status !== 'draft' && inv.supplierId) {
-      const oldTotal = Number(oldInv.grandTotal) || 0;
-      const newTotal = Number(inv.grandTotal) || 0;
-      const delta = newTotal - oldTotal;
-      if (Math.abs(delta) > 0.001) {
-        await prisma.ledgerEntry.updateMany({
-          where: { referenceId: inv.id, type: 'purchase_invoice' },
-          data: { credit: newTotal },
-        });
-        await prisma.supplier.update({
-          where: { id: inv.supplierId },
-          data: { balance: { increment: delta } },
-        });
+      // ── Fully sync the ledger to the edited invoice (issued invoices only) ──
+      const oldSup = oldInv.supplierId;
+      const newSup = updated.supplierId;
+      if (oldInv.status !== 'draft') {
+        const newTotal = Number(updated.grandTotal) || 0;
+        const narration = `Purchase Invoice ${updated.invoiceNumber || ''}`;
+        if (newSup) {
+          const existingLedger = await tx.ledgerEntry.findFirst({
+            where: { referenceId: updated.id, type: 'purchase_invoice' },
+          });
+          if (existingLedger) {
+            // Reflect every editable field — amount, date, supplier, narration
+            await tx.ledgerEntry.updateMany({
+              where: { referenceId: updated.id, type: 'purchase_invoice' },
+              data: { credit: newTotal, date: updated.date, partyId: newSup, partyName: updated.supplierName, narration },
+            });
+          } else {
+            // Issued invoice missing its ledger entry (older corruption) — create it
+            await postPurchaseInvoice(tx, {
+              supplierId: newSup, supplierName: updated.supplierName,
+              date: updated.date, invoiceId: updated.id, invoiceNo: updated.invoiceNumber || '', amount: newTotal,
+            });
+          }
+          // If supplier changed, move the related payment/return entries too
+          if (oldSup && oldSup !== newSup) {
+            await tx.ledgerEntry.updateMany({
+              where: { referenceId: updated.id, type: { in: ['payment_out', 'purchase_return'] } },
+              data: { partyId: newSup, partyName: updated.supplierName },
+            });
+          }
+        } else if (oldSup) {
+          // Supplier removed — drop the invoice's ledger entries
+          await tx.ledgerEntry.deleteMany({ where: { referenceId: updated.id } });
+        }
       }
-    }
+
+      // Rebuild affected supplier balances straight from the ledger (no drift)
+      await recomputeSupplierBalance(tx, oldSup);
+      if (newSup && newSup !== oldSup) await recomputeSupplierBalance(tx, newSup);
+
+      return updated;
+    });
 
     res.json(inv);
   } catch (err) { next(err); }

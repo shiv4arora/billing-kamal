@@ -255,7 +255,7 @@ export default function PurchaseInvoiceCreate() {
   const toast = useGlobalToast();
   const { addPurchaseInvoice, updatePurchaseInvoice, getPurchaseInvoice } = useInvoices();
   const { active: products, refresh: refreshProducts } = useProducts();
-  const { active: suppliers } = useSuppliers();
+  const { active: suppliers, refreshOne: refreshSupplier } = useSuppliers();
   const { settings } = useSettings();
   const isEdit = !!id;
   const lock = useInvoiceLock('purchases', isEdit ? id : null);
@@ -489,12 +489,14 @@ export default function PurchaseInvoiceCreate() {
       if (effectiveId) {
         await updatePurchaseInvoice(effectiveId, invData);
         await refreshProducts();
+        if (supplierId) refreshSupplier(supplierId);
         toast.success('Invoice updated · Stock & prices synced');
         setTimeout(() => { navigate(`/purchases/${effectiveId}`); }, 600);
         return;
       }
       const saved = await addPurchaseInvoice({ ...invData, status: 'draft' });
       await refreshProducts();
+      if (supplierId) refreshSupplier(supplierId);
       toast.success(`${saved.invoiceNumber} saved · Stock updated`);
       setTimeout(() => navigate(`/purchases/${saved.id}`), 800);
     } catch (e) {
