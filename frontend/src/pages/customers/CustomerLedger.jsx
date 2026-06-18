@@ -139,7 +139,7 @@ export default function CustomerLedger() {
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/customers')} className="text-gray-400 hover:text-gray-600 text-xl">←</button>
+            <button onClick={() => { if (window.history.length > 1) navigate(-1); else navigate('/customers'); }} className="text-gray-400 hover:text-gray-600 text-xl">←</button>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{formatCustomerDisplay(customer)}</h1>
               <p className="text-sm text-gray-500">{customer.phone}{customer.place ? ` · ${customer.place}` : ''} · Customer Ledger</p>
