@@ -98,15 +98,18 @@ export default function InventoryReport() {
     });
   }, [enriched, search, statusFilter, vendorFilter, categoryFilter, sortKey, sortDir]);
 
-  // Stock value grouped by vendor (cost basis)
+  // Stock value grouped by vendor (all vendors)
   const byVendor = useMemo(() => {
     const m = {};
     enriched.forEach(p => {
       const k = p.supplierId || '__none__';
-      if (!m[k]) m[k] = { name: p.supplierId ? p.vendor : '— No Vendor —', costValue: 0, units: 0, count: 0 };
-      m[k].costValue += p.costValue; m[k].units += p.stock; m[k].count += 1;
+      if (!m[k]) m[k] = { name: p.supplierId ? p.vendor : '— No Vendor —', costValue: 0, wsValue: 0, units: 0, count: 0 };
+      m[k].costValue += p.costValue; m[k].wsValue += p.wsValue; m[k].units += p.stock; m[k].count += 1;
     });
-    return Object.values(m).sort((a, b) => b.costValue - a.costValue).slice(0, 12);
+    const total = Object.values(m).reduce((s, v) => s + v.costValue, 0);
+    return Object.values(m)
+      .map(v => ({ ...v, pct: total > 0 ? (v.costValue / total) * 100 : 0 }))
+      .sort((a, b) => b.costValue - a.costValue);
   }, [enriched]);
 
   const toggleSort = (key) => {
@@ -216,14 +219,19 @@ export default function InventoryReport() {
       {/* Stock value by vendor */}
       {byVendor.length > 0 && (
         <Card padding={false}>
-          <div className="px-5 pt-4 pb-2"><h3 className="font-semibold text-gray-800">Stock Value by Vendor</h3><p className="text-xs text-gray-400 mt-0.5">How much inventory (at cost) you're holding per vendor</p></div>
+          <div className="px-5 pt-4 pb-2 flex items-center justify-between">
+            <div><h3 className="font-semibold text-gray-800">Stock Value by Vendor</h3><p className="text-xs text-gray-400 mt-0.5">Inventory you're holding per vendor — cost (money invested) and wholesale (resale value)</p></div>
+            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">{byVendor.length} vendor{byVendor.length !== 1 ? 's' : ''}</span>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead><tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
                 <th className="px-4 py-2 text-left">Vendor</th>
                 <th className="px-4 py-2 text-right">Products</th>
                 <th className="px-4 py-2 text-right">Units</th>
-                <th className="px-4 py-2 text-right">Stock Value (Cost)</th>
+                <th className="px-4 py-2 text-right">Cost Value</th>
+                <th className="px-4 py-2 text-right">Wholesale Value</th>
+                <th className="px-4 py-2 text-right">% of Stock</th>
               </tr></thead>
               <tbody>
                 {byVendor.map((v, i) => (
@@ -232,8 +240,18 @@ export default function InventoryReport() {
                     <td className="px-4 py-2 text-right text-gray-600">{v.count}</td>
                     <td className="px-4 py-2 text-right text-gray-600">{v.units.toLocaleString('en-IN')}</td>
                     <td className="px-4 py-2 text-right font-semibold text-green-700">{formatCurrency(v.costValue)}</td>
+                    <td className="px-4 py-2 text-right text-emerald-700">{formatCurrency(v.wsValue)}</td>
+                    <td className="px-4 py-2 text-right text-gray-500">{v.pct.toFixed(1)}%</td>
                   </tr>
                 ))}
+                <tr className="bg-gray-50 font-semibold">
+                  <td className="px-4 py-2 text-gray-700">Total</td>
+                  <td className="px-4 py-2 text-right text-gray-700">{byVendor.reduce((s, v) => s + v.count, 0)}</td>
+                  <td className="px-4 py-2 text-right text-gray-700">{byVendor.reduce((s, v) => s + v.units, 0).toLocaleString('en-IN')}</td>
+                  <td className="px-4 py-2 text-right text-green-700">{formatCurrency(byVendor.reduce((s, v) => s + v.costValue, 0))}</td>
+                  <td className="px-4 py-2 text-right text-emerald-700">{formatCurrency(byVendor.reduce((s, v) => s + v.wsValue, 0))}</td>
+                  <td className="px-4 py-2 text-right text-gray-500">100%</td>
+                </tr>
               </tbody>
             </table>
           </div>
