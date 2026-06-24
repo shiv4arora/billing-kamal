@@ -106,10 +106,12 @@ export default function InventoryReport() {
       if (!m[k]) m[k] = { name: p.supplierId ? p.vendor : '— No Vendor —', costValue: 0, wsValue: 0, units: 0, count: 0 };
       m[k].costValue += p.costValue; m[k].wsValue += p.wsValue; m[k].units += p.stock; m[k].count += 1;
     });
-    const total = Object.values(m).reduce((s, v) => s + v.costValue, 0);
+    // % share is based on wholesale value — cost is ₹0 for produced goods, so a
+    // cost basis would show 0% for most stock and never total 100%.
+    const total = Object.values(m).reduce((s, v) => s + v.wsValue, 0);
     return Object.values(m)
-      .map(v => ({ ...v, pct: total > 0 ? (v.costValue / total) * 100 : 0 }))
-      .sort((a, b) => b.costValue - a.costValue);
+      .map(v => ({ ...v, pct: total > 0 ? (v.wsValue / total) * 100 : 0 }))
+      .sort((a, b) => b.wsValue - a.wsValue);
   }, [enriched]);
 
   const toggleSort = (key) => {
@@ -231,7 +233,7 @@ export default function InventoryReport() {
                 <th className="px-4 py-2 text-right">Units</th>
                 <th className="px-4 py-2 text-right">Cost Value</th>
                 <th className="px-4 py-2 text-right">Wholesale Value</th>
-                <th className="px-4 py-2 text-right">% of Stock</th>
+                <th className="px-4 py-2 text-right">% of Stock (WS)</th>
               </tr></thead>
               <tbody>
                 {byVendor.map((v, i) => (
