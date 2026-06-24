@@ -108,10 +108,21 @@ export default function InventoryReport() {
     });
     // % share is based on wholesale value — cost is ₹0 for produced goods, so a
     // cost basis would show 0% for most stock and never total 100%.
-    const total = Object.values(m).reduce((s, v) => s + v.wsValue, 0);
-    return Object.values(m)
-      .map(v => ({ ...v, pct: total > 0 ? (v.wsValue / total) * 100 : 0 }))
-      .sort((a, b) => b.wsValue - a.wsValue);
+    const rows = Object.values(m);
+    const total = rows.reduce((s, v) => s + v.wsValue, 0);
+    rows.forEach(v => { v.pct = total > 0 ? (v.wsValue / total) * 100 : 0; });
+
+    // Round each % to 1 decimal so the column sums to EXACTLY 100.0
+    // (largest-remainder method — avoids 99.8% / 100.2% drift).
+    if (total > 0) {
+      const scaled = rows.map(v => v.pct * 10);
+      const floored = scaled.map(Math.floor);
+      let remainder = Math.round(1000 - floored.reduce((s, n) => s + n, 0));
+      const order = rows.map((_, i) => i).sort((a, b) => (scaled[b] - floored[b]) - (scaled[a] - floored[a]));
+      for (let i = 0; i < remainder && i < order.length; i++) floored[order[i]] += 1;
+      rows.forEach((v, i) => { v.pct = floored[i] / 10; });
+    }
+    return rows.sort((a, b) => b.wsValue - a.wsValue);
   }, [enriched]);
 
   const toggleSort = (key) => {
