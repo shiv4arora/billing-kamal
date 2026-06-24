@@ -156,6 +156,48 @@ export default function InventoryReport() {
         <div className="bg-red-50 rounded-xl p-4"><p className="text-xs text-red-500 font-medium">Out of Stock</p><p className="text-xl font-bold text-red-900">{counts.out}</p></div>
       </div>
 
+      {/* Stock value by vendor */}
+      {byVendor.length > 0 && (
+        <Card padding={false}>
+          <div className="px-5 pt-4 pb-2 flex items-center justify-between">
+            <div><h3 className="font-semibold text-gray-800">Stock Value by Vendor</h3><p className="text-xs text-gray-400 mt-0.5">Inventory you're holding per vendor — cost (money invested) and wholesale (resale value)</p></div>
+            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">{byVendor.length} vendor{byVendor.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
+                <th className="px-4 py-2 text-left">Vendor</th>
+                <th className="px-4 py-2 text-right">Products</th>
+                <th className="px-4 py-2 text-right">Units</th>
+                <th className="px-4 py-2 text-right">Cost Value</th>
+                <th className="px-4 py-2 text-right">Wholesale Value</th>
+                <th className="px-4 py-2 text-right">% of Stock (WS)</th>
+              </tr></thead>
+              <tbody>
+                {byVendor.map((v, i) => (
+                  <tr key={i} className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-2 font-medium text-gray-800">{v.name}</td>
+                    <td className="px-4 py-2 text-right text-gray-600">{v.count}</td>
+                    <td className="px-4 py-2 text-right text-gray-600">{v.units.toLocaleString('en-IN')}</td>
+                    <td className="px-4 py-2 text-right font-semibold text-green-700">{formatCurrency(v.costValue)}</td>
+                    <td className="px-4 py-2 text-right text-emerald-700">{formatCurrency(v.wsValue)}</td>
+                    <td className="px-4 py-2 text-right text-gray-500">{v.pct.toFixed(1)}%</td>
+                  </tr>
+                ))}
+                <tr className="bg-gray-50 font-semibold">
+                  <td className="px-4 py-2 text-gray-700">Total</td>
+                  <td className="px-4 py-2 text-right text-gray-700">{byVendor.reduce((s, v) => s + v.count, 0)}</td>
+                  <td className="px-4 py-2 text-right text-gray-700">{byVendor.reduce((s, v) => s + v.units, 0).toLocaleString('en-IN')}</td>
+                  <td className="px-4 py-2 text-right text-green-700">{formatCurrency(byVendor.reduce((s, v) => s + v.costValue, 0))}</td>
+                  <td className="px-4 py-2 text-right text-emerald-700">{formatCurrency(byVendor.reduce((s, v) => s + v.wsValue, 0))}</td>
+                  <td className="px-4 py-2 text-right text-gray-500">100%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
       {/* Filters */}
       <Card>
         <div className="flex flex-wrap gap-3 items-center">
@@ -228,48 +270,6 @@ export default function InventoryReport() {
           <span>Cost value (filtered): <strong className="text-gray-700">{formatCurrency(filtered.reduce((s, p) => s + p.costValue, 0))}</strong></span>
         </div>
       </Card>
-
-      {/* Stock value by vendor */}
-      {byVendor.length > 0 && (
-        <Card padding={false}>
-          <div className="px-5 pt-4 pb-2 flex items-center justify-between">
-            <div><h3 className="font-semibold text-gray-800">Stock Value by Vendor</h3><p className="text-xs text-gray-400 mt-0.5">Inventory you're holding per vendor — cost (money invested) and wholesale (resale value)</p></div>
-            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">{byVendor.length} vendor{byVendor.length !== 1 ? 's' : ''}</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead><tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
-                <th className="px-4 py-2 text-left">Vendor</th>
-                <th className="px-4 py-2 text-right">Products</th>
-                <th className="px-4 py-2 text-right">Units</th>
-                <th className="px-4 py-2 text-right">Cost Value</th>
-                <th className="px-4 py-2 text-right">Wholesale Value</th>
-                <th className="px-4 py-2 text-right">% of Stock (WS)</th>
-              </tr></thead>
-              <tbody>
-                {byVendor.map((v, i) => (
-                  <tr key={i} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-2 font-medium text-gray-800">{v.name}</td>
-                    <td className="px-4 py-2 text-right text-gray-600">{v.count}</td>
-                    <td className="px-4 py-2 text-right text-gray-600">{v.units.toLocaleString('en-IN')}</td>
-                    <td className="px-4 py-2 text-right font-semibold text-green-700">{formatCurrency(v.costValue)}</td>
-                    <td className="px-4 py-2 text-right text-emerald-700">{formatCurrency(v.wsValue)}</td>
-                    <td className="px-4 py-2 text-right text-gray-500">{v.pct.toFixed(1)}%</td>
-                  </tr>
-                ))}
-                <tr className="bg-gray-50 font-semibold">
-                  <td className="px-4 py-2 text-gray-700">Total</td>
-                  <td className="px-4 py-2 text-right text-gray-700">{byVendor.reduce((s, v) => s + v.count, 0)}</td>
-                  <td className="px-4 py-2 text-right text-gray-700">{byVendor.reduce((s, v) => s + v.units, 0).toLocaleString('en-IN')}</td>
-                  <td className="px-4 py-2 text-right text-green-700">{formatCurrency(byVendor.reduce((s, v) => s + v.costValue, 0))}</td>
-                  <td className="px-4 py-2 text-right text-emerald-700">{formatCurrency(byVendor.reduce((s, v) => s + v.wsValue, 0))}</td>
-                  <td className="px-4 py-2 text-right text-gray-500">100%</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
     </div>
   );
 }
