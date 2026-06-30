@@ -17,9 +17,6 @@ export default function SalesReport() {
   const [custType,    setCustType]    = useState('');
   const [sortTotal,   setSortTotal]   = useState(''); // '', 'asc', 'desc'
   const [minAmount,   setMinAmount]   = useState('');
-  const [listTab,     setListTab]     = useState('details'); // 'details' | 'summary'
-
-  const unitsOf = (inv) => (inv.items || []).reduce((s, it) => s + (Number(it.quantity) || 0), 0);
 
   const filtered = useMemo(() => {
     // Only real sales count as revenue — exclude drafts (work-in-progress) and deleted.
@@ -373,13 +370,8 @@ export default function SalesReport() {
         </Card>
       )}
 
-      {/* Invoice List / Bill Summary tabs */}
+      {/* Invoice List */}
       <Card padding={false}>
-        <div className="flex gap-1 px-4 pt-3 border-b border-gray-100">
-          <button onClick={() => setListTab('details')} className={`px-4 py-2 text-sm font-semibold rounded-t-lg ${listTab === 'details' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Details</button>
-          <button onClick={() => setListTab('summary')} className={`px-4 py-2 text-sm font-semibold rounded-t-lg ${listTab === 'summary' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Bill Summary</button>
-        </div>
-        {listTab === 'details' ? (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
@@ -415,44 +407,6 @@ export default function SalesReport() {
             </tbody>
           </table>
         </div>
-        ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
-              <th className="px-4 py-3 text-left">Bill No</th>
-              <th className="px-4 py-3 text-left">Party</th>
-              <th className="px-4 py-3 text-right">Units Sold</th>
-              <th className="px-4 py-3 text-right">Total Bill</th>
-              <th className="px-4 py-3 text-right">Avg / Pc</th>
-            </tr></thead>
-            <tbody>
-              {sortedFiltered.length === 0
-                ? <tr><td colSpan="5" className="text-center py-10 text-gray-400">No data for selected period</td></tr>
-                : sortedFiltered.map(i => {
-                  const u = unitsOf(i);
-                  return (
-                  <tr key={i.id} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-2 font-medium text-blue-600">{i.invoiceNumber}</td>
-                    <td className="px-4 py-2">{formatCustomerDisplay(i.customerName, i.customerPlace, i.customerType)}</td>
-                    <td className="px-4 py-2 text-right">{u.toLocaleString('en-IN')}</td>
-                    <td className="px-4 py-2 text-right font-semibold">{formatCurrency(i.grandTotal)}</td>
-                    <td className="px-4 py-2 text-right text-gray-600">{u > 0 ? formatCurrency((i.grandTotal || 0) / u) : '—'}</td>
-                  </tr>
-                  );
-                })
-              }
-              {sortedFiltered.length > 0 && (
-                <tr className="bg-gray-50 font-semibold">
-                  <td className="px-4 py-2 text-gray-700" colSpan="2">Total · {sortedFiltered.length} bills</td>
-                  <td className="px-4 py-2 text-right text-gray-700">{sortedFiltered.reduce((s, i) => s + unitsOf(i), 0).toLocaleString('en-IN')}</td>
-                  <td className="px-4 py-2 text-right text-blue-700">{formatCurrency(sortedFiltered.reduce((s, i) => s + (i.grandTotal || 0), 0))}</td>
-                  <td className="px-4 py-2 text-right text-gray-700">{(() => { const u = sortedFiltered.reduce((s, i) => s + unitsOf(i), 0); const v = sortedFiltered.reduce((s, i) => s + (i.grandTotal || 0), 0); return u > 0 ? formatCurrency(v / u) : '—'; })()}</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        )}
       </Card>
     </div>
   );
