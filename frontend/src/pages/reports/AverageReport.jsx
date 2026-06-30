@@ -5,6 +5,27 @@ import { formatCurrency, formatDate, dateRangeFilter, exportToCSV, thisMonthStar
 
 const unitsOf = (inv) => (inv.items || []).reduce((s, it) => s + (Number(it.quantity) || 0), 0);
 
+// ── Date range helpers ──────────────────────────────────────────────────────
+const pad = (n) => String(n).padStart(2, '0');
+const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const monthStartStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`; };
+const monthEndStr = () => { const d = new Date(); return ymd(new Date(d.getFullYear(), d.getMonth() + 1, 0)); };
+// Week N (1–4) of the current month: 1=1–7, 2=8–14, 3=15–21, 4=22–end
+const weekRange = (n) => {
+  const d = new Date(); const y = d.getFullYear(); const m = d.getMonth();
+  const lastDay = new Date(y, m + 1, 0).getDate();
+  const startDay = (n - 1) * 7 + 1;
+  const endDay = n === 4 ? lastDay : Math.min(n * 7, lastDay);
+  return [`${y}-${pad(m + 1)}-${pad(startDay)}`, `${y}-${pad(m + 1)}-${pad(endDay)}`];
+};
+// Calendar week (Mon–Sun) containing today
+const thisWeekRange = () => {
+  const d = new Date(); const off = (d.getDay() + 6) % 7; // Mon = 0
+  const mon = new Date(d); mon.setDate(d.getDate() - off);
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+  return [ymd(mon), ymd(sun)];
+};
+
 export default function AverageReport() {
   const { saleInvoices } = useInvoices();
   const [start, setStart] = useState(thisMonthStart());
@@ -66,9 +87,23 @@ export default function AverageReport() {
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex flex-col gap-1"><label className="text-xs font-medium text-gray-500">From</label><input type="date" value={start} onChange={e => setStart(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm" /></div>
           <div className="flex flex-col gap-1"><label className="text-xs font-medium text-gray-500">To</label><input type="date" value={end} onChange={e => setEnd(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm" /></div>
-          <button onClick={() => { setStart(''); setEnd(today()); }} className="px-3 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium whitespace-nowrap">All Time</button>
-          <button onClick={() => { setStart(thisMonthStart()); setEnd(today()); }} className="px-3 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium whitespace-nowrap">This Month</button>
-          <div className="flex flex-col gap-1"><label className="text-xs font-medium text-gray-500">Party</label><input type="text" value={custSearch} onChange={e => setCustSearch(e.target.value)} placeholder="Search name…" className="border border-gray-300 rounded-lg px-3 py-2 text-sm min-w-[150px]" /></div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">Quick range</label>
+            <div className="flex gap-1.5 flex-wrap">
+              {[
+                ['All Time',   () => { setStart(''); setEnd(today()); }],
+                ['Monthly',    () => { setStart(monthStartStr()); setEnd(monthEndStr()); }],
+                ['This Week',  () => { const [s, e] = thisWeekRange(); setStart(s); setEnd(e); }],
+                ['Week 1',     () => { const [s, e] = weekRange(1); setStart(s); setEnd(e); }],
+                ['Week 2',     () => { const [s, e] = weekRange(2); setStart(s); setEnd(e); }],
+                ['Week 3',     () => { const [s, e] = weekRange(3); setStart(s); setEnd(e); }],
+                ['Week 4',     () => { const [s, e] = weekRange(4); setStart(s); setEnd(e); }],
+              ].map(([label, fn]) => (
+                <button key={label} onClick={fn} className="px-2.5 py-1.5 bg-gray-100 text-gray-600 text-xs rounded-lg hover:bg-gray-200 font-medium whitespace-nowrap">{label}</button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-1"><label className="text-xs font-medium text-gray-500">Party</label><input type="text" value={custSearch} onChange={e => setCustSearch(e.target.value)} placeholder="Search…" className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-28" /></div>
           {custSearch && <button onClick={() => setCustSearch('')} className="text-xs text-gray-400 hover:text-gray-600 mb-2">✕ Clear</button>}
         </div>
       </Card>
