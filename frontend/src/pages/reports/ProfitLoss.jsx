@@ -27,8 +27,9 @@ function itemCogs(item, prod, mfgProductIds) {
 }
 
 function buildData(saleInvoices, purchaseInvoices, productMap, start, end, mfgProductIds) {
-  const sales     = dateRangeFilter(saleInvoices.filter(i => i.status !== 'void'), 'date', start, end);
-  const purchases = dateRangeFilter(purchaseInvoices.filter(i => i.status !== 'void'), 'date', start, end);
+  // Only real (issued/completed) documents — exclude drafts (work-in-progress) and void.
+  const sales     = dateRangeFilter(saleInvoices.filter(i => i.status !== 'void' && i.status !== 'draft'), 'date', start, end);
+  const purchases = dateRangeFilter(purchaseInvoices.filter(i => i.status !== 'void' && i.status !== 'draft'), 'date', start, end);
 
   const totalRevenue      = sales.reduce((s, i) => s + (i.grandTotal  || 0), 0);
   const totalGSTCollected = sales.reduce((s, i) => s + (i.totalGST    || 0), 0);

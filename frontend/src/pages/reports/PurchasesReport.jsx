@@ -17,7 +17,7 @@ export default function PurchasesReport() {
   const [groupBy,    setGroupBy]    = useState('day');
 
   const filtered = useMemo(() => {
-    let list = dateRangeFilter(purchaseInvoices.filter(i => i.status !== 'void'), 'date', start, end);
+    let list = dateRangeFilter(purchaseInvoices.filter(i => i.status !== 'void' && i.status !== 'draft'), 'date', start, end);
     if (suppFilter) list = list.filter(i => i.supplierId === suppFilter);
     if (payFilter)  list = list.filter(i => i.paymentStatus === payFilter);
     return list;
