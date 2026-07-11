@@ -13,6 +13,7 @@ export default function SaleInvoicePrint() {
   const inv = getSaleInvoice(id);
   const invoiceRef = useRef(null);
   const [sharing, setSharing] = useState(false);
+  const [format, setFormat] = useState('a4'); // 'a4' | 'thermal'
 
   if (!inv) return <div className="p-8 text-center">Invoice not found.</div>;
   const { company, invoice: invSettings } = settings;
@@ -46,8 +47,14 @@ export default function SaleInvoicePrint() {
 
   const generatePdfBlob = async () => {
     const { pdf } = await import('@react-pdf/renderer');
-    const { InvoicePDF } = await import('./SaleInvoicePDF');
     const { createElement } = await import('react');
+    if (format === 'thermal') {
+      const { ThermalInvoicePDF } = await import('./SaleInvoiceThermalPDF');
+      return await pdf(
+        createElement(ThermalInvoicePDF, { inv, company, invSettings, customerAddress, customerGstin, customerPhone })
+      ).toBlob();
+    }
+    const { InvoicePDF } = await import('./SaleInvoicePDF');
     return await pdf(
       createElement(InvoicePDF, { inv, company, invSettings, customerAddress, customerGstin, customerPhone })
     ).toBlob();
@@ -86,7 +93,8 @@ export default function SaleInvoicePrint() {
 
   const pdfFileName = () => {
     const nameParts = [inv.customerName, inv.customerPlace].filter(Boolean).join(' ');
-    return `${nameParts || 'Invoice'} - ${inv.invoiceNumber || id}.pdf`;
+    const suffix = format === 'thermal' ? ' - Receipt' : '';
+    return `${nameParts || 'Invoice'} - ${inv.invoiceNumber || id}${suffix}.pdf`;
   };
 
   const downloadPdf = async () => {
@@ -121,6 +129,16 @@ export default function SaleInvoicePrint() {
   return (
     <div className="min-h-screen bg-white">
       <div className="no-print p-4 bg-gray-100 flex gap-3 flex-wrap items-center">
+        <div className="inline-flex rounded-lg border border-gray-300 overflow-hidden">
+          <button onClick={() => setFormat('a4')}
+            className={`px-3 py-2 text-sm font-medium ${format === 'a4' ? 'bg-gray-800 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+            🖨 A4 Invoice
+          </button>
+          <button onClick={() => setFormat('thermal')}
+            className={`px-3 py-2 text-sm font-medium border-l border-gray-300 ${format === 'thermal' ? 'bg-gray-800 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+            🧾 3" Receipt
+          </button>
+        </div>
         <button onClick={printPdf} disabled={sharing}
           className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-60">
           {sharing ? '⏳ Generating…' : '🖨 Print'}
@@ -139,6 +157,7 @@ export default function SaleInvoicePrint() {
         </button>
       </div>
 
+      {format === 'a4' && (
       <div ref={invoiceRef} className="p-8 max-w-[210mm] mx-auto text-[13px] border border-gray-300 rounded">
         {/* Header */}
         <div className="flex justify-between items-start mb-6 pb-4 border-b-2 border-gray-800">
@@ -259,6 +278,73 @@ export default function SaleInvoicePrint() {
           </div>
         </div>
       </div>
+      )}
+
+      {format === 'thermal' && (
+        <div className="py-6 flex justify-center">
+          <div className="w-[80mm] bg-white border border-dashed border-gray-300 rounded px-3 py-4 text-[11px] font-mono leading-snug">
+            {company.logo && <img src={company.logo} alt="logo" className="h-8 mx-auto mb-1" />}
+            <p className="text-center font-bold text-sm">{company.name || 'Kamal Jewellers'}</p>
+            <p className="text-center text-[10px] text-gray-600 whitespace-pre-line">{company.address || 'Sadar Bazar, New Delhi- 110006'}</p>
+            {company.phone && <p className="text-center text-[10px] text-gray-600">Ph: {company.phone}</p>}
+            <p className="text-center text-[10px] text-gray-600">GSTIN: {company.gstin || '07AHDPR6884P1ZC'}</p>
+
+            <div className="border-b border-dashed border-gray-500 my-2" />
+
+            <div className="flex justify-between"><span>Invoice No:</span><span className="font-bold">{inv.invoiceNumber}</span></div>
+            <div className="flex justify-between"><span>Date:</span><span className="font-bold">{formatDate(inv.date)}</span></div>
+
+            <div className="border-b border-dashed border-gray-400 my-2" />
+
+            <p className="text-[9px] uppercase text-gray-500 font-semibold">Bill To</p>
+            <p className="font-bold">{formatCustomerDisplay(inv.customerName, inv.customerPlace, inv.customerType)}</p>
+            {customerAddress && <p className="text-[10px] text-gray-600">{customerAddress}</p>}
+            {customerPhone && <p className="text-[10px] text-gray-600">Ph: {customerPhone}</p>}
+            {customerGstin && <p className="text-[10px] text-gray-600">GSTIN: {customerGstin}</p>}
+
+            <div className="border-b border-dashed border-gray-500 my-2" />
+
+            {items.map((item, i) => {
+              const gross = item.quantity * item.unitPrice;
+              const taxable = item.taxableAmount ?? item.lineTotal;
+              const amount = hasDiscount ? taxable : gross;
+              return (
+                <div key={i} className="mb-1.5">
+                  <p className="font-semibold">{i + 1}. {item.productName}{item.sku && <span className="text-[9px] text-gray-400">  [#{item.sku}]</span>}</p>
+                  <div className="flex justify-between text-[10px]">
+                    <span>{item.quantity} {item.unit} x {formatCurrency(item.unitPrice)}{hasDiscount && item.discountPct ? ` (-${item.discountPct}%)` : ''}</span>
+                    <span className="font-semibold">{formatCurrency(amount)}</span>
+                  </div>
+                </div>
+              );
+            })}
+
+            <div className="border-b border-dashed border-gray-500 my-2" />
+
+            <div className="flex justify-between text-[10px]"><span>Total Qty</span><span>{totalQty}</span></div>
+            {inv.totalDiscount > 0 && <div className="flex justify-between text-[10px]"><span>Discount</span><span>-{formatCurrency(inv.totalDiscount)}</span></div>}
+            {inv.totalCGST > 0 && <div className="flex justify-between text-[10px]"><span>CGST</span><span>{formatCurrency(inv.totalCGST)}</span></div>}
+            {inv.totalSGST > 0 && <div className="flex justify-between text-[10px]"><span>SGST</span><span>{formatCurrency(inv.totalSGST)}</span></div>}
+            {inv.totalIGST > 0 && <div className="flex justify-between text-[10px]"><span>IGST</span><span>{formatCurrency(inv.totalIGST)}</span></div>}
+            {totalTax > 0 && <div className="flex justify-between text-[10px] font-semibold"><span>Total Tax</span><span>{formatCurrency(totalTax)}</span></div>}
+            {((inv.packingCharges || 0) + (inv.shippingCharges || 0)) > 0 && (
+              <div className="flex justify-between text-[10px]"><span>Packing &amp; Shipping</span><span>{formatCurrency((inv.packingCharges || 0) + (inv.shippingCharges || 0))}</span></div>
+            )}
+
+            <div className="border-b border-dashed border-gray-500 my-2" />
+            <div className="flex justify-between text-sm font-bold"><span>Grand Total</span><span>{formatCurrency(inv.grandTotal)}</span></div>
+            <div className="border-b border-dashed border-gray-500 my-2" />
+
+            <p className="text-[9px] font-semibold mt-1">Amount in Words:</p>
+            <p className="text-[9px] italic text-gray-600">{amountInWords(inv.grandTotal)}</p>
+
+            {invSettings.terms && <p className="text-[9px] text-gray-500 mt-2">{invSettings.terms}</p>}
+
+            <p className="text-center font-bold text-sm mt-3">Thank You!</p>
+            <p className="text-center text-[9px] text-gray-400">Visit Again</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
