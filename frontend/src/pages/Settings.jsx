@@ -65,11 +65,12 @@ export default function Settings() {
 
   const [syncing, setSyncing] = useState(false);
   const syncLedger = async () => {
-    if (!window.confirm('This will update all invoice amounts in their ledger entries and recalculate all customer/supplier balances. Continue?')) return;
+    if (!window.confirm('This removes duplicate ledger entries, matches every entry to its invoice, and recalculates all customer/supplier balances from the ledger. Continue?')) return;
     setSyncing(true);
     try {
       const result = await api('/admin/sync-ledger', { method: 'POST' });
-      toast.success(`Ledger synced — ${result.salesFixed} sale entries, ${result.purchasesFixed} purchase entries updated. ${result.customersFixed} customers + ${result.suppliersFixed} suppliers recalculated.`);
+      const dups = result.dupsRemoved || 0;
+      toast.success(`Balances recalculated — ${dups} duplicate ledger entr${dups === 1 ? 'y' : 'ies'} removed · ${result.customersFixed} customers + ${result.suppliersFixed} suppliers updated.`);
     } catch (e) { toast.error('Sync failed: ' + e.message); }
     finally { setSyncing(false); }
   };
@@ -216,10 +217,10 @@ export default function Settings() {
           <p className="text-xs text-gray-400 mt-2">Backup exports all data as JSON. Import will overwrite existing data.</p>
 
           <div className="mt-4 pt-4 border-t border-gray-100">
-            <p className="text-sm font-medium text-gray-700 mb-1">Sync Ledger Amounts</p>
-            <p className="text-xs text-gray-400 mb-3">Updates all invoice amounts in customer/supplier ledger entries and recalculates outstanding balances from scratch.</p>
+            <p className="text-sm font-medium text-gray-700 mb-1">Recalculate Balances from Ledger</p>
+            <p className="text-xs text-gray-400 mb-3">Removes duplicate ledger entries, matches every entry to its invoice, and rebuilds all customer &amp; supplier outstanding balances from the ledger. Fixes inflated / drifted balances.</p>
             <Button variant="outline" onClick={syncLedger} disabled={syncing}>
-              {syncing ? '⏳ Syncing…' : '🔄 Sync All Ledger Amounts'}
+              {syncing ? '⏳ Recalculating…' : '🔄 Recalculate Balances'}
             </Button>
           </div>
         </Card>

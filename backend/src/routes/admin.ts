@@ -88,58 +88,127 @@ router.post('/import', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// ── SYNC LEDGER ───────────────────────────────────────────────────────────────
-// Updates every sale_invoice / purchase_invoice ledger entry to match the
-// invoice's current grandTotal, then recalculates all party balances from scratch.
+// ── SYNC / RECONCILE LEDGER ─────────────────────────────────────────────────
+// Full reconcile — makes every invoice's ledger entry match reality, then
+// rebuilds all party balances from the ledger. Critically it DEDUPES: an invoice
+// with two ledger entries (double-posted, inflating the balance) is reduced to
+// one. Also: fixes wrong amounts, creates missing entries, and strips ledger
+// entries off drafts/deleted invoices.
+const LIVE_SALE = ['issued', 'completed', 'paid'];
+const LIVE_PURCHASE = ['issued', 'paid', 'completed'];
+
 router.post('/sync-ledger', async (_req, res, next) => {
   try {
-    let salesFixed = 0, purchasesFixed = 0, customersFixed = 0, suppliersFixed = 0;
+    const r = {
+      saleDupsRemoved: 0, saleFixed: 0, saleCreated: 0, saleStripped: 0,
+      purchaseDupsRemoved: 0, purchaseFixed: 0, purchaseCreated: 0, purchaseStripped: 0,
+      customersFixed: 0, suppliersFixed: 0,
+    };
 
-    // 1. Sync sale invoice ledger entries
-    const saleInvoices = await prisma.saleInvoice.findMany({
-      where: { status: { not: 'draft' } },
-      select: { id: true, grandTotal: true },
-    });
-    for (const inv of saleInvoices) {
-      const updated = await prisma.ledgerEntry.updateMany({
-        where: { referenceId: inv.id, type: 'sale_invoice' },
-        data:  { debit: Number(inv.grandTotal) || 0 },
+    // ── SALES: one sale_invoice entry (= grandTotal) per live invoice ──
+    const sales = await prisma.saleInvoice.findMany();
+    for (const inv of sales) {
+      const live = LIVE_SALE.includes(inv.status) && !!inv.customerId;
+      const total = Number(inv.grandTotal) || 0;
+      const entries = await prisma.ledgerEntry.findMany({
+        where: { referenceId: inv.id, type: 'sale_invoice' }, orderBy: { createdAt: 'asc' },
       });
-      if (updated.count > 0) salesFixed++;
+      if (!live) {
+        if (entries.length) {
+          const del = await prisma.ledgerEntry.deleteMany({ where: { referenceId: inv.id, type: { in: ['sale_invoice', 'payment_in'] } } });
+          r.saleStripped += del.count;
+        }
+        continue;
+      }
+      if (entries.length === 0) {
+        await prisma.ledgerEntry.create({ data: {
+          partyType: 'customer', partyId: inv.customerId!, partyName: inv.customerName,
+          date: inv.date, type: 'sale_invoice', debit: total, credit: 0,
+          referenceType: 'sale_invoice', referenceId: inv.id, referenceNo: inv.invoiceNumber || '',
+          narration: `Sale Invoice ${inv.invoiceNumber || ''}`,
+        } });
+        r.saleCreated++;
+      } else {
+        const [keep, ...extras] = entries;
+        if (extras.length) {
+          await prisma.ledgerEntry.deleteMany({ where: { id: { in: extras.map(e => e.id) } } });
+          r.saleDupsRemoved += extras.length;
+        }
+        if (Math.abs(Number(keep.debit) - total) > 0.01 || keep.partyId !== inv.customerId) {
+          await prisma.ledgerEntry.update({ where: { id: keep.id }, data: {
+            debit: total, credit: 0, partyId: inv.customerId, partyName: inv.customerName,
+            date: inv.date, narration: `Sale Invoice ${inv.invoiceNumber || ''}`,
+          } });
+          r.saleFixed++;
+        }
+      }
     }
 
-    // 2. Sync purchase invoice ledger entries
-    const purchaseInvoices = await prisma.purchaseInvoice.findMany({
-      where: { status: { not: 'draft' } },
-      select: { id: true, grandTotal: true },
-    });
-    for (const inv of purchaseInvoices) {
-      const updated = await prisma.ledgerEntry.updateMany({
-        where: { referenceId: inv.id, type: 'purchase_invoice' },
-        data:  { credit: Number(inv.grandTotal) || 0 },
+    // ── PURCHASES: one purchase_invoice entry (= grandTotal) per live invoice ──
+    const purchases = await prisma.purchaseInvoice.findMany();
+    for (const inv of purchases) {
+      const live = LIVE_PURCHASE.includes(inv.status) && !!inv.supplierId;
+      const total = Number(inv.grandTotal) || 0;
+      const entries = await prisma.ledgerEntry.findMany({
+        where: { referenceId: inv.id, type: 'purchase_invoice' }, orderBy: { createdAt: 'asc' },
       });
-      if (updated.count > 0) purchasesFixed++;
+      if (!live) {
+        if (entries.length) {
+          const del = await prisma.ledgerEntry.deleteMany({ where: { referenceId: inv.id, type: { in: ['purchase_invoice', 'payment_out'] } } });
+          r.purchaseStripped += del.count;
+        }
+        continue;
+      }
+      if (entries.length === 0) {
+        await prisma.ledgerEntry.create({ data: {
+          partyType: 'supplier', partyId: inv.supplierId!, partyName: inv.supplierName,
+          date: inv.date, type: 'purchase_invoice', debit: 0, credit: total,
+          referenceType: 'purchase_invoice', referenceId: inv.id, referenceNo: inv.invoiceNumber || '',
+          narration: `Purchase Invoice ${inv.invoiceNumber || ''}`,
+        } });
+        r.purchaseCreated++;
+      } else {
+        const [keep, ...extras] = entries;
+        if (extras.length) {
+          await prisma.ledgerEntry.deleteMany({ where: { id: { in: extras.map(e => e.id) } } });
+          r.purchaseDupsRemoved += extras.length;
+        }
+        if (Math.abs(Number(keep.credit) - total) > 0.01 || keep.partyId !== inv.supplierId) {
+          await prisma.ledgerEntry.update({ where: { id: keep.id }, data: {
+            credit: total, debit: 0, partyId: inv.supplierId, partyName: inv.supplierName,
+            date: inv.date, narration: `Purchase Invoice ${inv.invoiceNumber || ''}`,
+          } });
+          r.purchaseFixed++;
+        }
+      }
     }
 
-    // 3. Recalculate all customer balances from ledger entries
+    // ── Rebuild every balance from the ledger ──
     const customers = await prisma.customer.findMany({ select: { id: true } });
     for (const c of customers) {
-      const entries = await prisma.ledgerEntry.findMany({ where: { partyType: 'customer', partyId: c.id } });
-      const balance = entries.reduce((s, e) => s + (Number(e.debit) || 0) - (Number(e.credit) || 0), 0);
-      await prisma.customer.update({ where: { id: c.id }, data: { balance } });
-      customersFixed++;
+      const rows = await prisma.ledgerEntry.findMany({ where: { partyType: 'customer', partyId: c.id } });
+      const bal = Math.round(rows.reduce((s, e) => s + (Number(e.debit) || 0) - (Number(e.credit) || 0), 0) * 100) / 100;
+      await prisma.customer.update({ where: { id: c.id }, data: { balance: bal } });
+      r.customersFixed++;
     }
-
-    // 4. Recalculate all supplier balances from ledger entries
     const suppliers = await prisma.supplier.findMany({ select: { id: true } });
     for (const s of suppliers) {
-      const entries = await prisma.ledgerEntry.findMany({ where: { partyType: 'supplier', partyId: s.id } });
-      const balance = entries.reduce((s, e) => s + (Number(e.credit) || 0) - (Number(e.debit) || 0), 0);
-      await prisma.supplier.update({ where: { id: s.id }, data: { balance } });
-      suppliersFixed++;
+      const rows = await prisma.ledgerEntry.findMany({ where: { partyType: 'supplier', partyId: s.id } });
+      const bal = Math.round(rows.reduce((sum, e) => sum + (Number(e.credit) || 0) - (Number(e.debit) || 0), 0) * 100) / 100;
+      await prisma.supplier.update({ where: { id: s.id }, data: { balance: bal } });
+      r.suppliersFixed++;
     }
 
-    res.json({ ok: true, salesFixed, purchasesFixed, customersFixed, suppliersFixed });
+    res.json({
+      ok: true,
+      // legacy fields kept so the existing UI toast still works
+      salesFixed: r.saleFixed + r.saleCreated,
+      purchasesFixed: r.purchaseFixed + r.purchaseCreated,
+      customersFixed: r.customersFixed,
+      suppliersFixed: r.suppliersFixed,
+      dupsRemoved: r.saleDupsRemoved + r.purchaseDupsRemoved,
+      ...r,
+    });
   } catch (err) { next(err); }
 });
 
