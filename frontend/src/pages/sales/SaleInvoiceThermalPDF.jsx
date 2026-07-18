@@ -26,8 +26,8 @@ const PAGE_H = 297 * MM;  // 297mm ≈ 841.9pt
 
 const S = StyleSheet.create({
   page: {
-    paddingHorizontal: 8,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     fontSize: 8,
     color: '#111827',
     fontFamily: 'Roboto',
