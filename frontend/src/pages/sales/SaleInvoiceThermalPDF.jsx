@@ -18,15 +18,14 @@ const Cur = ({ v = 0, neg = false }) => (
   <Text><Text style={S.rupee}>{neg ? '-Rs ' : 'Rs '}</Text>{fmt(v)}</Text>
 );
 
-// 3-inch thermal roll: printable width ~72mm (204pt at 72dpi). Height is
-// intentionally oversized — receipt rolls are continuous, not paginated —
-// so everything renders on one long "page" with no page breaks.
-const ROLL_WIDTH = 204;   // ~72mm
-const ROLL_HEIGHT = 3000; // effectively unbounded for a single receipt
+// 3-inch printer with 80mm x 297mm cut sheets (A4 height, 3-inch width).
+// Page size is set in points (1mm = 2.83465pt) so it paginates every 297mm.
+const MM = 2.83465;
+const PAGE_W = 80 * MM;   // 80mm  ≈ 226.8pt
+const PAGE_H = 297 * MM;  // 297mm ≈ 841.9pt
 
 const S = StyleSheet.create({
   page: {
-    width: ROLL_WIDTH,
     paddingHorizontal: 8,
     paddingVertical: 10,
     fontSize: 8,
@@ -76,7 +75,7 @@ export function ThermalInvoicePDF({ inv, company, invSettings, customerAddress, 
 
   return (
     <Document>
-      <Page size={[ROLL_WIDTH, ROLL_HEIGHT]} style={S.page}>
+      <Page size={[PAGE_W, PAGE_H]} style={S.page}>
         {/* ── Header ── */}
         {company.logo ? <Image style={S.logo} src={company.logo} /> : null}
         <Text style={S.companyName}>{company.name || 'Kamal Jewellers'}</Text>
