@@ -125,11 +125,37 @@ export default function SalesReport() {
     );
   };
 
+  // Excel export: Bill No · Name · Place · Bill Amount · Bill Date · Contact Number
+  const handleExportExcel = async () => {
+    const XLSX = await import('xlsx');
+    const phoneById = {};
+    customers.forEach(c => { phoneById[c.id] = c.phone || ''; });
+
+    const rows = filtered.map(i => ({
+      'Bill No':        i.invoiceNumber || '',
+      'Name':           i.customerName || '',
+      'Place':          i.customerPlace || '',
+      'Bill Amount':    i.grandTotal || 0,
+      'Bill Date':      formatDate(i.date),
+      'Contact Number': phoneById[i.customerId] || '',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{ wch: 12 }, { wch: 26 }, { wch: 16 }, { wch: 14 }, { wch: 13 }, { wch: 16 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Sales');
+    const range = start ? `${start}_to_${end}` : `upto_${end}`;
+    XLSX.writeFile(wb, `sales_report_${range}.xlsx`);
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Sales Report</h1>
-        <Button variant="secondary" onClick={handleExport}>⬇ Export CSV</Button>
+        <div className="flex gap-2">
+          <Button variant="success" onClick={handleExportExcel}>⬇ Export Excel</Button>
+          <Button variant="secondary" onClick={handleExport}>⬇ CSV</Button>
+        </div>
       </div>
 
       {/* Filters */}
