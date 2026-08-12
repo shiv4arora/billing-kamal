@@ -133,15 +133,14 @@ export default function SalesReport() {
 
     const rows = filtered.map(i => ({
       'Bill No':        i.invoiceNumber || '',
-      'Name':           i.customerName || '',
-      'Place':          i.customerPlace || '',
+      'Name & Place':   [i.customerName, i.customerPlace].filter(Boolean).join(' — '),
       'Bill Amount':    i.grandTotal || 0,
       'Bill Date':      formatDate(i.date),
       'Contact Number': phoneById[i.customerId] || '',
     }));
 
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 12 }, { wch: 26 }, { wch: 16 }, { wch: 14 }, { wch: 13 }, { wch: 16 }];
+    ws['!cols'] = [{ wch: 12 }, { wch: 34 }, { wch: 14 }, { wch: 13 }, { wch: 16 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Sales');
     const range = start ? `${start}_to_${end}` : `upto_${end}`;
