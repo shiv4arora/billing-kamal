@@ -71,6 +71,20 @@ export default function Settings() {
       const result = await api('/admin/sync-ledger', { method: 'POST' });
       const dups = result.dupsRemoved || 0;
       toast.success(`Balances recalculated — ${dups} duplicate ledger entr${dups === 1 ? 'y' : 'ies'} removed · ${result.customersFixed} customers + ${result.suppliersFixed} suppliers updated.`);
+      // Warn if invoice NUMBERS are shared by multiple records (needs manual review)
+      const dupPur = result.dupPurchaseNumbers?.groups || 0;
+      const dupSal = result.dupSaleNumbers?.groups || 0;
+      if (dupPur || dupSal) {
+        const parts = [];
+        if (dupSal) parts.push(`${dupSal} sale`);
+        if (dupPur) parts.push(`${dupPur} purchase`);
+        window.alert(
+          `⚠ Found duplicate invoice NUMBERS (${parts.join(', ')} number(s) used by more than one record).\n\n` +
+          `These are separate records sharing a number, so the balance still counts both. Delete the wrong record in the invoice list.\n\n` +
+          `Purchase: ${(result.dupPurchaseNumbers?.numbers || []).join(', ') || 'none'}\n` +
+          `Sale: ${(result.dupSaleNumbers?.numbers || []).join(', ') || 'none'}`
+        );
+      }
     } catch (e) { toast.error('Sync failed: ' + e.message); }
     finally { setSyncing(false); }
   };

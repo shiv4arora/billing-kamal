@@ -199,6 +199,19 @@ router.post('/sync-ledger', async (_req, res, next) => {
       r.suppliersFixed++;
     }
 
+    // ── Diagnostic: invoice NUMBERS used by more than one record ──
+    // These are separate invoice records that share a number (old non-atomic
+    // counter). Dedup-by-entry can't fix these — each record has its own real
+    // ledger entry, so the balance still counts both. Report them for review.
+    const countDupNumbers = (list: { invoiceNumber: string | null }[]) => {
+      const seen: Record<string, number> = {};
+      for (const i of list) if (i.invoiceNumber) seen[i.invoiceNumber] = (seen[i.invoiceNumber] || 0) + 1;
+      const dups = Object.entries(seen).filter(([, n]) => n > 1);
+      return { groups: dups.length, numbers: dups.map(([num, n]) => `${num} (x${n})`) };
+    };
+    const dupSaleNumbers = countDupNumbers(sales);
+    const dupPurchaseNumbers = countDupNumbers(purchases);
+
     res.json({
       ok: true,
       // legacy fields kept so the existing UI toast still works
@@ -207,6 +220,7 @@ router.post('/sync-ledger', async (_req, res, next) => {
       customersFixed: r.customersFixed,
       suppliersFixed: r.suppliersFixed,
       dupsRemoved: r.saleDupsRemoved + r.purchaseDupsRemoved,
+      dupSaleNumbers, dupPurchaseNumbers,
       ...r,
     });
   } catch (err) { next(err); }
