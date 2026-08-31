@@ -175,26 +175,16 @@ router.put('/:id', async (req, res, next) => {
       // ── Fully sync the ledger to the edited invoice ──
       const oldCust = oldInv.customerId;
       const newCust = updated.customerId;
-      const narration = `Sale Invoice ${updated.invoiceNumber || ''}`;
 
+      // Delete any existing sale_invoice entries for this invoice (collapses
+      // duplicates), then recreate exactly ONE matching the edited amount — so
+      // the ledger always has one entry = the current bill after every edit.
+      await tx.ledgerEntry.deleteMany({ where: { referenceId: updated.id, type: 'sale_invoice' } });
       if (newCust) {
-        const existingLedger = await tx.ledgerEntry.findFirst({
-          where: { referenceId: updated.id, type: 'sale_invoice' },
+        await postSaleInvoice(tx, {
+          customerId: newCust, customerName: updated.customerName,
+          date: updated.date, invoiceId: updated.id, invoiceNo: updated.invoiceNumber || '', amount: newTotal,
         });
-        if (existingLedger) {
-          // Update the entry to reflect every editable field — amount, date,
-          // customer and narration (not just the amount).
-          await tx.ledgerEntry.updateMany({
-            where: { referenceId: updated.id, type: 'sale_invoice' },
-            data: { debit: newTotal, date: updated.date, partyId: newCust, partyName: updated.customerName, narration },
-          });
-        } else {
-          // Issued invoice with no ledger entry (corrupted by an older bug) — create it
-          await postSaleInvoice(tx, {
-            customerId: newCust, customerName: updated.customerName,
-            date: updated.date, invoiceId: updated.id, invoiceNo: updated.invoiceNumber || '', amount: newTotal,
-          });
-        }
         // If the customer was changed, move the related payment/return entries too
         if (oldCust && oldCust !== newCust) {
           await tx.ledgerEntry.updateMany({
@@ -202,9 +192,6 @@ router.put('/:id', async (req, res, next) => {
             data: { partyId: newCust, partyName: updated.customerName },
           });
         }
-      } else if (oldCust) {
-        // Invoice no longer has a customer — drop all its ledger entries
-        await tx.ledgerEntry.deleteMany({ where: { referenceId: updated.id } });
       }
 
       // Rebuild affected customer balances straight from the ledger (no drift)

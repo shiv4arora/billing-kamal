@@ -309,24 +309,15 @@ router.put('/:id', async (req, res, next) => {
       const newSup = updated.supplierId;
       if (oldInv.status !== 'draft') {
         const newTotal = Number(updated.grandTotal) || 0;
-        const narration = `Purchase Invoice ${updated.invoiceNumber || ''}`;
+        // Delete any existing purchase_invoice entries for this invoice (collapses
+        // duplicates), then recreate exactly ONE matching the edited amount. This
+        // guarantees the ledger has one entry = the current bill after every edit.
+        await tx.ledgerEntry.deleteMany({ where: { referenceId: updated.id, type: 'purchase_invoice' } });
         if (newSup) {
-          const existingLedger = await tx.ledgerEntry.findFirst({
-            where: { referenceId: updated.id, type: 'purchase_invoice' },
+          await postPurchaseInvoice(tx, {
+            supplierId: newSup, supplierName: updated.supplierName,
+            date: updated.date, invoiceId: updated.id, invoiceNo: updated.invoiceNumber || '', amount: newTotal,
           });
-          if (existingLedger) {
-            // Reflect every editable field — amount, date, supplier, narration
-            await tx.ledgerEntry.updateMany({
-              where: { referenceId: updated.id, type: 'purchase_invoice' },
-              data: { credit: newTotal, date: updated.date, partyId: newSup, partyName: updated.supplierName, narration },
-            });
-          } else {
-            // Issued invoice missing its ledger entry (older corruption) — create it
-            await postPurchaseInvoice(tx, {
-              supplierId: newSup, supplierName: updated.supplierName,
-              date: updated.date, invoiceId: updated.id, invoiceNo: updated.invoiceNumber || '', amount: newTotal,
-            });
-          }
           // If supplier changed, move the related payment/return entries too
           if (oldSup && oldSup !== newSup) {
             await tx.ledgerEntry.updateMany({
@@ -334,9 +325,6 @@ router.put('/:id', async (req, res, next) => {
               data: { partyId: newSup, partyName: updated.supplierName },
             });
           }
-        } else if (oldSup) {
-          // Supplier removed — drop the invoice's ledger entries
-          await tx.ledgerEntry.deleteMany({ where: { referenceId: updated.id } });
         }
       }
 
