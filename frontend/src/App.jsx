@@ -34,6 +34,7 @@ import ProfitLoss from './pages/reports/ProfitLoss';
 import Settings from './pages/Settings';
 import VendorSalesReport from './pages/reports/VendorSalesReport';
 import AverageReport from './pages/reports/AverageReport';
+import CreditorsReport from './pages/reports/CreditorsReport';
 import ProductionReport from './pages/reports/ProductionReport';
 import LoginPage from './pages/auth/LoginPage';
 import UserManagement from './pages/auth/UserManagement';
@@ -122,6 +123,7 @@ function LayoutRoutes() {
           {can('reports') && <Route path="/reports/profit-loss" element={<ProfitLoss />} />}
           {can('reports') && <Route path="/reports/vendor-sales" element={<VendorSalesReport />} />}
           {can('reports') && <Route path="/reports/average" element={<AverageReport />} />}
+          {can('reports') && <Route path="/reports/debtors" element={<CreditorsReport />} />}
           {can('reports') && <Route path="/reports/production" element={<ProductionReport />} />}
           {can('settings') && <Route path="/settings" element={<Settings />} />}
           {isAdmin && <Route path="/users" element={<UserManagement />} />}
